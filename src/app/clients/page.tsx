@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { clientApi } from '@/lib/api';
 import { useToast } from '@/components/ui/toast-context';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import Modal from '@/components/ui/Modal';
+import Button from '@/components/Button';
 
 interface ClientRequirements {
   propertyType: string;
@@ -177,11 +179,8 @@ export default function ClientsPage() {
           </h2>
         </div>
         <div className="mt-4 flex md:ml-4 md:mt-0">
-          <Link
-            href="/clients/new"
-            className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors"
-          >
-            Add New Client
+          <Link href="/clients/new">
+            <Button variant="primary">Add New Client</Button>
           </Link>
         </div>
       </div>
@@ -212,32 +211,33 @@ export default function ClientsPage() {
       </div>
 
       {/* Delete Confirmation Modal */}
-      {clientToDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100]">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Delete Client</h3>
-            <p className="text-gray-500 mb-4">
-              Are you sure you want to delete {clientToDelete.name}? This action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setClientToDelete(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-500"
-                disabled={isDeleting}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                disabled={isDeleting}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
-              >
-                {isDeleting ? 'Deleting...' : 'Delete'}
-              </button>
-            </div>
+      <Modal
+        isOpen={!!clientToDelete}
+        onClose={() => setClientToDelete(null)}
+        title="Delete Client"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-500">
+            Are you sure you want to delete {clientToDelete?.name}? This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-3">
+            <Button
+              onClick={() => setClientToDelete(null)}
+              variant="secondary"
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmDelete}
+              variant="danger"
+              isLoading={isDeleting}
+            >
+              Delete
+            </Button>
           </div>
         </div>
-      )}
+      </Modal>
 
       {/* Clients Table */}
       <div className="mt-8 flow-root">

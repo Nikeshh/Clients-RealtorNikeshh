@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/toast-context';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import Button from '@/components/Button';
 
 interface Property {
   id: string;
@@ -11,6 +12,7 @@ interface Property {
   address: string;
   price: number;
   type: string;
+  listingType: string; // SALE or RENTAL
   bedrooms?: number;
   bathrooms?: number;
   area: number;
@@ -20,6 +22,17 @@ interface Property {
   images: string[];
   source: string;
   location: string;
+  yearBuilt?: number;
+  // Rental specific fields
+  furnished?: boolean;
+  petsAllowed?: boolean;
+  leaseTerm?: string;
+  // Purchase specific fields
+  lotSize?: number;
+  basement?: boolean;
+  garage?: boolean;
+  parkingSpaces?: number;
+  propertyStyle?: string;
   sharedWith: Array<{
     id: string;
     sharedDate: string;
@@ -220,19 +233,19 @@ export default function PropertyPage() {
                 <option value="Under Contract">Under Contract</option>
                 <option value="Sold">Sold</option>
               </select>
-              <button
+              <Button
                 onClick={() => setIsEditing(true)}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                variant="primary"
               >
                 Edit
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleDelete}
-                disabled={isDeleting}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
+                variant="danger"
+                isLoading={isDeleting}
               >
                 {isDeleting ? 'Deleting...' : 'Delete'}
-              </button>
+              </Button>
             </>
           )}
         </div>
@@ -431,18 +444,18 @@ export default function PropertyPage() {
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-4">
-            <button
+            <Button
               onClick={() => setIsEditing(false)}
-              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-500"
+              variant="secondary"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleSaveChanges}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+              variant="primary"
             >
               Save Changes
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
@@ -460,7 +473,10 @@ export default function PropertyPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-500">Price</p>
-                <p className="text-gray-900">{formatCurrency(property.price)}</p>
+                <p className="text-gray-900">
+                  {formatCurrency(property.price)}
+                  {property.listingType === 'RENTAL' && <span className="text-sm text-gray-500">/month</span>}
+                </p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Type</p>
@@ -486,7 +502,59 @@ export default function PropertyPage() {
                   <p className="text-gray-900">{property.bathrooms}</p>
                 </div>
               )}
+
+              {/* Rental specific details */}
+              {property.listingType === 'RENTAL' && (
+                <>
+                  {property.leaseTerm && (
+                    <div>
+                      <p className="text-sm text-gray-500">Lease Term</p>
+                      <p className="text-gray-900">{property.leaseTerm}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-sm text-gray-500">Amenities</p>
+                    <p className="text-gray-900">
+                      {property.furnished && 'Furnished • '}
+                      {property.petsAllowed && 'Pets Allowed'}
+                    </p>
+                  </div>
+                </>
+              )}
+
+              {/* Purchase specific details */}
+              {property.listingType === 'SALE' && (
+                <>
+                  {property.yearBuilt && (
+                    <div>
+                      <p className="text-sm text-gray-500">Year Built</p>
+                      <p className="text-gray-900">{property.yearBuilt}</p>
+                    </div>
+                  )}
+                  {property.lotSize && (
+                    <div>
+                      <p className="text-sm text-gray-500">Lot Size</p>
+                      <p className="text-gray-900">{property.lotSize} sqft</p>
+                    </div>
+                  )}
+                  {property.propertyStyle && (
+                    <div>
+                      <p className="text-sm text-gray-500">Style</p>
+                      <p className="text-gray-900">{property.propertyStyle}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-sm text-gray-500">Features</p>
+                    <p className="text-gray-900">
+                      {property.basement && 'Basement • '}
+                      {property.garage && 'Garage • '}
+                      {property.parkingSpaces && `${property.parkingSpaces} Parking Spaces`}
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
+
             {property.description && (
               <div className="mt-4">
                 <p className="text-sm text-gray-500">Description</p>

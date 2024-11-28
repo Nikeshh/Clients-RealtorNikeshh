@@ -8,10 +8,14 @@ export const POST = withAuth(async (request: NextRequest) => {
     const requirementId = request.url.split('/requirements/')[1].split('/gather')[0];
     const { propertyIds, notes } = await request.json();
 
-    // Get the requirement details
+    // Get the requirement details with preferences
     const requirement = await prisma.clientRequirement.findUnique({
       where: { id: requirementId },
-      include: { client: true },
+      include: { 
+        client: true,
+        rentalPreferences: true,
+        purchasePreferences: true,
+      },
     });
 
     if (!requirement) {
@@ -21,10 +25,37 @@ export const POST = withAuth(async (request: NextRequest) => {
       );
     }
 
-    // Create gathered property records
+    // Create gathered property records with type-specific validation
     const gatheredProperties = await Promise.all(
-      propertyIds.map((propertyId: string) =>
-        prisma.gatheredProperty.create({
+      propertyIds.map(async (propertyId: string) => {
+        // Get property details to validate against requirements
+        const property = await prisma.property.findUnique({
+          where: { id: propertyId },
+        });
+
+        if (!property) {
+          throw new Error(`Property ${propertyId} not found`);
+        }
+
+        // Validate property matches requirement type
+        const matchesType = property.type.toLowerCase() === requirement.propertyType.toLowerCase();
+        const matchesBudget = property.price >= requirement.budgetMin && property.price <= requirement.budgetMax;
+
+        // Type-specific validation
+        let typeSpecificMatch = true;
+        if (requirement.type === 'RENTAL' && requirement.rentalPreferences) {
+          // Add rental-specific validation here if needed
+          typeSpecificMatch = true; // Placeholder for rental validation
+        } else if (requirement.type === 'PURCHASE' && requirement.purchasePreferences) {
+          // Add purchase-specific validation here if needed
+          typeSpecificMatch = true; // Placeholder for purchase validation
+        }
+
+        if (!matchesType || !matchesBudget || !typeSpecificMatch) {
+          throw new Error(`Property ${propertyId} does not match requirement criteria`);
+        }
+
+        return prisma.gatheredProperty.create({
           data: {
             requirementId,
             propertyId,
@@ -34,8 +65,8 @@ export const POST = withAuth(async (request: NextRequest) => {
           include: {
             property: true,
           },
-        })
-      )
+        });
+      })
     );
 
     // Create an interaction record
@@ -43,7 +74,7 @@ export const POST = withAuth(async (request: NextRequest) => {
       data: {
         clientId: requirement.client.id,
         type: 'Properties Gathered',
-        description: `Gathered ${propertyIds.length} properties for requirement: ${requirement.name}`,
+        description: `Gathered ${propertyIds.length} properties for ${requirement.type.toLowerCase()} requirement: ${requirement.name}`,
         date: new Date(),
       },
     });
@@ -52,7 +83,7 @@ export const POST = withAuth(async (request: NextRequest) => {
   } catch (error) {
     console.error('Error gathering properties:', error);
     return NextResponse.json(
-      { error: 'Failed to gather properties' },
+      { error: 'Failed to gather properties', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
@@ -72,6 +103,13 @@ export const PATCH = withAuth(async (request: NextRequest) => {
         requirementId,
         propertyId,
       },
+      include: {
+        requirement: {
+          include: {
+            client: true,
+          }
+        }
+      }
     });
 
     if (!existingGatheredProperty) {
@@ -95,6 +133,8 @@ export const PATCH = withAuth(async (request: NextRequest) => {
         requirement: {
           include: {
             client: true,
+            rentalPreferences: true,
+            purchasePreferences: true,
           },
         },
       },
@@ -105,7 +145,7 @@ export const PATCH = withAuth(async (request: NextRequest) => {
       data: {
         clientId: gatheredProperty.requirement.client.id,
         type: 'Property Status Updated',
-        description: `Updated status to ${status} for property: ${gatheredProperty.property.title}`,
+        description: `Updated status to ${status} for ${gatheredProperty.requirement.type.toLowerCase()} property: ${gatheredProperty.property.title}`,
         date: new Date(),
       },
     });

@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useToast } from '@/components/ui/toast-context';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useDebounce } from '@/hooks/useDebounce';
+import Modal from '@/components/ui/Modal';
+import Button from '@/components/Button';
 
 interface Property {
   id: string;
@@ -12,11 +14,21 @@ interface Property {
   address: string;
   price: number;
   type: string;
+  listingType: string;
   bedrooms?: number;
   bathrooms?: number;
   area: number;
   status: string;
   location: string;
+  furnished?: boolean;
+  petsAllowed?: boolean;
+  leaseTerm?: string;
+  lotSize?: number;
+  basement?: boolean;
+  garage?: boolean;
+  parkingSpaces?: number;
+  propertyStyle?: string;
+  yearBuilt?: number;
 }
 
 interface EmailRecipient {
@@ -45,6 +57,7 @@ export default function PropertiesPage() {
   const [propertyToDelete, setPropertyToDelete] = useState<Property | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isStatusUpdating, setIsStatusUpdating] = useState<string | null>(null);
+  const [filterListingType, setFilterListingType] = useState('all');
 
   useEffect(() => {
     loadProperties();
@@ -98,7 +111,11 @@ export default function PropertiesPage() {
       filterType === 'all' || 
       property.type.toLowerCase() === filterType.toLowerCase();
 
-    return matchesSearch && matchesType;
+    const matchesListingType =
+      filterListingType === 'all' ||
+      property.listingType === filterListingType;
+
+    return matchesSearch && matchesType && matchesListingType;
   });
 
   const formatPrice = (price: number) => {
@@ -228,17 +245,14 @@ export default function PropertiesPage() {
           </h2>
         </div>
         <div className="mt-4 flex md:ml-4 md:mt-0">
-          <Link
-            href="/properties/new"
-            className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors"
-          >
-            Add New Property
+          <Link href="/properties/new">
+            <Button variant="primary">Add New Property</Button>
           </Link>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
         <div>
           <input
             type="text"
@@ -261,6 +275,17 @@ export default function PropertiesPage() {
             <option value="land">Land</option>
           </select>
         </div>
+        <div>
+          <select
+            className="block w-full rounded-lg border border-blue-200 px-4 py-2.5 text-gray-700 focus:border-blue-400 focus:ring-blue-400 transition-colors"
+            value={filterListingType}
+            onChange={(e) => setFilterListingType(e.target.value)}
+          >
+            <option value="all">All Listings</option>
+            <option value="SALE">For Sale</option>
+            <option value="RENTAL">For Rent</option>
+          </select>
+        </div>
       </div>
 
       {selectedProperties.length > 0 && (
@@ -274,98 +299,87 @@ export default function PropertiesPage() {
         </div>
       )}
 
-      {showEmailForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100]">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full relative">
-            <button
-              onClick={() => setShowEmailForm(false)}
-              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
-            >
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+      <Modal
+        isOpen={showEmailForm}
+        onClose={() => setShowEmailForm(false)}
+        title="Send Properties"
+      >
+        <div className="space-y-4">
+          {/* Recipients List */}
+          <div className="flex flex-wrap gap-2 mb-2">
+            {recipients.map(recipient => (
+              <div 
+                key={recipient.id}
+                className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm flex items-center gap-1"
+              >
+                <span>{recipient.name}</span>
+                <button
+                  onClick={() => removeRecipient(recipient.id)}
+                  className="text-blue-600 hover:text-blue-800"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Client Search */}
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search clients..."
+              className="w-full p-2 border rounded-md"
+              value={searchClient}
+              onChange={(e) => setSearchClient(e.target.value)}
+            />
             
-            <h3 className="text-lg font-semibold mb-4">Send Properties</h3>
-            
-            <div className="space-y-4">
-              {/* Recipients List */}
-              <div className="flex flex-wrap gap-2 mb-2">
-                {recipients.map(recipient => (
-                  <div 
-                    key={recipient.id}
-                    className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm flex items-center gap-1"
+            {/* Search Results Dropdown */}
+            {searchResults.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+                {searchResults.map(client => (
+                  <button
+                    key={client.id}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100"
+                    onClick={() => addRecipient(client)}
                   >
-                    <span>{recipient.name}</span>
-                    <button
-                      onClick={() => removeRecipient(recipient.id)}
-                      className="text-blue-600 hover:text-blue-800"
-                    >
-                      ×
-                    </button>
-                  </div>
+                    <div className="font-medium">{client.name}</div>
+                    <div className="text-sm text-gray-600">{client.email}</div>
+                  </button>
                 ))}
               </div>
+            )}
 
-              {/* Client Search */}
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search clients..."
-                  className="w-full p-2 border rounded-md"
-                  value={searchClient}
-                  onChange={(e) => setSearchClient(e.target.value)}
-                />
-                
-                {/* Search Results Dropdown */}
-                {searchResults.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
-                    {searchResults.map(client => (
-                      <button
-                        key={client.id}
-                        className="w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100"
-                        onClick={() => addRecipient(client)}
-                      >
-                        <div className="font-medium">{client.name}</div>
-                        <div className="text-sm text-gray-600">{client.email}</div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {isSearching && (
-                  <div className="absolute right-2 top-2">
-                    <div className="animate-spin h-5 w-5 border-2 border-blue-500 rounded-full border-t-transparent"></div>
-                  </div>
-                )}
+            {isSearching && (
+              <div className="absolute right-2 top-2">
+                <div className="animate-spin h-5 w-5 border-2 border-blue-500 rounded-full border-t-transparent"></div>
               </div>
+            )}
+          </div>
 
-              {/* Selected Properties Summary */}
-              <div className="mt-4 p-2 bg-gray-50 rounded-md">
-                <div className="text-sm font-medium text-gray-700">
-                  Selected Properties: {selectedProperties.length}
-                </div>
-              </div>
-
-              <div className="pt-4 flex justify-end gap-3">
-                <button
-                  onClick={() => setShowEmailForm(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-500"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSendEmail}
-                  disabled={recipients.length === 0}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Send Email
-                </button>
-              </div>
+          {/* Selected Properties Summary */}
+          <div className="mt-4 p-2 bg-gray-50 rounded-md">
+            <div className="text-sm font-medium text-gray-700">
+              Selected Properties: {selectedProperties.length}
             </div>
           </div>
+
+          <div className="pt-4 flex justify-end gap-3">
+            <Button
+              onClick={() => setShowEmailForm(false)}
+              variant="secondary"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSendEmail}
+              variant="primary"
+              disabled={recipients.length === 0}
+            >
+              Send Email
+            </Button>
+          </div>
         </div>
-      )}
+      </Modal>
 
       {/* Delete Confirmation Modal */}
       {propertyToDelete && (
@@ -441,6 +455,10 @@ export default function PropertiesPage() {
                 <div className="flex justify-between items-center">
                   <span className="text-lg font-bold text-blue-600">
                     {formatPrice(property.price)}
+                    {property.listingType === 'RENTAL' && <span className="text-sm font-normal">/month</span>}
+                  </span>
+                  <span className="text-sm font-medium px-2 py-1 rounded-full bg-blue-100 text-blue-800">
+                    {property.listingType === 'SALE' ? 'For Sale' : 'For Rent'}
                   </span>
                 </div>
                 <div className="mt-4 flex items-center text-sm text-gray-500 gap-4">
@@ -452,6 +470,45 @@ export default function PropertiesPage() {
                   )}
                   <span>{property.area} sqft</span>
                 </div>
+                {/* Type-specific details */}
+                {property.listingType === 'RENTAL' && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {property.furnished && (
+                      <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">
+                        Furnished
+                      </span>
+                    )}
+                    {property.petsAllowed && (
+                      <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">
+                        Pets Allowed
+                      </span>
+                    )}
+                    {property.leaseTerm && (
+                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
+                        {property.leaseTerm}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {property.listingType === 'SALE' && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {property.yearBuilt && (
+                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
+                        Built {property.yearBuilt}
+                      </span>
+                    )}
+                    {property.garage && (
+                      <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">
+                        Garage
+                      </span>
+                    )}
+                    {property.basement && (
+                      <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">
+                        Basement
+                      </span>
+                    )}
+                  </div>
+                )}
               </Link>
             </div>
           </div>

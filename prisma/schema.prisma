@@ -31,6 +31,7 @@ model ClientRequirement {
   id                    String   @id @default(auto()) @map("_id") @db.ObjectId
   clientId             String   @db.ObjectId
   name                 String
+  type                 String   @default("PURCHASE")
   propertyType         String
   budgetMin            Float
   budgetMax            Float
@@ -39,6 +40,8 @@ model ClientRequirement {
   preferredLocations   String[]
   additionalRequirements String?
   status               String   @default("Active")
+  rentalPreferences    RentalPreferences?
+  purchasePreferences  PurchasePreferences?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
@@ -64,7 +67,8 @@ model Property {
   title       String
   address     String
   price       Float
-  type        String
+  type        String   // House, Apartment, Condo, Land
+  listingType String   @default("SALE")  // SALE or RENTAL
   bedrooms    Int?
   bathrooms   Int?
   area        Float
@@ -74,11 +78,30 @@ model Property {
   images      String[]
   source      String
   location    String
+  yearBuilt   Int?     // For property age matching
+  
+  // Rental specific fields
+  furnished   Boolean? // For rental properties
+  petsAllowed Boolean? // For rental properties
+  leaseTerm   String?  // Short-term, Long-term
+  
+  // Purchase specific fields
+  lotSize     Float?   // For land/houses
+  basement    Boolean? @default(false)
+  garage      Boolean? @default(false)
+  parkingSpaces Int?
+  propertyStyle String? // Modern, Traditional, Contemporary, etc.
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   sharedWith         SharedProperty[]
   gatheredProperties GatheredProperty[]
+
+  @@index([type])
+  @@index([listingType])
+  @@index([status])
+  @@index([location])
 }
 
 model SharedProperty {
@@ -147,4 +170,27 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model RentalPreferences {
+  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+  requirementId       String   @db.ObjectId @unique
+  leaseTerm           String
+  furnished           Boolean  @default(false)
+  petsAllowed         Boolean  @default(false)
+  maxRentalBudget     Float
+  preferredMoveInDate DateTime?
+  requirement         ClientRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+}
+
+model PurchasePreferences {
+  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+  requirementId       String   @db.ObjectId @unique
+  propertyAge         String?
+  preferredStyle      String?
+  parking             Int?
+  lotSize             Float?
+  basement            Boolean  @default(false)
+  garage              Boolean  @default(false)
+  requirement         ClientRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
 } 

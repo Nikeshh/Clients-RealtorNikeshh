@@ -1,5 +1,3 @@
-import Button from '@/components/Button';
-
 export default function LoadingOverlay() {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -10,5 +8,5 @@ export default function LoadingOverlay() {
         </div>
       </div>
     </div>
-  );
+  )
 } 

@@ -32,6 +32,7 @@ export const POST = withAuth(async (req: NextRequest) => {
         address: data.address,
         price: parseFloat(data.price),
         type: data.type,
+        listingType: data.listingType, // SALE or RENTAL
         bedrooms: data.bedrooms ? parseInt(data.bedrooms) : null,
         bathrooms: data.bathrooms ? parseInt(data.bathrooms) : null,
         area: parseFloat(data.area),
@@ -41,6 +42,23 @@ export const POST = withAuth(async (req: NextRequest) => {
         images: data.images || [],
         source: data.source,
         location: data.location,
+        yearBuilt: data.yearBuilt ? parseInt(data.yearBuilt) : null,
+
+        // Rental specific fields
+        ...(data.listingType === 'RENTAL' ? {
+          furnished: data.furnished || false,
+          petsAllowed: data.petsAllowed || false,
+          leaseTerm: data.leaseTerm || null,
+        } : {}),
+
+        // Purchase specific fields
+        ...(data.listingType === 'SALE' ? {
+          lotSize: data.lotSize ? parseFloat(data.lotSize) : null,
+          basement: data.basement || false,
+          garage: data.garage || false,
+          parkingSpaces: data.parkingSpaces ? parseInt(data.parkingSpaces) : null,
+          propertyStyle: data.propertyStyle || null,
+        } : {})
       }
     });
     

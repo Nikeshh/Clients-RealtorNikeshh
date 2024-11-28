@@ -11,15 +11,49 @@ export const POST = withAuth(async (request: NextRequest) => {
     const requirement = await prisma.clientRequirement.create({
       data: {
         clientId,
-        name: data.name,
+        name: data.name || "New Requirement",
+        type: data.type,
         propertyType: data.propertyType,
         budgetMin: parseFloat(data.budgetMin),
         budgetMax: parseFloat(data.budgetMax),
         bedrooms: data.bedrooms ? parseInt(data.bedrooms) : null,
         bathrooms: data.bathrooms ? parseInt(data.bathrooms) : null,
-        preferredLocations: data.preferredLocations,
-        additionalRequirements: data.additionalRequirements,
+        preferredLocations: data.preferredLocations || [],
+        additionalRequirements: data.additionalRequirements || null,
+        status: "Active",
+        ...(data.type === 'RENTAL' ? {
+          rentalPreferences: {
+            create: {
+              leaseTerm: data.rentalPreferences.leaseTerm,
+              furnished: data.rentalPreferences.furnished,
+              petsAllowed: data.rentalPreferences.petsAllowed,
+              maxRentalBudget: parseFloat(data.budgetMax),
+              preferredMoveInDate: data.rentalPreferences.preferredMoveInDate 
+                ? new Date(data.rentalPreferences.preferredMoveInDate) 
+                : null,
+            }
+          }
+        } : {
+          purchasePreferences: {
+            create: {
+              propertyAge: data.purchasePreferences.propertyAge,
+              preferredStyle: data.purchasePreferences.preferredStyle,
+              parking: data.purchasePreferences.parking 
+                ? parseInt(data.purchasePreferences.parking) 
+                : null,
+              lotSize: data.purchasePreferences.lotSize 
+                ? parseFloat(data.purchasePreferences.lotSize) 
+                : null,
+              basement: data.purchasePreferences.basement,
+              garage: data.purchasePreferences.garage,
+            }
+          }
+        })
       },
+      include: {
+        rentalPreferences: true,
+        purchasePreferences: true,
+      }
     });
 
     // Create an interaction record
@@ -27,7 +61,7 @@ export const POST = withAuth(async (request: NextRequest) => {
       data: {
         clientId,
         type: 'Requirement Added',
-        description: `Added new requirement: ${data.name}`,
+        description: `Added new ${data.type.toLowerCase()} requirement: ${data.name}`,
         date: new Date(),
       },
     });
@@ -36,7 +70,17 @@ export const POST = withAuth(async (request: NextRequest) => {
     const updatedClient = await prisma.client.findUnique({
       where: { id: clientId },
       include: {
-        requirements: true,
+        requirements: {
+          include: {
+            rentalPreferences: true,
+            purchasePreferences: true,
+            gatheredProperties: {
+              include: {
+                property: true,
+              }
+            }
+          }
+        },
         interactions: {
           orderBy: { date: 'desc' },
         },
@@ -61,11 +105,13 @@ export const GET = withAuth(async (request: NextRequest) => {
     const requirements = await prisma.clientRequirement.findMany({
       where: { clientId },
       include: {
+        rentalPreferences: true,
+        purchasePreferences: true,
         gatheredProperties: {
           include: {
             property: true,
-          },
-        },
+          }
+        }
       },
       orderBy: { createdAt: 'desc' },
     });

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/toast-context';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import Modal from '@/components/ui/Modal';
 
 interface ClientRequirement {
   id: string;
@@ -55,6 +56,33 @@ interface Client {
   }>;
 }
 
+interface NewRequirementForm {
+  name: string;
+  type: 'PURCHASE' | 'RENTAL';
+  propertyType: string;
+  budgetMin: string;
+  budgetMax: string;
+  bedrooms: string;
+  bathrooms: string;
+  preferredLocations: string[];
+  additionalRequirements: string;
+  rentalPreferences: {
+    leaseTerm: string;
+    furnished: boolean;
+    petsAllowed: boolean;
+    maxRentalBudget: string;
+    preferredMoveInDate: string;
+  };
+  purchasePreferences: {
+    propertyAge: string;
+    preferredStyle: string;
+    parking: string;
+    lotSize: string;
+    basement: boolean;
+    garage: boolean;
+  };
+}
+
 export default function ClientPage() {
   const params = useParams();
   const router = useRouter();
@@ -65,8 +93,9 @@ export default function ClientPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const { addToast } = useToast();
   const [showNewRequirementModal, setShowNewRequirementModal] = useState(false);
-  const [newRequirement, setNewRequirement] = useState({
+  const [newRequirement, setNewRequirement] = useState<NewRequirementForm>({
     name: '',
+    type: 'PURCHASE',
     propertyType: '',
     budgetMin: '',
     budgetMax: '',
@@ -74,6 +103,21 @@ export default function ClientPage() {
     bathrooms: '',
     preferredLocations: [''],
     additionalRequirements: '',
+    rentalPreferences: {
+      leaseTerm: 'Long-term',
+      furnished: false,
+      petsAllowed: false,
+      maxRentalBudget: '',
+      preferredMoveInDate: '',
+    },
+    purchasePreferences: {
+      propertyAge: '',
+      preferredStyle: '',
+      parking: '',
+      lotSize: '',
+      basement: false,
+      garage: false,
+    }
   });
 
   useEffect(() => {
@@ -244,6 +288,7 @@ export default function ClientPage() {
       setShowNewRequirementModal(false);
       setNewRequirement({
         name: '',
+        type: 'PURCHASE',
         propertyType: '',
         budgetMin: '',
         budgetMax: '',
@@ -251,6 +296,21 @@ export default function ClientPage() {
         bathrooms: '',
         preferredLocations: [''],
         additionalRequirements: '',
+        rentalPreferences: {
+          leaseTerm: 'Long-term',
+          furnished: false,
+          petsAllowed: false,
+          maxRentalBudget: '',
+          preferredMoveInDate: '',
+        },
+        purchasePreferences: {
+          propertyAge: '',
+          preferredStyle: '',
+          parking: '',
+          lotSize: '',
+          basement: false,
+          garage: false,
+        }
       });
       addToast('Requirement added successfully', 'success');
     } catch (error) {
@@ -575,7 +635,7 @@ export default function ClientPage() {
                   </dl>
 
                   {/* Gathered Properties */}
-                  {requirement.gatheredProperties.length > 0 && (
+                  {requirement.gatheredProperties && requirement.gatheredProperties && requirement.gatheredProperties.length > 0 && (
                     <div className="mt-4">
                       <h4 className="text-sm font-medium text-gray-900 mb-2">Gathered Properties</h4>
                       <div className="space-y-2">
@@ -623,177 +683,336 @@ export default function ClientPage() {
           </div>
 
           {/* New Requirement Modal */}
-          {showNewRequirementModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100]">
-              <div className="bg-white rounded-lg p-6 max-w-md w-full">
-                <h3 className="text-lg font-semibold mb-4">Add New Requirement</h3>
-                
-                {/* Requirement Form */}
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Name/Title</label>
-                    <input
-                      type="text"
-                      value={newRequirement.name}
-                      onChange={(e) => setNewRequirement({
-                        ...newRequirement,
-                        name: e.target.value
-                      })}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                      placeholder="e.g., Primary Residence Search"
-                    />
-                  </div>
+          <Modal
+            isOpen={showNewRequirementModal}
+            onClose={() => setShowNewRequirementModal(false)}
+            title="Add New Requirement"
+          >
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Name/Title</label>
+                <input
+                  type="text"
+                  value={newRequirement.name}
+                  onChange={(e) => setNewRequirement({
+                    ...newRequirement,
+                    name: e.target.value
+                  })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  placeholder="e.g., Primary Residence Search"
+                />
+              </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Requirement Type</label>
+                <select
+                  value={newRequirement.type}
+                  onChange={(e) => setNewRequirement({
+                    ...newRequirement,
+                    type: e.target.value as 'PURCHASE' | 'RENTAL'
+                  })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                >
+                  <option value="PURCHASE">Purchase</option>
+                  <option value="RENTAL">Rental</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Property Type</label>
+                <select
+                  value={newRequirement.propertyType}
+                  onChange={(e) => setNewRequirement({
+                    ...newRequirement,
+                    propertyType: e.target.value
+                  })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                >
+                  <option value="">Select type</option>
+                  <option value="House">House</option>
+                  <option value="Apartment">Apartment</option>
+                  <option value="Condo">Condo</option>
+                  <option value="Land">Land</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Budget Min</label>
+                  <input
+                    type="number"
+                    value={newRequirement.budgetMin}
+                    onChange={(e) => setNewRequirement({
+                      ...newRequirement,
+                      budgetMin: e.target.value
+                    })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Budget Max</label>
+                  <input
+                    type="number"
+                    value={newRequirement.budgetMax}
+                    onChange={(e) => setNewRequirement({
+                      ...newRequirement,
+                      budgetMax: e.target.value
+                    })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Bedrooms</label>
+                  <input
+                    type="number"
+                    value={newRequirement.bedrooms}
+                    onChange={(e) => setNewRequirement({
+                      ...newRequirement,
+                      bedrooms: e.target.value
+                    })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Bathrooms</label>
+                  <input
+                    type="number"
+                    value={newRequirement.bathrooms}
+                    onChange={(e) => setNewRequirement({
+                      ...newRequirement,
+                      bathrooms: e.target.value
+                    })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+
+              {/* Type-specific preferences */}
+              {newRequirement.type === 'RENTAL' ? (
+                <div className="space-y-4 border-t pt-4">
+                  <h4 className="font-medium text-gray-900">Rental Preferences</h4>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Property Type</label>
+                    <label className="block text-sm font-medium text-gray-700">Lease Term</label>
                     <select
-                      value={newRequirement.propertyType}
+                      value={newRequirement.rentalPreferences.leaseTerm}
                       onChange={(e) => setNewRequirement({
                         ...newRequirement,
-                        propertyType: e.target.value
+                        rentalPreferences: {
+                          ...newRequirement.rentalPreferences,
+                          leaseTerm: e.target.value
+                        }
                       })}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                     >
-                      <option value="">Select type</option>
-                      <option value="House">House</option>
-                      <option value="Apartment">Apartment</option>
-                      <option value="Condo">Condo</option>
-                      <option value="Land">Land</option>
+                      <option value="Short-term">Short-term</option>
+                      <option value="Long-term">Long-term</option>
                     </select>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Budget Min</label>
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center">
                       <input
-                        type="number"
-                        value={newRequirement.budgetMin}
+                        type="checkbox"
+                        checked={newRequirement.rentalPreferences.furnished}
                         onChange={(e) => setNewRequirement({
                           ...newRequirement,
-                          budgetMin: e.target.value
+                          rentalPreferences: {
+                            ...newRequirement.rentalPreferences,
+                            furnished: e.target.checked
+                          }
                         })}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                       />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Budget Max</label>
-                      <input
-                        type="number"
-                        value={newRequirement.budgetMax}
-                        onChange={(e) => setNewRequirement({
-                          ...newRequirement,
-                          budgetMax: e.target.value
-                        })}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Bedrooms</label>
-                      <input
-                        type="number"
-                        value={newRequirement.bedrooms}
-                        onChange={(e) => setNewRequirement({
-                          ...newRequirement,
-                          bedrooms: e.target.value
-                        })}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Bathrooms</label>
-                      <input
-                        type="number"
-                        value={newRequirement.bathrooms}
-                        onChange={(e) => setNewRequirement({
-                          ...newRequirement,
-                          bathrooms: e.target.value
-                        })}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Preferred Locations
+                      <span className="ml-2 text-sm text-gray-700">Furnished</span>
                     </label>
-                    {newRequirement.preferredLocations.map((location, index) => (
-                      <div key={index} className="flex gap-2 mb-2">
-                        <input
-                          type="text"
-                          value={location}
-                          onChange={(e) => {
-                            const newLocations = [...newRequirement.preferredLocations];
-                            newLocations[index] = e.target.value;
-                            setNewRequirement({
-                              ...newRequirement,
-                              preferredLocations: newLocations
-                            });
-                          }}
-                          className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                        />
-                        {index > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setNewRequirement({
-                                ...newRequirement,
-                                preferredLocations: newRequirement.preferredLocations.filter((_, i) => i !== index)
-                              });
-                            }}
-                            className="px-2 py-1 text-red-600 hover:text-red-800"
-                          >
-                            Remove
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => setNewRequirement({
-                        ...newRequirement,
-                        preferredLocations: [...newRequirement.preferredLocations, '']
-                      })}
-                      className="mt-2 text-sm text-indigo-600 hover:text-indigo-800"
-                    >
-                      Add Location
-                    </button>
+
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={newRequirement.rentalPreferences.petsAllowed}
+                        onChange={(e) => setNewRequirement({
+                          ...newRequirement,
+                          rentalPreferences: {
+                            ...newRequirement.rentalPreferences,
+                            petsAllowed: e.target.checked
+                          }
+                        })}
+                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">Pets Allowed</span>
+                    </label>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Additional Requirements</label>
-                    <textarea
-                      value={newRequirement.additionalRequirements}
+                    <label className="block text-sm font-medium text-gray-700">Preferred Move-in Date</label>
+                    <input
+                      type="date"
+                      value={newRequirement.rentalPreferences.preferredMoveInDate}
                       onChange={(e) => setNewRequirement({
                         ...newRequirement,
-                        additionalRequirements: e.target.value
+                        rentalPreferences: {
+                          ...newRequirement.rentalPreferences,
+                          preferredMoveInDate: e.target.value
+                        }
                       })}
-                      rows={3}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                     />
                   </div>
                 </div>
+              ) : (
+                <div className="space-y-4 border-t pt-4">
+                  <h4 className="font-medium text-gray-900">Purchase Preferences</h4>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Property Age</label>
+                    <select
+                      value={newRequirement.purchasePreferences.propertyAge}
+                      onChange={(e) => setNewRequirement({
+                        ...newRequirement,
+                        purchasePreferences: {
+                          ...newRequirement.purchasePreferences,
+                          propertyAge: e.target.value
+                        }
+                      })}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    >
+                      <option value="">Select age</option>
+                      <option value="New">New Construction</option>
+                      <option value="0-5">0-5 years</option>
+                      <option value="5-10">5-10 years</option>
+                      <option value="10+">10+ years</option>
+                    </select>
+                  </div>
 
-                <div className="mt-6 flex justify-end gap-3">
-                  <button
-                    onClick={() => setShowNewRequirementModal(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-500"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleAddRequirement}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-                  >
-                    Add Requirement
-                  </button>
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={newRequirement.purchasePreferences.basement}
+                        onChange={(e) => setNewRequirement({
+                          ...newRequirement,
+                          purchasePreferences: {
+                            ...newRequirement.purchasePreferences,
+                            basement: e.target.checked
+                          }
+                        })}
+                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">Basement</span>
+                    </label>
+
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={newRequirement.purchasePreferences.garage}
+                        onChange={(e) => setNewRequirement({
+                          ...newRequirement,
+                          purchasePreferences: {
+                            ...newRequirement.purchasePreferences,
+                            garage: e.target.checked
+                          }
+                        })}
+                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">Garage</span>
+                    </label>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Lot Size (sqft)</label>
+                    <input
+                      type="number"
+                      value={newRequirement.purchasePreferences.lotSize}
+                      onChange={(e) => setNewRequirement({
+                        ...newRequirement,
+                        purchasePreferences: {
+                          ...newRequirement.purchasePreferences,
+                          lotSize: e.target.value
+                        }
+                      })}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    />
+                  </div>
                 </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Preferred Locations
+                </label>
+                {newRequirement.preferredLocations.map((location, index) => (
+                  <div key={index} className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={location}
+                      onChange={(e) => {
+                        const newLocations = [...newRequirement.preferredLocations];
+                        newLocations[index] = e.target.value;
+                        setNewRequirement({
+                          ...newRequirement,
+                          preferredLocations: newLocations
+                        });
+                      }}
+                      className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    />
+                    {index > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewRequirement({
+                            ...newRequirement,
+                            preferredLocations: newRequirement.preferredLocations.filter((_, i) => i !== index)
+                          });
+                        }}
+                        className="px-2 py-1 text-red-600 hover:text-red-800"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setNewRequirement({
+                    ...newRequirement,
+                    preferredLocations: [...newRequirement.preferredLocations, '']
+                  })}
+                  className="mt-2 text-sm text-indigo-600 hover:text-indigo-800"
+                >
+                  Add Location
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Additional Requirements</label>
+                <textarea
+                  value={newRequirement.additionalRequirements}
+                  onChange={(e) => setNewRequirement({
+                    ...newRequirement,
+                    additionalRequirements: e.target.value
+                  })}
+                  rows={3}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
               </div>
             </div>
-          )}
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setShowNewRequirementModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-500"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddRequirement}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+              >
+                Add Requirement
+              </button>
+            </div>
+          </Modal>
 
           {/* Shared Properties */}
           <div className="bg-white shadow rounded-lg p-6">

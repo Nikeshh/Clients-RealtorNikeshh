@@ -14,6 +14,8 @@ export default function NewClientPage() {
     phone: '',
     status: 'Active',
     requirements: {
+      name: '',
+      type: 'PURCHASE',
       propertyType: '',
       budgetMin: '',
       budgetMax: '',
@@ -21,6 +23,21 @@ export default function NewClientPage() {
       bathrooms: '',
       preferredLocations: [''],
       additionalRequirements: '',
+      rentalPreferences: {
+        leaseTerm: 'Long-term',
+        furnished: false,
+        petsAllowed: false,
+        maxRentalBudget: '',
+        preferredMoveInDate: '',
+      },
+      purchasePreferences: {
+        propertyAge: '',
+        preferredStyle: '',
+        parking: '',
+        lotSize: '',
+        basement: false,
+        garage: false,
+      }
     },
   });
   const [existingClients, setExistingClients] = useState<any[]>([]);
@@ -182,6 +199,24 @@ export default function NewClientPage() {
           <h2 className="text-lg font-semibold mb-4">Requirements</h2>
           <div className="space-y-4">
             <div>
+              <label className="block text-sm font-medium text-gray-700">Requirement Type</label>
+              <select
+                value={formData.requirements.type}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  requirements: {
+                    ...formData.requirements,
+                    type: e.target.value
+                  }
+                })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              >
+                <option value="PURCHASE">Purchase</option>
+                <option value="RENTAL">Rental</option>
+              </select>
+            </div>
+
+            <div>
               <label className="block text-sm font-medium text-gray-700">Property Type</label>
               <select
                 required
@@ -305,6 +340,175 @@ export default function NewClientPage() {
                 })}
               />
             </div>
+
+            {formData.requirements.type === 'RENTAL' ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Lease Term</label>
+                  <select
+                    value={formData.requirements.rentalPreferences.leaseTerm}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      requirements: {
+                        ...formData.requirements,
+                        rentalPreferences: {
+                          ...formData.requirements.rentalPreferences,
+                          leaseTerm: e.target.value
+                        }
+                      }
+                    })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  >
+                    <option value="Short-term">Short-term</option>
+                    <option value="Long-term">Long-term</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={formData.requirements.rentalPreferences.furnished}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        requirements: {
+                          ...formData.requirements,
+                          rentalPreferences: {
+                            ...formData.requirements.rentalPreferences,
+                            furnished: e.target.checked
+                          }
+                        }
+                      })}
+                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">Furnished</span>
+                  </label>
+
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={formData.requirements.rentalPreferences.petsAllowed}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        requirements: {
+                          ...formData.requirements,
+                          rentalPreferences: {
+                            ...formData.requirements.rentalPreferences,
+                            petsAllowed: e.target.checked
+                          }
+                        }
+                      })}
+                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">Pets Allowed</span>
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Preferred Move-in Date</label>
+                  <input
+                    type="date"
+                    value={formData.requirements.rentalPreferences.preferredMoveInDate}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      requirements: {
+                        ...formData.requirements,
+                        rentalPreferences: {
+                          ...formData.requirements.rentalPreferences,
+                          preferredMoveInDate: e.target.value
+                        }
+                      }
+                    })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Property Age</label>
+                  <select
+                    value={formData.requirements.purchasePreferences.propertyAge}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      requirements: {
+                        ...formData.requirements,
+                        purchasePreferences: {
+                          ...formData.requirements.purchasePreferences,
+                          propertyAge: e.target.value
+                        }
+                      }
+                    })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  >
+                    <option value="">Select age</option>
+                    <option value="New">New Construction</option>
+                    <option value="0-5">0-5 years</option>
+                    <option value="5-10">5-10 years</option>
+                    <option value="10+">10+ years</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={formData.requirements.purchasePreferences.basement}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        requirements: {
+                          ...formData.requirements,
+                          purchasePreferences: {
+                            ...formData.requirements.purchasePreferences,
+                            basement: e.target.checked
+                          }
+                        }
+                      })}
+                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">Basement</span>
+                  </label>
+
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={formData.requirements.purchasePreferences.garage}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        requirements: {
+                          ...formData.requirements,
+                          purchasePreferences: {
+                            ...formData.requirements.purchasePreferences,
+                            garage: e.target.checked
+                          }
+                        }
+                      })}
+                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">Garage</span>
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Lot Size (sqft)</label>
+                  <input
+                    type="number"
+                    value={formData.requirements.purchasePreferences.lotSize}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      requirements: {
+                        ...formData.requirements,
+                        purchasePreferences: {
+                          ...formData.requirements.purchasePreferences,
+                          lotSize: e.target.value
+                        }
+                      }
+                    })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

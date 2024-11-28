@@ -13,6 +13,7 @@ export default function NewPropertyPage() {
     address: '',
     price: '',
     type: '',
+    listingType: 'SALE',
     bedrooms: '',
     bathrooms: '',
     area: '',
@@ -22,6 +23,17 @@ export default function NewPropertyPage() {
     images: [''],
     source: '',
     location: '',
+    yearBuilt: '',
+    
+    furnished: false,
+    petsAllowed: false,
+    leaseTerm: 'Long-term',
+    
+    lotSize: '',
+    basement: false,
+    garage: false,
+    parkingSpaces: '',
+    propertyStyle: '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -36,6 +48,9 @@ export default function NewPropertyPage() {
         },
         body: JSON.stringify({
           ...formData,
+          yearBuilt: formData.yearBuilt ? parseInt(formData.yearBuilt) : null,
+          lotSize: formData.lotSize ? parseFloat(formData.lotSize) : null,
+          parkingSpaces: formData.parkingSpaces ? parseInt(formData.parkingSpaces) : null,
           features: formData.features.filter(f => f.trim() !== ''),
           images: formData.images.filter(i => i.trim() !== ''),
         }),
@@ -43,7 +58,7 @@ export default function NewPropertyPage() {
 
       if (!response.ok) throw new Error('Failed to create property');
 
-      addToast('Property created successfully!', 'success');
+      addToast('Property created successfully', 'success');
       router.push('/properties');
     } catch (error) {
       console.error('Error:', error);
@@ -56,48 +71,34 @@ export default function NewPropertyPage() {
   const handleFeatureChange = (index: number, value: string) => {
     const newFeatures = [...formData.features];
     newFeatures[index] = value;
-    setFormData({
-      ...formData,
-      features: newFeatures,
-    });
+    setFormData({ ...formData, features: newFeatures });
   };
 
   const handleImageChange = (index: number, value: string) => {
     const newImages = [...formData.images];
     newImages[index] = value;
-    setFormData({
-      ...formData,
-      images: newImages,
-    });
+    setFormData({ ...formData, images: newImages });
   };
 
   const addFeature = () => {
-    setFormData({
-      ...formData,
-      features: [...formData.features, ''],
-    });
+    setFormData({ ...formData, features: [...formData.features, ''] });
   };
 
   const addImage = () => {
-    setFormData({
-      ...formData,
-      images: [...formData.images, ''],
-    });
+    setFormData({ ...formData, images: [...formData.images, ''] });
   };
 
   const removeFeature = (index: number) => {
-    const newFeatures = formData.features.filter((_, i) => i !== index);
     setFormData({
       ...formData,
-      features: newFeatures,
+      features: formData.features.filter((_, i) => i !== index),
     });
   };
 
   const removeImage = (index: number) => {
-    const newImages = formData.images.filter((_, i) => i !== index);
     setFormData({
       ...formData,
-      images: newImages,
+      images: formData.images.filter((_, i) => i !== index),
     });
   };
 
@@ -120,6 +121,20 @@ export default function NewPropertyPage() {
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               />
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Listing Type</label>
+              <select
+                required
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                value={formData.listingType}
+                onChange={(e) => setFormData({ ...formData, listingType: e.target.value })}
+              >
+                <option value="SALE">For Sale</option>
+                <option value="RENTAL">For Rent</option>
+              </select>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700">Address</label>
               <input
@@ -301,6 +316,102 @@ export default function NewPropertyPage() {
             ))}
           </div>
         </div>
+
+        {formData.listingType === 'RENTAL' ? (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Lease Term</label>
+              <select
+                value={formData.leaseTerm}
+                onChange={(e) => setFormData({ ...formData, leaseTerm: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              >
+                <option value="Short-term">Short-term</option>
+                <option value="Long-term">Long-term</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={formData.furnished}
+                  onChange={(e) => setFormData({ ...formData, furnished: e.target.checked })}
+                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className="ml-2 text-sm text-gray-700">Furnished</span>
+              </label>
+
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={formData.petsAllowed}
+                  onChange={(e) => setFormData({ ...formData, petsAllowed: e.target.checked })}
+                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className="ml-2 text-sm text-gray-700">Pets Allowed</span>
+              </label>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Lot Size (sqft)</label>
+              <input
+                type="number"
+                value={formData.lotSize}
+                onChange={(e) => setFormData({ ...formData, lotSize: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Property Style</label>
+              <select
+                value={formData.propertyStyle}
+                onChange={(e) => setFormData({ ...formData, propertyStyle: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              >
+                <option value="">Select style</option>
+                <option value="Modern">Modern</option>
+                <option value="Traditional">Traditional</option>
+                <option value="Contemporary">Contemporary</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={formData.basement}
+                  onChange={(e) => setFormData({ ...formData, basement: e.target.checked })}
+                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className="ml-2 text-sm text-gray-700">Basement</span>
+              </label>
+
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={formData.garage}
+                  onChange={(e) => setFormData({ ...formData, garage: e.target.checked })}
+                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className="ml-2 text-sm text-gray-700">Garage</span>
+              </label>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Parking Spaces</label>
+              <input
+                type="number"
+                value={formData.parkingSpaces}
+                onChange={(e) => setFormData({ ...formData, parkingSpaces: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+        )}
 
         <div className="flex justify-end gap-4">
           <button
