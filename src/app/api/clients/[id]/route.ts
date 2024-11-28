@@ -67,6 +67,16 @@ export const PATCH = withAuth(async (request: NextRequest) => {
       );
     }
 
+    // Handle pinned status update
+    if (typeof data.pinned !== 'undefined') {
+      const updatedClient = await prisma.client.update({
+        where: { id },
+        data: { pinned: data.pinned },
+      });
+      return NextResponse.json(updatedClient);
+    }
+
+    // Handle other updates
     const updatedClient = await prisma.client.update({
       where: {
         id: id,
@@ -76,17 +86,21 @@ export const PATCH = withAuth(async (request: NextRequest) => {
         email: data.email,
         phone: data.phone,
         status: data.status,
-        requirements: {
+        pinned: data.pinned,
+        requirements: data.requirements ? {
           update: {
-            propertyType: data.requirements?.propertyType,
-            budgetMin: data.requirements?.budgetMin ? parseFloat(data.requirements.budgetMin) : undefined,
-            budgetMax: data.requirements?.budgetMax ? parseFloat(data.requirements.budgetMax) : undefined,
-            bedrooms: data.requirements?.bedrooms ? parseInt(data.requirements.bedrooms) : null,
-            bathrooms: data.requirements?.bathrooms ? parseInt(data.requirements.bathrooms) : null,
-            preferredLocations: data.requirements?.preferredLocations,
-            additionalRequirements: data.requirements?.additionalRequirements,
+            where: { id: data.requirements.id },
+            data: {
+              propertyType: data.requirements.propertyType,
+              budgetMin: data.requirements.budgetMin ? parseFloat(data.requirements.budgetMin) : undefined,
+              budgetMax: data.requirements.budgetMax ? parseFloat(data.requirements.budgetMax) : undefined,
+              bedrooms: data.requirements.bedrooms ? parseInt(data.requirements.bedrooms) : null,
+              bathrooms: data.requirements.bathrooms ? parseInt(data.requirements.bathrooms) : null,
+              preferredLocations: data.requirements.preferredLocations,
+              additionalRequirements: data.requirements.additionalRequirements,
+            }
           }
-        }
+        } : undefined
       },
       include: {
         requirements: true,

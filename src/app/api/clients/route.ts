@@ -6,9 +6,10 @@ import prisma from '@/lib/prisma';
 export const GET = withAuth(async (req: NextRequest) => {
   try {
     const clients = await prisma.client.findMany({
-      orderBy: {
-        createdAt: 'desc'
-      },
+      orderBy: [
+        { pinned: 'desc' },  // Sort pinned clients first
+        { createdAt: 'desc' }
+      ],
       include: {
         requirements: true,
         interactions: {
