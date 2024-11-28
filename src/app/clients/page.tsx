@@ -24,6 +24,7 @@ interface Client {
   status: string;
   lastContact: string;
   requirements: ClientRequirements;
+  pinned: boolean;
 }
 
 export default function ClientsPage() {
@@ -35,6 +36,7 @@ export default function ClientsPage() {
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isStatusUpdating, setIsStatusUpdating] = useState<string | null>(null);
+  const [isPinning, setIsPinning] = useState<string | null>(null);
 
   useEffect(() => {
     loadClients();
@@ -128,6 +130,39 @@ export default function ClientsPage() {
     }
   };
 
+  const handlePinToggle = async (clientId: string, currentPinned: boolean) => {
+    setIsPinning(clientId);
+    try {
+      const response = await fetch(`/api/clients/${clientId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          pinned: !currentPinned,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update pin status');
+
+      setClients(clients.map(client => 
+        client.id === clientId ? { ...client, pinned: !currentPinned } : client
+      ));
+      addToast(`Client ${currentPinned ? 'unpinned' : 'pinned'} successfully`, 'success');
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to update pin status', 'error');
+    } finally {
+      setIsPinning(null);
+    }
+  };
+
+  const sortedClients = [...filteredClients].sort((a, b) => {
+    if (a.pinned && !b.pinned) return -1;
+    if (!a.pinned && b.pinned) return 1;
+    return a.name.localeCompare(b.name);
+  });
+
   if (isLoading) {
     return <LoadingSpinner size="large" />;
   }
@@ -212,9 +247,9 @@ export default function ClientsPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-blue-50">
                   <tr>
+                    <th className="w-10 px-3 py-3.5"></th>
                     <th className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-blue-900">Name</th>
                     <th className="px-3 py-3.5 text-left text-sm font-semibold text-blue-900">Contact</th>
-                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-blue-900">Budget Range</th>
                     <th className="px-3 py-3.5 text-left text-sm font-semibold text-blue-900">Status</th>
                     <th className="px-3 py-3.5 text-left text-sm font-semibold text-blue-900">Last Contact</th>
                     <th className="relative py-3.5 pl-3 pr-4 sm:pr-6">
@@ -223,21 +258,46 @@ export default function ClientsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
-                  {filteredClients.map((client) => (
-                    <tr key={client.id} className="hover:bg-blue-50 transition-colors">
+                  {sortedClients.map((client) => (
+                    <tr 
+                      key={client.id} 
+                      className={`hover:bg-blue-50 transition-colors ${
+                        client.pinned ? 'bg-yellow-50' : ''
+                      }`}
+                    >
+                      <td className="w-10 px-3 py-4">
+                        <button
+                          onClick={() => handlePinToggle(client.id, client.pinned)}
+                          disabled={isPinning === client.id}
+                          className={`text-gray-400 hover:text-yellow-500 transition-colors ${
+                            client.pinned ? 'text-yellow-500' : ''
+                          }`}
+                        >
+                          {isPinning === client.id ? (
+                            <div className="animate-spin h-5 w-5 border-2 border-yellow-500 rounded-full border-t-transparent" />
+                          ) : (
+                            <svg 
+                              className="h-5 w-5" 
+                              fill={client.pinned ? 'currentColor' : 'none'} 
+                              viewBox="0 0 24 24" 
+                              stroke="currentColor"
+                            >
+                              <path 
+                                strokeLinecap="round" 
+                                strokeLinejoin="round" 
+                                strokeWidth={2} 
+                                d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" 
+                              />
+                            </svg>
+                          )}
+                        </button>
+                      </td>
                       <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-blue-900">
                         {client.name}
                       </td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-600">
                         <div>{client.email}</div>
                         <div>{client.phone}</div>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-600">
-                        {client.requirements && (
-                          <span>
-                            {formatCurrency(client.requirements.budgetMin)} - {formatCurrency(client.requirements.budgetMax)}
-                          </span>
-                        )}
                       </td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm">
                         <select

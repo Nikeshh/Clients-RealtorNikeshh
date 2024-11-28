@@ -13,21 +13,24 @@ model Client {
   email       String
   phone       String
   status      String   @default("Active")
+  pinned      Boolean  @default(false)
   lastContact DateTime @default(now())
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  requirements     ClientRequirements?
+  requirements     ClientRequirement[]
   interactions     Interaction[]
   sharedProperties SharedProperty[]
 
   @@index([name])
   @@index([email])
+  @@index([pinned])
 }
 
-model ClientRequirements {
+model ClientRequirement {
   id                    String   @id @default(auto()) @map("_id") @db.ObjectId
-  clientId             String   @unique @db.ObjectId
+  clientId             String   @db.ObjectId
+  name                 String
   propertyType         String
   budgetMin            Float
   budgetMax            Float
@@ -35,8 +38,25 @@ model ClientRequirements {
   bathrooms            Int?
   preferredLocations   String[]
   additionalRequirements String?
+  status               String   @default("Active")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
-  client               Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client               Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  gatheredProperties   GatheredProperty[]
+}
+
+model GatheredProperty {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  requirementId   String   @db.ObjectId
+  propertyId      String   @db.ObjectId
+  notes           String?
+  status          String   @default("Pending")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  requirement     ClientRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  property        Property          @relation(fields: [propertyId], references: [id])
 }
 
 model Property {
@@ -57,7 +77,8 @@ model Property {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  sharedWith  SharedProperty[]
+  sharedWith         SharedProperty[]
+  gatheredProperties GatheredProperty[]
 }
 
 model SharedProperty {
