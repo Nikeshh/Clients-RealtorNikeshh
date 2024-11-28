@@ -32,6 +32,9 @@ export default function ClientsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const { addToast } = useToast();
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isStatusUpdating, setIsStatusUpdating] = useState<string | null>(null);
 
   useEffect(() => {
     loadClients();
@@ -71,12 +74,62 @@ export default function ClientsPage() {
     return matchesSearch && matchesStatus;
   });
 
+  const handleDelete = async (client: Client) => {
+    setClientToDelete(client);
+  };
+
+  const confirmDelete = async () => {
+    if (!clientToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/clients/${clientToDelete.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete client');
+
+      addToast('Client deleted successfully', 'success');
+      setClients(clients.filter(c => c.id !== clientToDelete.id));
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to delete client', 'error');
+    } finally {
+      setIsDeleting(false);
+      setClientToDelete(null);
+    }
+  };
+
+  const handleStatusChange = async (clientId: string, newStatus: string) => {
+    setIsStatusUpdating(clientId);
+    try {
+      const response = await fetch(`/api/clients/${clientId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: newStatus,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update status');
+
+      const updatedClient = await response.json();
+      setClients(clients.map(client => 
+        client.id === clientId ? { ...client, status: newStatus } : client
+      ));
+      addToast('Status updated successfully', 'success');
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to update status', 'error');
+    } finally {
+      setIsStatusUpdating(null);
+    }
+  };
+
   if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-[calc(100vh-4rem)]">
-        <LoadingSpinner size="large" />
-      </div>
-    );
+    return <LoadingSpinner size="large" />;
   }
 
   return (
@@ -123,7 +176,35 @@ export default function ClientsPage() {
         </div>
       </div>
 
-      {/* Clients List */}
+      {/* Delete Confirmation Modal */}
+      {clientToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100]">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Delete Client</h3>
+            <p className="text-gray-500 mb-4">
+              Are you sure you want to delete {clientToDelete.name}? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setClientToDelete(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-500"
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clients Table */}
       <div className="mt-8 flow-root">
         <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
           <div className="inline-block min-w-full py-2 align-middle">
@@ -159,24 +240,42 @@ export default function ClientsPage() {
                         )}
                       </td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm">
-                        <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          client.status === 'Active' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {client.status}
-                        </span>
+                        <select
+                          value={client.status}
+                          onChange={(e) => handleStatusChange(client.id, e.target.value)}
+                          disabled={isStatusUpdating === client.id}
+                          className={`rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
+                            isStatusUpdating === client.id ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
+                        >
+                          <option value="Active">Active</option>
+                          <option value="Inactive">Inactive</option>
+                          <option value="Lead">Lead</option>
+                        </select>
+                        {isStatusUpdating === client.id && (
+                          <div className="mt-1">
+                            <div className="animate-spin h-4 w-4 border-2 border-blue-500 rounded-full border-t-transparent"></div>
+                          </div>
+                        )}
                       </td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-600">
                         {new Date(client.lastContact).toLocaleDateString()}
                       </td>
                       <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                        <Link 
-                          href={`/clients/${client.id}`} 
-                          className="text-blue-600 hover:text-blue-800 transition-colors"
-                        >
-                          View<span className="sr-only">, {client.name}</span>
-                        </Link>
+                        <div className="flex justify-end gap-2">
+                          <Link 
+                            href={`/clients/${client.id}`} 
+                            className="text-blue-600 hover:text-blue-800 transition-colors"
+                          >
+                            View<span className="sr-only">, {client.name}</span>
+                          </Link>
+                          <button
+                            onClick={() => handleDelete(client)}
+                            className="text-red-600 hover:text-red-800 transition-colors"
+                          >
+                            Delete<span className="sr-only">, {client.name}</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -186,6 +285,12 @@ export default function ClientsPage() {
           </div>
         </div>
       </div>
+
+      {filteredClients.length === 0 && (
+        <div className="text-center py-12">
+          <p className="text-gray-500">No clients found. Add your first client to get started.</p>
+        </div>
+      )}
     </div>
   );
 } 

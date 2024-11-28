@@ -42,6 +42,9 @@ export default function PropertiesPage() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const debouncedSearch = useDebounce(searchClient, 300);
+  const [propertyToDelete, setPropertyToDelete] = useState<Property | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isStatusUpdating, setIsStatusUpdating] = useState<string | null>(null);
 
   useEffect(() => {
     loadProperties();
@@ -158,12 +161,61 @@ export default function PropertiesPage() {
     }
   };
 
+  const handleDelete = async (property: Property) => {
+    setPropertyToDelete(property);
+  };
+
+  const confirmDelete = async () => {
+    if (!propertyToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/properties/${propertyToDelete.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete property');
+
+      addToast('Property deleted successfully', 'success');
+      setProperties(properties.filter(p => p.id !== propertyToDelete.id));
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to delete property', 'error');
+    } finally {
+      setIsDeleting(false);
+      setPropertyToDelete(null);
+    }
+  };
+
+  const handleStatusChange = async (propertyId: string, newStatus: string) => {
+    setIsStatusUpdating(propertyId);
+    try {
+      const response = await fetch(`/api/properties/${propertyId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: newStatus,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update status');
+
+      setProperties(properties.map(property => 
+        property.id === propertyId ? { ...property, status: newStatus } : property
+      ));
+      addToast('Status updated successfully', 'success');
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to update status', 'error');
+    } finally {
+      setIsStatusUpdating(null);
+    }
+  };
+
   if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-[calc(100vh-4rem)]">
-        <LoadingSpinner size="large" />
-      </div>
-    );
+    return <LoadingSpinner size="large" />;
   }
 
   return (
@@ -315,48 +367,93 @@ export default function PropertiesPage() {
         </div>
       )}
 
+      {/* Delete Confirmation Modal */}
+      {propertyToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100]">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Delete Property</h3>
+            <p className="text-gray-500 mb-4">
+              Are you sure you want to delete {propertyToDelete.title}? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setPropertyToDelete(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-500"
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Properties Grid */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {filteredProperties.map((property) => (
-          <div key={property.id} className="relative">
-            <input
-              type="checkbox"
-              checked={selectedProperties.includes(property.id)}
-              onChange={() => handlePropertySelect(property.id)}
-              className="absolute top-4 right-4 h-5 w-5 z-10"
-            />
-            <Link
-              href={`/properties/${property.id}`}
-              className="block hover:shadow-lg transition-shadow duration-200"
-            >
-              <div className="bg-white rounded-lg shadow overflow-hidden">
-                <div className="p-6">
-                  <h3 className="text-lg font-semibold text-blue-900 mb-2">{property.title}</h3>
-                  <p className="text-gray-600 text-sm mb-4">{property.address}</p>
-                  <div className="flex justify-between items-center">
-                    <span className="text-lg font-bold text-blue-600">
-                      {formatPrice(property.price)}
-                    </span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      property.status === 'Available' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {property.status}
-                    </span>
-                  </div>
-                  <div className="mt-4 flex items-center text-sm text-gray-500 gap-4">
-                    {property.bedrooms && (
-                      <span>{property.bedrooms} beds</span>
-                    )}
-                    {property.bathrooms && (
-                      <span>{property.bathrooms} baths</span>
-                    )}
-                    <span>{property.area} sqft</span>
-                  </div>
+          <div key={property.id} className="relative bg-white rounded-lg shadow overflow-hidden">
+            {/* Checkbox Container */}
+            <div className="absolute top-4 left-4 z-10">
+              <input
+                type="checkbox"
+                checked={selectedProperties.includes(property.id)}
+                onChange={() => handlePropertySelect(property.id)}
+                className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Status and Delete Options */}
+            <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+              <select
+                value={property.status}
+                onChange={(e) => handleStatusChange(property.id, e.target.value)}
+                disabled={isStatusUpdating === property.id}
+                className={`rounded-md border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white ${
+                  isStatusUpdating === property.id ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                <option value="Available">Available</option>
+                <option value="Under Contract">Under Contract</option>
+                <option value="Sold">Sold</option>
+              </select>
+              <button
+                onClick={() => handleDelete(property)}
+                className="text-red-600 hover:text-red-800 transition-colors bg-white rounded-md p-1"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Property Content */}
+            <div className="p-6 pt-12">
+              <Link href={`/properties/${property.id}`}>
+                <h3 className="text-lg font-semibold text-blue-900 mb-2">{property.title}</h3>
+                <p className="text-gray-600 text-sm mb-4">{property.address}</p>
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-bold text-blue-600">
+                    {formatPrice(property.price)}
+                  </span>
                 </div>
-              </div>
-            </Link>
+                <div className="mt-4 flex items-center text-sm text-gray-500 gap-4">
+                  {property.bedrooms && (
+                    <span>{property.bedrooms} beds</span>
+                  )}
+                  {property.bathrooms && (
+                    <span>{property.bathrooms} baths</span>
+                  )}
+                  <span>{property.area} sqft</span>
+                </div>
+              </Link>
+            </div>
           </div>
         ))}
       </div>

@@ -194,7 +194,7 @@ export default function PropertyPage() {
   };
 
   if (isLoading) {
-    return <LoadingSpinner />;
+    return <LoadingSpinner size="large" />;
   }
 
   if (!property) {
