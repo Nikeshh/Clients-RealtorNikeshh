@@ -23,29 +23,70 @@ export default function NewClientPage() {
       additionalRequirements: '',
     },
   });
+  const [existingClients, setExistingClients] = useState<any[]>([]);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
+  const validateClient = async (data: any) => {
     try {
       const response = await fetch('/api/clients', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          action: 'validate',
+          ...data
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.status === 409) {
+        setExistingClients(result.matches);
+        setShowConfirmation(true);
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Error validating client:', error);
+      addToast('Failed to validate client', 'error');
+      return false;
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // First, validate the client
+    const hasExisting = await validateClient(formData);
+    if (hasExisting) {
+      return; // Stop here and wait for user confirmation
+    }
+
+    await createClient(false);
+  };
+
+  const createClient = async (force: boolean) => {
+    try {
+      const response = await fetch('/api/clients', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+          forceCreate: force
+        }),
       });
 
       if (!response.ok) throw new Error('Failed to create client');
 
-      addToast('Client created successfully!', 'success');
+      addToast('Client created successfully', 'success');
       router.push('/clients');
     } catch (error) {
       console.error('Error:', error);
       addToast('Failed to create client', 'error');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -284,6 +325,46 @@ export default function NewClientPage() {
           </button>
         </div>
       </form>
+
+      {/* Confirmation Modal */}
+      {showConfirmation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100]">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Similar Clients Found</h3>
+            <div className="mb-4">
+              <p className="text-sm text-gray-500">
+                We found similar clients in the system. Would you like to proceed with creating a new client?
+              </p>
+              <div className="mt-4 space-y-3">
+                {existingClients.map((client) => (
+                  <div key={client.id} className="p-3 bg-gray-50 rounded-lg">
+                    <p className="font-medium">{client.name}</p>
+                    <p className="text-sm text-gray-500">{client.email}</p>
+                    <p className="text-sm text-gray-500">{client.phone}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowConfirmation(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-500"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowConfirmation(false);
+                  createClient(true);
+                }}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+              >
+                Create Anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
