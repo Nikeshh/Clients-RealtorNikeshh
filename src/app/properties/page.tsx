@@ -1,108 +1,79 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import SharePropertiesModal from '@/components/SharePropertiesModal';
-import PropertyComparison from '@/components/PropertyComparison';
+import { useToast } from '@/components/ui/toast-context';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
-// Mock data
-const MOCK_PROPERTIES = [
-  {
-    id: '1',
-    title: 'Modern Downtown Apartment',
-    address: '123 Main St, City',
-    price: 750000,
-    type: 'Residential',
-    bedrooms: 3,
-    bathrooms: 2,
-    area: 1500,
-    status: 'Available',
-    lastUpdated: '2024-03-20',
-    source: 'Direct Import',
-    features: [
-      'Hardwood floors',
-      'Stainless steel appliances',
-      'In-unit laundry',
-      'Central air',
-      'Balcony'
-    ],
-    images: ['/placeholder1.jpg', '/placeholder2.jpg']
-  },
-  {
-    id: '2',
-    title: 'Commercial Office Space',
-    address: '456 Business Ave, City',
-    price: 1200000,
-    type: 'Commercial',
-    area: 2500,
-    status: 'Available',
-    lastUpdated: '2024-03-19',
-    source: 'Broker Sheet',
-    features: [
-      'Open floor plan',
-      'Meeting rooms',
-      'Kitchen area',
-      'Security system',
-      'Parking included'
-    ],
-    images: ['/placeholder3.jpg', '/placeholder4.jpg']
-  },
-  {
-    id: '3',
-    title: 'Luxury Villa with Pool',
-    address: '789 Palm Dr, Suburb',
-    price: 1500000,
-    type: 'Residential',
-    bedrooms: 5,
-    bathrooms: 4,
-    area: 3500,
-    status: 'Under Review',
-    lastUpdated: '2024-03-18',
-    source: 'Direct Import',
-    features: [
-      'Swimming pool',
-      'Garden',
-      'Smart home system',
-      'Wine cellar',
-      'Home theater'
-    ],
-    images: ['/placeholder5.jpg', '/placeholder6.jpg']
-  },
-];
+interface Property {
+  id: string;
+  title: string;
+  address: string;
+  price: number;
+  type: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  area: number;
+  status: string;
+  location: string;
+}
 
 export default function PropertiesPage() {
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
-  const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [showComparison, setShowComparison] = useState(false);
+  const { addToast } = useToast();
 
-  const handleSelectProperty = (id: string) => {
-    setSelectedProperties(prev => 
-      prev.includes(id) 
-        ? prev.filter(propId => propId !== id)
-        : [...prev, id]
-    );
+  useEffect(() => {
+    loadProperties();
+  }, []);
+
+  const loadProperties = async () => {
+    try {
+      const response = await fetch('/api/properties');
+      if (!response.ok) throw new Error('Failed to fetch properties');
+      const data = await response.json();
+      setProperties(data);
+    } catch (error) {
+      addToast('Failed to load properties', 'error');
+      console.error('Error:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  const filteredProperties = properties.filter(property => {
+    const matchesSearch = 
+      property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      property.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      property.location.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesType = 
+      filterType === 'all' || 
+      property.type.toLowerCase() === filterType.toLowerCase();
+
+    return matchesSearch && matchesType;
+  });
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-      maximumFractionDigits: 0,
+      minimumFractionDigits: 0,
     }).format(price);
   };
 
-  const handleShare = async (data: { email: string; message: string }) => {
-    // Mock API call
-    console.log('Sharing properties:', {
-      properties: selectedProperties,
-      ...data
-    });
-  };
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-[calc(100vh-4rem)]">
+        <LoadingSpinner size="large" />
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-50">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="md:flex md:items-center md:justify-between mb-6">
         <div className="min-w-0 flex-1">
@@ -110,144 +81,85 @@ export default function PropertiesPage() {
             Properties
           </h2>
         </div>
-        <div className="mt-4 flex space-x-3 md:ml-4 md:mt-0">
-          {selectedProperties.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setIsShareModalOpen(true)}
-              className="inline-flex items-center rounded-lg bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-100 transition-colors"
-            >
-              Share Selected ({selectedProperties.length})
-            </button>
-          )}
-          {selectedProperties.length > 1 && (
-            <button
-              type="button"
-              onClick={() => setShowComparison(true)}
-              className="inline-flex items-center rounded-lg bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-100 transition-colors"
-            >
-              Compare Selected ({selectedProperties.length})
-            </button>
-          )}
+        <div className="mt-4 flex md:ml-4 md:mt-0">
           <Link
-            href="/properties/import"
+            href="/properties/new"
             className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors"
           >
-            Import Properties
+            Add New Property
           </Link>
         </div>
       </div>
 
-      {/* Filters and Search */}
+      {/* Filters */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-6">
         <div>
           <input
             type="text"
             placeholder="Search properties..."
-            className="block w-full rounded-lg border border-blue-200 px-4 py-2.5 text-gray-700 shadow-sm focus:border-blue-400 focus:ring-blue-400 transition-colors"
+            className="block w-full rounded-lg border border-blue-200 px-4 py-2.5 text-gray-700 focus:border-blue-400 focus:ring-blue-400 transition-colors"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         <div>
           <select
-            className="block w-full rounded-lg border border-blue-200 px-4 py-2.5 text-gray-700 shadow-sm focus:border-blue-400 focus:ring-blue-400 transition-colors"
+            className="block w-full rounded-lg border border-blue-200 px-4 py-2.5 text-gray-700 focus:border-blue-400 focus:ring-blue-400 transition-colors"
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
           >
             <option value="all">All Types</option>
-            <option value="residential">Residential</option>
-            <option value="commercial">Commercial</option>
-            <option value="industrial">Industrial</option>
+            <option value="house">House</option>
+            <option value="apartment">Apartment</option>
+            <option value="condo">Condo</option>
+            <option value="land">Land</option>
           </select>
         </div>
       </div>
 
       {/* Properties Grid */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {MOCK_PROPERTIES.map((property) => (
-          <div
+        {filteredProperties.map((property) => (
+          <Link
             key={property.id}
-            className={`relative bg-white rounded-xl shadow-md border transition-colors ${
-              selectedProperties.includes(property.id)
-                ? 'border-blue-400 ring-2 ring-blue-400'
-                : 'border-blue-100 hover:border-blue-200'
-            }`}
+            href={`/properties/${property.id}`}
+            className="block hover:shadow-lg transition-shadow duration-200"
           >
-            {/* Property Image (placeholder) */}
-            <div className="h-48 bg-gray-200 rounded-t-xl"></div>
-
-            {/* Selection Checkbox */}
-            <div className="absolute top-2 right-2">
-              <input
-                type="checkbox"
-                checked={selectedProperties.includes(property.id)}
-                onChange={() => handleSelectProperty(property.id)}
-                className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-            </div>
-
-            {/* Property Details */}
-            <div className="p-4">
-              <h3 className="text-lg font-semibold text-blue-900 mb-2">
-                {property.title}
-              </h3>
-              <p className="text-gray-600 text-sm mb-2">{property.address}</p>
-              <p className="text-lg font-bold text-blue-600 mb-3">
-                {formatPrice(property.price)}
-              </p>
-
-              <div className="grid grid-cols-2 gap-2 text-sm mb-4">
-                {property.bedrooms && (
-                  <div className="text-gray-600">
-                    <span className="font-medium">Beds:</span> {property.bedrooms}
-                  </div>
-                )}
-                {property.bathrooms && (
-                  <div className="text-gray-600">
-                    <span className="font-medium">Baths:</span> {property.bathrooms}
-                  </div>
-                )}
-                <div className="text-gray-600">
-                  <span className="font-medium">Area:</span> {property.area} sqft
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="p-6">
+                <h3 className="text-lg font-semibold text-blue-900 mb-2">{property.title}</h3>
+                <p className="text-gray-600 text-sm mb-4">{property.address}</p>
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-bold text-blue-600">
+                    {formatPrice(property.price)}
+                  </span>
+                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                    property.status === 'Available' 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {property.status}
+                  </span>
                 </div>
-                <div className="text-gray-600">
-                  <span className="font-medium">Type:</span> {property.type}
+                <div className="mt-4 flex items-center text-sm text-gray-500 gap-4">
+                  {property.bedrooms && (
+                    <span>{property.bedrooms} beds</span>
+                  )}
+                  {property.bathrooms && (
+                    <span>{property.bathrooms} baths</span>
+                  )}
+                  <span>{property.area} sqft</span>
                 </div>
               </div>
-
-              <div className="flex justify-between items-center text-sm">
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  property.status === 'Available'
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-yellow-100 text-yellow-800'
-                }`}>
-                  {property.status}
-                </span>
-                <Link
-                  href={`/properties/${property.id}`}
-                  className="text-blue-600 hover:text-blue-800 font-medium"
-                >
-                  View Details →
-                </Link>
-              </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 
-      <SharePropertiesModal
-        isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-        properties={MOCK_PROPERTIES.filter(p => selectedProperties.includes(p.id))}
-        onShare={handleShare}
-      />
-
-      {showComparison && (
-        <PropertyComparison
-          properties={MOCK_PROPERTIES.filter(p => selectedProperties.includes(p.id))}
-          onClose={() => setShowComparison(false)}
-        />
+      {filteredProperties.length === 0 && (
+        <div className="text-center py-12">
+          <p className="text-gray-500">No properties found. Add your first property to get started.</p>
+        </div>
       )}
     </div>
   );

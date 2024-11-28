@@ -31,16 +31,28 @@ export const {
     }),
   ],
   callbacks: {
-    session: ({ session, user }) => ({
-      ...session,
-      user: {
-        ...session.user,
-        id: user.id,
-      },
-    }),
+    authorized({ auth }) {
+      return !!auth?.user // this ensures there is a logged in user for API routes
+    },
+    jwt({ token, user }) {
+      if (user) {
+        token.id = user.id
+      }
+      return token
+    },
+    session({ session, token }) {
+      if (session.user && token) {
+        session.user.id = token.id as string
+      }
+      return session
+    },
+  },
+  session: {
+    strategy: "jwt",
   },
   pages: {
     signIn: '/auth/signin',
     error: '/auth/error',
   },
+  secret: process.env.NEXTAUTH_SECRET,
 }) 

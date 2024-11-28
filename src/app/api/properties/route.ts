@@ -1,52 +1,54 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/api-middleware';
 import prisma from '@/lib/prisma';
-import type { ImportedProperty } from '@/types/property';
 
 // GET /api/properties - Get all properties
-export async function GET() {
+export const GET = withAuth(async (req: NextRequest) => {
   try {
-    const properties = await prisma.property.findMany();
+    const properties = await prisma.property.findMany({
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+    
     return NextResponse.json(properties);
   } catch (error) {
     console.error('Error fetching properties:', error);
     return NextResponse.json(
-      { error: 'Error fetching properties' },
+      { error: 'Failed to fetch properties' },
       { status: 500 }
     );
   }
-}
+});
 
 // POST /api/properties - Create a new property
-export async function POST(request: Request) {
+export const POST = withAuth(async (req: NextRequest) => {
   try {
-    const body = await request.json();
-
-    const propertyData: ImportedProperty = {
-      title: body.title,
-      address: body.address,
-      type: body.type,
-      price: body.price,
-      area: body.area,
-      status: body.status || 'Available',
-      description: body.description || null,
-      features: body.features || [],
-      images: body.images || [],
-      bedrooms: body.bedrooms || null,
-      bathrooms: body.bathrooms || null,
-      source: body.source || 'Manual Entry',
-      location: body.location || body.address // Use address as fallback for location
-    };
-
+    const data = await req.json();
     const property = await prisma.property.create({
-      data: propertyData
+      data: {
+        title: data.title,
+        address: data.address,
+        price: parseFloat(data.price),
+        type: data.type,
+        bedrooms: data.bedrooms ? parseInt(data.bedrooms) : null,
+        bathrooms: data.bathrooms ? parseInt(data.bathrooms) : null,
+        area: parseFloat(data.area),
+        status: data.status || "Available",
+        description: data.description,
+        features: data.features || [],
+        images: data.images || [],
+        source: data.source,
+        location: data.location,
+      }
     });
-
+    
     return NextResponse.json(property);
   } catch (error) {
     console.error('Error creating property:', error);
     return NextResponse.json(
-      { error: 'Error creating property' },
+      { error: 'Failed to create property' },
       { status: 500 }
     );
   }
-} 
+}); 

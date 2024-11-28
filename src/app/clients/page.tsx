@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { clientApi } from '@/lib/api';
-import { useToast } from '@/contexts/ToastContext';
+import { useToast } from '@/components/ui/toast-context';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function ClientsPage() {
@@ -11,7 +11,7 @@ export default function ClientsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const { showToast } = useToast();
+  const { addToast } = useToast();
 
   useEffect(() => {
     loadClients();
@@ -22,7 +22,7 @@ export default function ClientsPage() {
       const data = await clientApi.getAll();
       setClients(data);
     } catch (error) {
-      showToast('Error loading clients', 'error');
+      addToast('Failed to load clients', 'error');
       console.error('Error:', error);
     } finally {
       setIsLoading(false);

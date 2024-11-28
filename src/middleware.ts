@@ -7,19 +7,12 @@ export async function middleware(request: NextRequest) {
   const isAuth = !!session
   const isAuthPage = request.nextUrl.pathname.startsWith('/auth/')
 
-  if (isAuthPage) {
-    if (isAuth) {
-      return NextResponse.redirect(new URL('/', request.url))
-    }
-    return NextResponse.next()
+  if (isAuthPage && isAuth) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
-  if (!isAuth) {
-    let callbackUrl = request.nextUrl.pathname
-    if (request.nextUrl.search) {
-      callbackUrl += request.nextUrl.search
-    }
-
+  if (!isAuth && !isAuthPage) {
+    const callbackUrl = request.nextUrl.pathname
     const encodedCallbackUrl = encodeURIComponent(callbackUrl)
     return NextResponse.redirect(
       new URL(`/auth/signin?callbackUrl=${encodedCallbackUrl}`, request.url)
@@ -31,6 +24,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    '/dashboard/:path*',
     '/clients/:path*',
     '/properties/:path*',
     '/api/clients/:path*',
