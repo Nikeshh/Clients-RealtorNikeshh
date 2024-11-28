@@ -6,8 +6,28 @@ import { clientApi } from '@/lib/api';
 import { useToast } from '@/components/ui/toast-context';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
+interface ClientRequirements {
+  propertyType: string;
+  budgetMin: number;
+  budgetMax: number;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  preferredLocations: string[];
+  additionalRequirements?: string;
+}
+
+interface Client {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  status: string;
+  lastContact: string;
+  requirements: ClientRequirements;
+}
+
 export default function ClientsPage() {
-  const [clients, setClients] = useState<any[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -19,7 +39,9 @@ export default function ClientsPage() {
 
   const loadClients = async () => {
     try {
-      const data = await clientApi.getAll();
+      const response = await fetch('/api/clients');
+      if (!response.ok) throw new Error('Failed to fetch clients');
+      const data = await response.json();
       setClients(data);
     } catch (error) {
       addToast('Failed to load clients', 'error');
@@ -27,6 +49,14 @@ export default function ClientsPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+    }).format(amount);
   };
 
   const filteredClients = clients.filter(client => {
@@ -103,7 +133,7 @@ export default function ClientsPage() {
                   <tr>
                     <th className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-blue-900">Name</th>
                     <th className="px-3 py-3.5 text-left text-sm font-semibold text-blue-900">Contact</th>
-                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-blue-900">Requirements</th>
+                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-blue-900">Budget Range</th>
                     <th className="px-3 py-3.5 text-left text-sm font-semibold text-blue-900">Status</th>
                     <th className="px-3 py-3.5 text-left text-sm font-semibold text-blue-900">Last Contact</th>
                     <th className="relative py-3.5 pl-3 pr-4 sm:pr-6">
@@ -121,7 +151,13 @@ export default function ClientsPage() {
                         <div>{client.email}</div>
                         <div>{client.phone}</div>
                       </td>
-                      <td className="px-3 py-4 text-sm text-gray-600">{client.requirements}</td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-600">
+                        {client.requirements && (
+                          <span>
+                            {formatCurrency(client.requirements.budgetMin)} - {formatCurrency(client.requirements.budgetMax)}
+                          </span>
+                        )}
+                      </td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm">
                         <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
                           client.status === 'Active' 
@@ -131,7 +167,9 @@ export default function ClientsPage() {
                           {client.status}
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-600">{client.lastContact}</td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-600">
+                        {new Date(client.lastContact).toLocaleDateString()}
+                      </td>
                       <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                         <Link 
                           href={`/clients/${client.id}`} 

@@ -20,6 +20,9 @@ model Client {
   requirements     ClientRequirements?
   interactions     Interaction[]
   sharedProperties SharedProperty[]
+
+  @@index([name])
+  @@index([email])
 }
 
 model ClientRequirements {
