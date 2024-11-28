@@ -217,7 +217,7 @@ export default function PropertiesPage() {
             onClick={() => setShowEmailForm(true)}
             className="bg-blue-600 text-white px-4 py-2 rounded-md"
           >
-            Email Selected Properties ({selectedProperties.length})
+            Send Properties ({selectedProperties.length})
           </button>
         </div>
       )}
