@@ -1,31 +1,24 @@
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import './globals.css';
-import Navigation from '@/components/Navigation';
-import Providers from './providers';
+import { Inter } from "next/font/google"
+import AuthProvider from "@/providers/SessionProvider"
+import { getSession } from "@/lib/auth"
+import "./globals.css"
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ["latin"] })
 
-export const metadata: Metadata = {
-  title: 'Realtor Portal',
-  description: 'Manage your real estate clients and properties',
-};
-
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
+  const session = await getSession()
+
   return (
     <html lang="en">
-      <body className={`${inter.className} min-h-screen bg-gray-50`}>
-        <Providers>
-          <Navigation />
-          <main className="min-h-[calc(100vh-4rem)]">
-            {children}
-          </main>
-        </Providers>
+      <body className={inter.className}>
+        <AuthProvider session={session}>
+          {children}
+        </AuthProvider>
       </body>
     </html>
-  );
+  )
 }
