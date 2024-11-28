@@ -2,30 +2,22 @@
 
 import { useState } from 'react';
 import Button from './Button';
-
-interface InteractionType {
-  value: string;
-  label: string;
-  icon: string;
-}
-
-const INTERACTION_TYPES: InteractionType[] = [
-  { value: 'email', label: 'Email', icon: '✉️' },
-  { value: 'call', label: 'Phone Call', icon: '📞' },
-  { value: 'meeting', label: 'Meeting', icon: '👥' },
-  { value: 'showing', label: 'Property Showing', icon: '🏠' },
-];
+import Input from './Input';
+import Select from './Select';
+import type { Interaction } from '@/types/client';
 
 interface AddInteractionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: {
-    type: string;
-    date: string;
-    description: string;
-    notes: string;
-  }) => void;
+  onSave: (data: Omit<Interaction, 'id' | 'clientId'>) => void;
 }
+
+const INTERACTION_TYPES = [
+  { value: 'Email', label: 'Email', icon: '✉️' },
+  { value: 'Call', label: 'Phone Call', icon: '📞' },
+  { value: 'Meeting', label: 'Meeting', icon: '👥' },
+  { value: 'Showing', label: 'Property Showing', icon: '🏠' },
+];
 
 export default function AddInteractionModal({
   isOpen,
@@ -33,7 +25,7 @@ export default function AddInteractionModal({
   onSave
 }: AddInteractionModalProps) {
   const [formData, setFormData] = useState({
-    type: 'email',
+    type: 'Email',
     date: new Date().toISOString().split('T')[0],
     description: '',
     notes: ''
@@ -44,12 +36,14 @@ export default function AddInteractionModal({
     e.preventDefault();
     setIsSaving(true);
     
-    // Mock API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    onSave(formData);
-    setIsSaving(false);
-    onClose();
+    try {
+      await onSave(formData);
+    } catch (error) {
+      console.error('Error saving interaction:', error);
+    } finally {
+      setIsSaving(false);
+      onClose();
+    }
   };
 
   if (!isOpen) return null;
@@ -90,47 +84,32 @@ export default function AddInteractionModal({
             </div>
 
             {/* Date */}
-            <div>
-              <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">
-                Date
-              </label>
-              <input
-                type="date"
-                id="date"
-                name="date"
-                value={formData.date}
-                onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                className="block w-full rounded-lg border border-blue-200 px-3 py-2 focus:border-blue-400 focus:ring-blue-400"
-                required
-              />
-            </div>
+            <Input
+              label="Date"
+              type="date"
+              value={formData.date}
+              onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+              required
+            />
 
             {/* Description */}
-            <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                Description
-              </label>
-              <input
-                type="text"
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                className="block w-full rounded-lg border border-blue-200 px-3 py-2 focus:border-blue-400 focus:ring-blue-400"
-                placeholder="Brief description of the interaction"
-                required
-              />
-            </div>
+            <Input
+              label="Description"
+              value={formData.description}
+              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              placeholder="Brief description of the interaction"
+              required
+            />
 
             {/* Notes */}
             <div>
-              <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Notes
               </label>
               <textarea
-                id="notes"
-                rows={4}
                 value={formData.notes}
                 onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                rows={4}
                 className="block w-full rounded-lg border border-blue-200 px-3 py-2 focus:border-blue-400 focus:ring-blue-400"
                 placeholder="Additional details about the interaction"
               />

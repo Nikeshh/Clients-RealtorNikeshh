@@ -4,31 +4,13 @@ import { useState } from 'react';
 import Button from './Button';
 import Input from './Input';
 import Select from './Select';
-
-interface ClientData {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  status: string;
-  requirements: {
-    propertyType: string;
-    budget: {
-      min: number;
-      max: number;
-    };
-    bedrooms: number;
-    bathrooms: number;
-    preferredLocations: string[];
-    additionalRequirements: string;
-  };
-}
+import type { Client, ClientFormData } from '@/types/client';
 
 interface EditClientModalProps {
   isOpen: boolean;
   onClose: () => void;
-  client: ClientData;
-  onSave: (data: ClientData) => void;
+  client: Client;
+  onSave: (data: ClientFormData) => void;
 }
 
 const STATUS_OPTIONS = [
@@ -49,7 +31,21 @@ export default function EditClientModal({
   client,
   onSave
 }: EditClientModalProps) {
-  const [formData, setFormData] = useState<ClientData>(client);
+  const [formData, setFormData] = useState<ClientFormData>({
+    name: client.name,
+    email: client.email,
+    phone: client.phone,
+    status: client.status,
+    requirements: {
+      propertyType: client.requirements.propertyType,
+      budgetMin: client.requirements.budgetMin,
+      budgetMax: client.requirements.budgetMax,
+      bedrooms: client.requirements.bedrooms,
+      bathrooms: client.requirements.bathrooms,
+      preferredLocations: [...client.requirements.preferredLocations],
+      additionalRequirements: client.requirements.additionalRequirements
+    }
+  });
   const [newLocation, setNewLocation] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -71,18 +67,20 @@ export default function EditClientModal({
     }
   };
 
-  const handleBudgetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      requirements: {
-        ...prev.requirements,
-        budget: {
-          ...prev.requirements.budget,
-          [name]: value ? Number(value) : 0
-        }
+    if (name.includes('.')) {
+      const [parent, child] = name.split('.');
+      if (parent === 'requirements') {
+        setFormData(prev => ({
+          ...prev,
+          requirements: {
+            ...prev.requirements,
+            [child]: value ? Number(value) : null
+          }
+        }));
       }
-    }));
+    }
   };
 
   const addLocation = () => {
@@ -112,12 +110,14 @@ export default function EditClientModal({
     e.preventDefault();
     setIsSaving(true);
     
-    // Mock API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    onSave(formData);
-    setIsSaving(false);
-    onClose();
+    try {
+      await onSave(formData);
+    } catch (error) {
+      console.error('Error saving client:', error);
+    } finally {
+      setIsSaving(false);
+      onClose();
+    }
   };
 
   if (!isOpen) return null;
@@ -185,31 +185,31 @@ export default function EditClientModal({
                   <Input
                     label="Min Budget"
                     type="number"
-                    name="min"
-                    value={formData.requirements.budget.min}
-                    onChange={handleBudgetChange}
+                    name="requirements.budgetMin"
+                    value={formData.requirements.budgetMin}
+                    onChange={handleNumberChange}
                   />
                   <Input
                     label="Max Budget"
                     type="number"
-                    name="max"
-                    value={formData.requirements.budget.max}
-                    onChange={handleBudgetChange}
+                    name="requirements.budgetMax"
+                    value={formData.requirements.budgetMax}
+                    onChange={handleNumberChange}
                   />
                 </div>
                 <Input
                   label="Bedrooms"
                   type="number"
                   name="requirements.bedrooms"
-                  value={formData.requirements.bedrooms}
-                  onChange={handleChange}
+                  value={formData.requirements.bedrooms || ''}
+                  onChange={handleNumberChange}
                 />
                 <Input
                   label="Bathrooms"
                   type="number"
                   name="requirements.bathrooms"
-                  value={formData.requirements.bathrooms}
-                  onChange={handleChange}
+                  value={formData.requirements.bathrooms || ''}
+                  onChange={handleNumberChange}
                 />
               </div>
             </div>
@@ -260,7 +260,7 @@ export default function EditClientModal({
               </label>
               <textarea
                 name="requirements.additionalRequirements"
-                value={formData.requirements.additionalRequirements}
+                value={formData.requirements.additionalRequirements || ''}
                 onChange={handleChange}
                 rows={4}
                 className="block w-full rounded-lg border border-blue-200 px-3 py-2 focus:border-blue-400 focus:ring-blue-400"

@@ -1,42 +1,53 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-
-// Mock data
-const MOCK_CLIENTS = [
-  {
-    id: '1',
-    name: 'John Doe',
-    email: 'john@example.com',
-    phone: '+1 234 567 8900',
-    requirements: 'Looking for 3BHK in downtown area',
-    status: 'Active',
-    lastContact: '2024-03-20',
-  },
-  {
-    id: '2',
-    name: 'Jane Smith',
-    email: 'jane@example.com',
-    phone: '+1 234 567 8901',
-    requirements: '2BHK with parking',
-    status: 'Inactive',
-    lastContact: '2024-03-19',
-  },
-  {
-    id: '3',
-    name: 'Mike Johnson',
-    email: 'mike@example.com',
-    phone: '+1 234 567 8902',
-    requirements: 'Commercial space in business district',
-    status: 'Active',
-    lastContact: '2024-03-18',
-  },
-];
+import { clientApi } from '@/lib/api';
+import { useToast } from '@/contexts/ToastContext';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function ClientsPage() {
+  const [clients, setClients] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const { showToast } = useToast();
+
+  useEffect(() => {
+    loadClients();
+  }, []);
+
+  const loadClients = async () => {
+    try {
+      const data = await clientApi.getAll();
+      setClients(data);
+    } catch (error) {
+      showToast('Error loading clients', 'error');
+      console.error('Error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const filteredClients = clients.filter(client => {
+    const matchesSearch = 
+      client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.email.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = 
+      filterStatus === 'all' || 
+      client.status.toLowerCase() === filterStatus.toLowerCase();
+
+    return matchesSearch && matchesStatus;
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-[calc(100vh-4rem)]">
+        <LoadingSpinner size="large" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-50">
@@ -101,7 +112,7 @@ export default function ClientsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
-                  {MOCK_CLIENTS.map((client) => (
+                  {filteredClients.map((client) => (
                     <tr key={client.id} className="hover:bg-blue-50 transition-colors">
                       <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-blue-900">
                         {client.name}
