@@ -5,25 +5,31 @@ import Image from 'next/image';
 
 export default function SignIn() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow-md">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold">Welcome Back</h2>
-          <p className="mt-2 text-gray-600">Sign in to access your portal</p>
-        </div>
+    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <h2 className="mt-6 text-center text-3xl font-bold text-blue-900">
+          Sign in to your account
+        </h2>
+      </div>
 
-        <button
-          onClick={() => signIn('google', { callbackUrl: '/' })}
-          className="w-full flex items-center justify-center gap-3 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-        >
-          <Image
-            src="/google.svg"
-            alt="Google"
-            width={20}
-            height={20}
-          />
-          Continue with Google
-        </button>
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white py-8 px-4 shadow-md rounded-lg sm:px-10">
+          <div className="space-y-6">
+            <button
+              onClick={() => signIn('google', { callbackUrl: '/' })}
+              className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+            >
+              <Image
+                src="/google.svg"
+                alt="Google"
+                width={20}
+                height={20}
+                className="mr-2"
+              />
+              Sign in with Google
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

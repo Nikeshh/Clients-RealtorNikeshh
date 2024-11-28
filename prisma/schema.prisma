@@ -1,90 +1,80 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
 
 generator client {
   provider = "prisma-client-js"
 }
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String?
-  clients       Client[]
-  properties    Property[]
-  accounts      Account[]
-  sessions      Session[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-}
-
 model Client {
-  id           String   @id @default(cuid())
-  name         String
-  email        String
-  phone        String
-  requirements Json     // Stores the requirements object
-  user         User     @relation(fields: [userId], references: [id])
-  userId       String
-  properties   Property[] // Properties shared with this client
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  email       String
+  phone       String
+  status      String   @default("Active")
+  lastContact DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  requirements     ClientRequirements?
+  interactions     Interaction[]
+  sharedProperties SharedProperty[]
+}
+
+model ClientRequirements {
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  clientId             String   @unique @db.ObjectId
+  propertyType         String
+  budgetMin            Float
+  budgetMax            Float
+  bedrooms             Int?
+  bathrooms            Int?
+  preferredLocations   String[]
+  additionalRequirements String?
+
+  client               Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 }
 
 model Property {
-  id          String   @id @default(cuid())
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
   title       String
+  address     String
   price       Float
-  location    String
-  bedrooms    Int
-  bathrooms   Int
+  type        String
+  bedrooms    Int?
+  bathrooms   Int?
   area        Float
-  type        String   // 'rent' or 'sale'
-  imageUrl    String?
-  source      String   // 'treeb' or 'manual'
-  sourceUrl   String?
-  user        User     @relation(fields: [userId], references: [id])
-  userId      String
-  clients     Client[] // Clients this property has been shared with
+  status      String   @default("Available")
+  description String?
+  features    String[]
+  images      String[]
+  source      String
+  location    String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  sharedWith  SharedProperty[]
 }
 
-model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
+model SharedProperty {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  clientId    String   @db.ObjectId
+  propertyId  String   @db.ObjectId
+  status      String   @default("Shared")
+  sharedDate  DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
+  client      Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  property    Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 }
 
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
+model Interaction {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  clientId    String   @db.ObjectId
+  type        String
+  date        DateTime @default(now())
+  description String
+  notes       String?
 
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([identifier, token])
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 } 
