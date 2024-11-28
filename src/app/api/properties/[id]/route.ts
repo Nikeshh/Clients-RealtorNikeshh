@@ -1,26 +1,30 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/api-middleware';
 import prisma from '@/lib/prisma';
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
-}
-
 // GET /api/properties/[id] - Get a single property
-export async function GET(request: Request, { params }: RouteParams) {
+export const GET = withAuth(async (request: NextRequest) => {
   try {
+    const id = request.url.split('/').pop();
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Property ID is required' },
+        { status: 400 }
+      );
+    }
+
     const property = await prisma.property.findUnique({
       where: {
-        id: params.id
+        id: id,
       },
       include: {
         sharedWith: {
           include: {
-            client: true
-          }
-        }
-      }
+            client: true,
+          },
+        },
+      },
     });
 
     if (!property) {
@@ -34,61 +38,80 @@ export async function GET(request: Request, { params }: RouteParams) {
   } catch (error) {
     console.error('Error fetching property:', error);
     return NextResponse.json(
-      { error: 'Error fetching property' },
+      { error: 'Failed to fetch property' },
       { status: 500 }
     );
   }
-}
+});
 
 // PATCH /api/properties/[id] - Update a property
-export async function PATCH(request: Request, { params }: RouteParams) {
+export const PATCH = withAuth(async (request: NextRequest) => {
   try {
-    const body = await request.json();
+    const id = request.url.split('/').pop();
+    const data = await request.json();
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Property ID is required' },
+        { status: 400 }
+      );
+    }
 
     const property = await prisma.property.update({
       where: {
-        id: params.id
+        id: id,
       },
       data: {
-        title: body.title,
-        address: body.address,
-        price: body.price,
-        type: body.type,
-        bedrooms: body.bedrooms,
-        bathrooms: body.bathrooms,
-        area: body.area,
-        status: body.status,
-        description: body.description,
-        features: body.features,
-        images: body.images
-      }
+        title: data.title,
+        address: data.address,
+        price: data.price ? parseFloat(data.price) : undefined,
+        type: data.type,
+        bedrooms: data.bedrooms ? parseInt(data.bedrooms) : null,
+        bathrooms: data.bathrooms ? parseInt(data.bathrooms) : null,
+        area: data.area ? parseFloat(data.area) : undefined,
+        status: data.status,
+        description: data.description,
+        features: data.features,
+        images: data.images,
+        source: data.source,
+        location: data.location,
+      },
     });
 
     return NextResponse.json(property);
   } catch (error) {
     console.error('Error updating property:', error);
     return NextResponse.json(
-      { error: 'Error updating property' },
+      { error: 'Failed to update property' },
       { status: 500 }
     );
   }
-}
+});
 
 // DELETE /api/properties/[id] - Delete a property
-export async function DELETE(request: Request, { params }: RouteParams) {
+export const DELETE = withAuth(async (request: NextRequest) => {
   try {
+    const id = request.url.split('/').pop();
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Property ID is required' },
+        { status: 400 }
+      );
+    }
+
     await prisma.property.delete({
       where: {
-        id: params.id
-      }
+        id: id,
+      },
     });
 
-    return new NextResponse(null, { status: 204 });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting property:', error);
     return NextResponse.json(
-      { error: 'Error deleting property' },
+      { error: 'Failed to delete property' },
       { status: 500 }
     );
   }
-} 
+}); 

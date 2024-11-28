@@ -11,11 +11,18 @@ export const GET = withAuth(async (req: NextRequest) => {
       },
       include: {
         requirements: true,
+        interactions: {
+          take: 1,
+          orderBy: {
+            date: 'desc'
+          }
+        }
       }
     });
     
     return NextResponse.json(clients);
   } catch (error) {
+    console.error('Error fetching clients:', error);
     return NextResponse.json(
       { error: 'Failed to fetch clients' },
       { status: 500 }
@@ -44,10 +51,18 @@ export const POST = withAuth(async (req: NextRequest) => {
             preferredLocations: data.requirements.preferredLocations,
             additionalRequirements: data.requirements.additionalRequirements,
           }
+        },
+        interactions: {
+          create: {
+            type: 'Created',
+            description: 'Client profile created',
+            date: new Date(),
+          }
         }
       },
       include: {
         requirements: true,
+        interactions: true,
       }
     });
     

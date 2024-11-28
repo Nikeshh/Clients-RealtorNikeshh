@@ -2,195 +2,285 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useToast } from '@/components/ui/toast-context';
 
 export default function NewClientPage() {
   const router = useRouter();
+  const { addToast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    requirements: '',
-    budget: '',
-    preferredLocation: '',
-    propertyType: 'residential',
-    notes: ''
+    status: 'Active',
+    requirements: {
+      propertyType: '',
+      budgetMin: '',
+      budgetMax: '',
+      bedrooms: '',
+      bathrooms: '',
+      preferredLocations: [''],
+      additionalRequirements: '',
+    },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock submission for now
-    console.log('Form submitted:', formData);
-    router.push('/clients');
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch('/api/clients', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) throw new Error('Failed to create client');
+
+      addToast('Client created successfully!', 'success');
+      router.push('/clients');
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to create client', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  const handleLocationChange = (index: number, value: string) => {
+    const newLocations = [...formData.requirements.preferredLocations];
+    newLocations[index] = value;
+    setFormData({
+      ...formData,
+      requirements: {
+        ...formData.requirements,
+        preferredLocations: newLocations,
+      },
+    });
+  };
+
+  const addLocation = () => {
+    setFormData({
+      ...formData,
+      requirements: {
+        ...formData.requirements,
+        preferredLocations: [...formData.requirements.preferredLocations, ''],
+      },
+    });
+  };
+
+  const removeLocation = (index: number) => {
+    const newLocations = formData.requirements.preferredLocations.filter((_, i) => i !== index);
+    setFormData({
+      ...formData,
+      requirements: {
+        ...formData.requirements,
+        preferredLocations: newLocations,
+      },
+    });
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-50">
-      <div className="mb-8 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-blue-900">Add New Client</h1>
-        <Link
-          href="/clients"
-          className="text-blue-600 hover:text-blue-800 font-medium"
-        >
-          ← Back to Clients
-        </Link>
-      </div>
-
-      <form onSubmit={handleSubmit} className="bg-white shadow-md rounded-lg p-6 space-y-6">
+    <div className="max-w-2xl mx-auto px-4 py-8">
+      <h1 className="text-2xl font-bold mb-6">Add New Client</h1>
+      
+      <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Information */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-blue-900 border-b pb-2">Basic Information</h2>
-          
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h2 className="text-lg font-semibold mb-4">Basic Information</h2>
+          <div className="space-y-4">
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                Full Name *
-              </label>
+              <label className="block text-sm font-medium text-gray-700">Name</label>
               <input
                 type="text"
-                name="name"
-                id="name"
                 required
-                className="mt-1 block w-full rounded-md border border-blue-200 px-3 py-2 text-gray-700 shadow-sm focus:border-blue-400 focus:ring-blue-400"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                 value={formData.name}
-                onChange={handleChange}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               />
             </div>
-
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email Address *
-              </label>
+              <label className="block text-sm font-medium text-gray-700">Email</label>
               <input
                 type="email"
-                name="email"
-                id="email"
                 required
-                className="mt-1 block w-full rounded-md border border-blue-200 px-3 py-2 text-gray-700 shadow-sm focus:border-blue-400 focus:ring-blue-400"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                 value={formData.email}
-                onChange={handleChange}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               />
             </div>
-
             <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                Phone Number *
-              </label>
+              <label className="block text-sm font-medium text-gray-700">Phone</label>
               <input
                 type="tel"
-                name="phone"
-                id="phone"
                 required
-                className="mt-1 block w-full rounded-md border border-blue-200 px-3 py-2 text-gray-700 shadow-sm focus:border-blue-400 focus:ring-blue-400"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                 value={formData.phone}
-                onChange={handleChange}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               />
             </div>
-          </div>
-        </div>
-
-        {/* Property Requirements */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-blue-900 border-b pb-2">Property Requirements</h2>
-          
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label htmlFor="propertyType" className="block text-sm font-medium text-gray-700">
-                Property Type
-              </label>
+              <label className="block text-sm font-medium text-gray-700">Status</label>
               <select
-                name="propertyType"
-                id="propertyType"
-                className="mt-1 block w-full rounded-md border border-blue-200 px-3 py-2 text-gray-700 shadow-sm focus:border-blue-400 focus:ring-blue-400"
-                value={formData.propertyType}
-                onChange={handleChange}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
               >
-                <option value="residential">Residential</option>
-                <option value="commercial">Commercial</option>
-                <option value="industrial">Industrial</option>
-                <option value="land">Land</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+                <option value="Lead">Lead</option>
               </select>
             </div>
+          </div>
+        </div>
+
+        {/* Requirements */}
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h2 className="text-lg font-semibold mb-4">Requirements</h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Property Type</label>
+              <select
+                required
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                value={formData.requirements.propertyType}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  requirements: { ...formData.requirements, propertyType: e.target.value }
+                })}
+              >
+                <option value="">Select type</option>
+                <option value="House">House</option>
+                <option value="Apartment">Apartment</option>
+                <option value="Condo">Condo</option>
+                <option value="Land">Land</option>
+              </select>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Budget Min</label>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  value={formData.requirements.budgetMin}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    requirements: { ...formData.requirements, budgetMin: e.target.value }
+                  })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Budget Max</label>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  value={formData.requirements.budgetMax}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    requirements: { ...formData.requirements, budgetMax: e.target.value }
+                  })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Bedrooms</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  value={formData.requirements.bedrooms}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    requirements: { ...formData.requirements, bedrooms: e.target.value }
+                  })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Bathrooms</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  value={formData.requirements.bathrooms}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    requirements: { ...formData.requirements, bathrooms: e.target.value }
+                  })}
+                />
+              </div>
+            </div>
 
             <div>
-              <label htmlFor="budget" className="block text-sm font-medium text-gray-700">
-                Budget Range
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Preferred Locations
               </label>
-              <input
-                type="text"
-                name="budget"
-                id="budget"
-                className="mt-1 block w-full rounded-md border border-blue-200 px-3 py-2 text-gray-700 shadow-sm focus:border-blue-400 focus:ring-blue-400"
-                value={formData.budget}
-                onChange={handleChange}
-                placeholder="e.g., $500,000 - $750,000"
-              />
+              {formData.requirements.preferredLocations.map((location, index) => (
+                <div key={index} className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    required
+                    className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    value={location}
+                    onChange={(e) => handleLocationChange(index, e.target.value)}
+                  />
+                  {index > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => removeLocation(index)}
+                      className="px-2 py-1 text-red-600 hover:text-red-800"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addLocation}
+                className="mt-2 text-sm text-indigo-600 hover:text-indigo-800"
+              >
+                Add Location
+              </button>
             </div>
 
-            <div className="sm:col-span-2">
-              <label htmlFor="preferredLocation" className="block text-sm font-medium text-gray-700">
-                Preferred Location
-              </label>
-              <input
-                type="text"
-                name="preferredLocation"
-                id="preferredLocation"
-                className="mt-1 block w-full rounded-md border border-blue-200 px-3 py-2 text-gray-700 shadow-sm focus:border-blue-400 focus:ring-blue-400"
-                value={formData.preferredLocation}
-                onChange={handleChange}
-                placeholder="e.g., Downtown, North Side"
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label htmlFor="requirements" className="block text-sm font-medium text-gray-700">
-                Specific Requirements
-              </label>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Additional Requirements</label>
               <textarea
-                name="requirements"
-                id="requirements"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                 rows={3}
-                className="mt-1 block w-full rounded-md border border-blue-200 px-3 py-2 text-gray-700 shadow-sm focus:border-blue-400 focus:ring-blue-400"
-                value={formData.requirements}
-                onChange={handleChange}
-                placeholder="e.g., 3 bedrooms, 2 bathrooms, garage"
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
-                Additional Notes
-              </label>
-              <textarea
-                name="notes"
-                id="notes"
-                rows={3}
-                className="mt-1 block w-full rounded-md border border-blue-200 px-3 py-2 text-gray-700 shadow-sm focus:border-blue-400 focus:ring-blue-400"
-                value={formData.notes}
-                onChange={handleChange}
+                value={formData.requirements.additionalRequirements}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  requirements: { ...formData.requirements, additionalRequirements: e.target.value }
+                })}
               />
             </div>
           </div>
         </div>
 
-        {/* Form Actions */}
-        <div className="flex justify-end space-x-3 pt-4">
-          <Link
-            href="/clients"
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+        <div className="flex justify-end gap-4">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-500"
           >
             Cancel
-          </Link>
+          </button>
           <button
             type="submit"
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            disabled={isSubmitting}
+            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
           >
-            Add Client
+            {isSubmitting ? 'Creating...' : 'Create Client'}
           </button>
         </div>
       </form>

@@ -25,6 +25,7 @@ export const GET = withAuth(async (req: NextRequest) => {
 export const POST = withAuth(async (req: NextRequest) => {
   try {
     const data = await req.json();
+    
     const property = await prisma.property.create({
       data: {
         title: data.title,
