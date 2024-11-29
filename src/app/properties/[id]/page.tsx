@@ -9,6 +9,7 @@ import { useLoadingStates } from '@/hooks/useLoadingStates';
 import { formatCurrency } from '@/lib/utils';
 import Modal from '@/components/ui/Modal';
 import Link from 'next/link';
+import { Upload } from 'lucide-react';
 
 interface Property {
   id: string;
@@ -200,9 +201,14 @@ export default function PropertyPage() {
     }
   };
 
-  const handleEdit = async () => {
+  const handleEditClick = () => {
+    setEditedProperty(property); // Set the current property data to edit
+    setShowEditModal(true);
+  };
+
+  const handleEditSubmit = async () => {
     if (!editedProperty) return;
-    
+
     setLoading('editProperty', true);
     try {
       const response = await fetch(`/api/properties/${params.id}`, {
@@ -219,6 +225,7 @@ export default function PropertyPage() {
       setProperty(updatedProperty);
       addToast('Property updated successfully', 'success');
       setShowEditModal(false);
+      setEditedProperty(null);
     } catch (error) {
       console.error('Error:', error);
       addToast('Failed to update property', 'error');
@@ -276,7 +283,7 @@ export default function PropertyPage() {
             Share
           </Button>
           <Button
-            onClick={() => setIsEditing(true)}
+            onClick={handleEditClick}
             variant="primary"
           >
             Edit
@@ -593,7 +600,10 @@ export default function PropertyPage() {
       {/* Edit Modal */}
       <Modal
         isOpen={showEditModal}
-        onClose={() => setShowEditModal(false)}
+        onClose={() => {
+          setShowEditModal(false);
+          setEditedProperty(null);
+        }}
         title="Edit Property"
       >
         {editedProperty && (
@@ -609,6 +619,16 @@ export default function PropertyPage() {
             </div>
 
             <div>
+              <label className="block text-sm font-medium text-gray-700">Address</label>
+              <input
+                type="text"
+                value={editedProperty.address}
+                onChange={(e) => setEditedProperty({ ...editedProperty, address: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
               <label className="block text-sm font-medium text-gray-700">Price</label>
               <input
                 type="number"
@@ -619,30 +639,137 @@ export default function PropertyPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Status</label>
-              <select
-                value={editedProperty.status}
-                onChange={(e) => setEditedProperty({ ...editedProperty, status: e.target.value })}
+              <label className="block text-sm font-medium text-gray-700">Description</label>
+              <textarea
+                value={editedProperty.description || ''}
+                onChange={(e) => setEditedProperty({ ...editedProperty, description: e.target.value })}
+                rows={4}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              >
-                <option value="Available">Available</option>
-                <option value="Under Contract">Under Contract</option>
-                <option value="Sold">Sold</option>
-              </select>
+              />
             </div>
 
-            {/* Add more fields as needed */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Bedrooms</label>
+                <input
+                  type="number"
+                  value={editedProperty.bedrooms || ''}
+                  onChange={(e) => setEditedProperty({ ...editedProperty, bedrooms: e.target.value ? parseInt(e.target.value) : null })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Bathrooms</label>
+                <input
+                  type="number"
+                  value={editedProperty.bathrooms || ''}
+                  onChange={(e) => setEditedProperty({ ...editedProperty, bathrooms: e.target.value ? parseInt(e.target.value) : null })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Area (sqft)</label>
+              <input
+                type="number"
+                value={editedProperty.area}
+                onChange={(e) => setEditedProperty({ ...editedProperty, area: parseFloat(e.target.value) })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Images</label>
+              <div className="grid grid-cols-4 gap-4">
+                {editedProperty.images.map((image, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={image}
+                      alt={`Property ${index + 1}`}
+                      className="h-24 w-24 object-cover rounded-lg"
+                    />
+                    <button
+                      onClick={() => {
+                        const newImages = [...editedProperty.images];
+                        newImages.splice(index, 1);
+                        setEditedProperty({ ...editedProperty, images: newImages });
+                      }}
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 
+                                 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+                
+                {/* Upload Button */}
+                <label className="h-24 w-24 border-2 border-dashed border-gray-300 rounded-lg 
+                                 flex flex-col items-center justify-center cursor-pointer 
+                                 hover:border-blue-500 transition-colors">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={async (e) => {
+                      if (e.target.files) {
+                        setLoading('uploadImages', true);
+                        try {
+                          const formData = new FormData();
+                          Array.from(e.target.files).forEach((file) => {
+                            formData.append('images', file);
+                          });
+
+                          const response = await fetch('/api/upload', {
+                            method: 'POST',
+                            body: formData,
+                          });
+
+                          if (!response.ok) throw new Error('Failed to upload images');
+
+                          const { urls } = await response.json();
+                          setEditedProperty({
+                            ...editedProperty,
+                            images: [...editedProperty.images, ...urls],
+                          });
+                          addToast('Images uploaded successfully', 'success');
+                        } catch (error) {
+                          console.error('Error:', error);
+                          addToast('Failed to upload images', 'error');
+                        } finally {
+                          setLoading('uploadImages', false);
+                        }
+                      }
+                    }}
+                  />
+                  {isLoading('uploadImages') ? (
+                    <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-500 border-t-transparent" />
+                  ) : (
+                    <>
+                      <Upload className="h-6 w-6 text-gray-400" />
+                      <span className="mt-2 text-sm text-gray-500">Add Images</span>
+                    </>
+                  )}
+                </label>
+              </div>
+            </div>
 
             <div className="flex justify-end gap-3">
               <Button
-                onClick={() => setShowEditModal(false)}
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditedProperty(null);
+                }}
                 variant="secondary"
                 disabled={isLoading('editProperty')}
               >
                 Cancel
               </Button>
               <Button
-                onClick={handleEdit}
+                onClick={handleEditSubmit}
                 variant="primary"
                 isLoading={isLoading('editProperty')}
               >
