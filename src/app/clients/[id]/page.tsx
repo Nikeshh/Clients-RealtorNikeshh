@@ -151,6 +151,7 @@ export default function ClientPage() {
   const [showAddInteractionModal, setShowAddInteractionModal] = useState(false);
   const [editingRequirement, setEditingRequirement] = useState<ClientRequirement | null>(null);
   const [showEditRequirementModal, setShowEditRequirementModal] = useState(false);
+  const [requirementToDelete, setRequirementToDelete] = useState<ClientRequirement | null>(null);
 
   useEffect(() => {
     loadClient();
@@ -212,15 +213,34 @@ export default function ClientPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(newRequirement),
+        body: JSON.stringify({
+          name: 'New Requirement',
+          type: 'PURCHASE',
+          propertyType: 'House',
+          budgetMin: 0,
+          budgetMax: 0,
+          preferredLocations: [],
+          purchasePreferences: {
+            propertyAge: null,
+            preferredStyle: null,
+            parking: null,
+            lotSize: null,
+            basement: false,
+            garage: false,
+          }
+        }),
       });
 
       if (!response.ok) throw new Error('Failed to add requirement');
 
       const updatedClient = await response.json();
       setClient(updatedClient);
-      setShowNewRequirementModal(false);
       addToast('Requirement added successfully', 'success');
+      
+      // Find the newly added requirement and open edit modal
+      const newRequirement = updatedClient.requirements[updatedClient.requirements.length - 1];
+      setEditingRequirement(newRequirement);
+      setShowEditRequirementModal(true);
     } catch (error) {
       console.error('Error:', error);
       addToast('Failed to add requirement', 'error');
@@ -307,6 +327,32 @@ export default function ClientPage() {
     await loadClient();
     setShowAddInteractionModal(false);
     addToast('Interaction added successfully', 'success');
+  };
+
+  const handleDeleteRequirement = async (requirement: ClientRequirement) => {
+    setRequirementToDelete(requirement);
+  };
+
+  const confirmDeleteRequirement = async () => {
+    if (!requirementToDelete) return;
+
+    setLoading('deleteRequirement', true);
+    try {
+      const response = await fetch(`/api/clients/requirements/${requirementToDelete.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete requirement');
+
+      await loadClient(); // Refresh client data
+      addToast('Requirement deleted successfully', 'success');
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to delete requirement', 'error');
+    } finally {
+      setLoading('deleteRequirement', false);
+      setRequirementToDelete(null);
+    }
   };
 
   if (!initialLoadComplete || isLoading("loadClient")) {
@@ -462,139 +508,72 @@ export default function ClientPage() {
 
       {/* Requirements Section */}
       <div className="bg-white shadow rounded-lg overflow-hidden mb-6">
-        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-lg font-medium text-gray-900">Requirements</h2>
-          <Button onClick={() => setShowNewRequirementModal(true)} variant="primary">
+        <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
+          <h3 className="text-lg font-medium text-gray-900">Requirements</h3>
+          <Button
+            onClick={handleAddRequirement}
+            variant="primary"
+            isLoading={isLoading('addRequirement')}
+          >
             Add Requirement
           </Button>
         </div>
-        <div className="p-6">
-          {client?.requirements && client?.requirements?.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="px-4 py-5 sm:p-6">
+          {client?.requirements && client.requirements.length > 0 ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {client.requirements.map((requirement) => (
-                <div key={requirement.id} className="bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow">
-                  <div className="p-4">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className="text-lg font-medium text-gray-900">{requirement.name}</h3>
-                        <p className="mt-1 text-sm text-gray-500">
-                          {requirement.type} • {requirement.propertyType}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Link
-                          href={`/clients/requirements/${requirement.id}/gather`}
-                          className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
-                        >
-                          Gather
-                        </Link>
-                        <button
-                          onClick={() => {
-                            setEditingRequirement(requirement);
-                            setShowEditRequirementModal(true);
-                          }}
-                          className="text-gray-400 hover:text-gray-600"
-                        >
-                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                        </button>
-                      </div>
+                <div
+                  key={requirement.id}
+                  className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="text-lg font-medium text-gray-900">
+                      {requirement.name}
+                    </h4>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setEditingRequirement(requirement);
+                          setShowEditRequirementModal(true);
+                        }}
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteRequirement(requirement)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        Delete
+                      </button>
                     </div>
-
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-xs text-gray-500">Budget Range</p>
-                        <p className="text-sm font-medium">
-                          {formatCurrency(requirement.budgetMin)} - {formatCurrency(requirement.budgetMax)}
-                        </p>
-                      </div>
-
-                      <div className="flex gap-4">
-                        {requirement.bedrooms && (
-                          <div>
-                            <p className="text-xs text-gray-500">Bedrooms</p>
-                            <p className="text-sm font-medium">{requirement.bedrooms}+</p>
-                          </div>
-                        )}
-                        {requirement.bathrooms && (
-                          <div>
-                            <p className="text-xs text-gray-500">Bathrooms</p>
-                            <p className="text-sm font-medium">{requirement.bathrooms}+</p>
-                          </div>
-                        )}
-                      </div>
-
-                      {requirement.preferredLocations.length > 0 && (
-                        <div>
-                          <p className="text-xs text-gray-500">Locations</p>
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            {requirement.preferredLocations.map((location, index) => (
-                              <span
-                                key={index}
-                                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
-                              >
-                                {location}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {requirement.additionalRequirements && (
-                        <div>
-                          <p className="text-xs text-gray-500">Notes</p>
-                          <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                            {requirement.additionalRequirements}
-                          </p>
-                        </div>
-                      )}
-
-                      {requirement.gatheredProperties && requirement.gatheredProperties.length > 0 && (
-                        <div>
-                          <p className="text-xs text-gray-500 mb-2">
-                            Gathered Properties ({requirement.gatheredProperties.length})
-                          </p>
-                          <div className="space-y-2">
-                            {requirement.gatheredProperties.slice(0, 3).map((gathered) => (
-                              <div key={gathered.id} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
-                                <div className="truncate">
-                                  <p className="font-medium truncate">{gathered.property.title}</p>
-                                  <p className="text-xs text-gray-500">{formatCurrency(gathered.property.price)}</p>
-                                </div>
-                                <span className={`text-xs px-2 py-1 rounded-full
-                                  ${gathered.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                                    gathered.status === 'Accepted' ? 'bg-green-100 text-green-800' :
-                                    'bg-red-100 text-red-800'}`}
-                                >
-                                  {gathered.status}
-                                </span>
-                              </div>
-                            ))}
-                            {requirement.gatheredProperties.length > 3 && (
-                              <p className="text-xs text-gray-500 text-center">
-                                +{requirement.gatheredProperties.length - 3} more properties
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                  </div>
+                  <p className="text-sm text-gray-500 mb-2">
+                    {requirement.type} - {requirement.propertyType}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    Budget: {formatCurrency(requirement.budgetMin)} - {formatCurrency(requirement.budgetMax)}
+                  </p>
+                  {requirement.preferredLocations.length > 0 && (
+                    <p className="text-sm text-gray-700 mt-2">
+                      Locations: {requirement.preferredLocations.join(', ')}
+                    </p>
+                  )}
+                  <div className="mt-4">
+                    <Link
+                      href={`/clients/requirements/${requirement.id}/gather`}
+                      className="text-blue-600 hover:text-blue-800 text-sm"
+                    >
+                      Gather Properties →
+                    </Link>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-6">
-              <p className="text-sm text-gray-500">No requirements added yet.</p>
-              <Button
-                onClick={() => setShowNewRequirementModal(true)}
-                variant="outline"
-                className="mt-2"
-              >
-                Add First Requirement
-              </Button>
-            </div>
+            <p className="text-gray-500 text-center py-4">
+              No requirements added yet. Click the Add Requirement button to get started.
+            </p>
           )}
         </div>
       </div>
@@ -685,10 +664,10 @@ export default function ClientPage() {
                 <label className="block text-sm font-medium text-gray-700">Min Budget</label>
                 <input
                   type="number"
-                  value={editingRequirement.budgetMin}
+                  value={editingRequirement.budgetMin.toString()}
                   onChange={(e) => setEditingRequirement({
                     ...editingRequirement,
-                    budgetMin: parseFloat(e.target.value)
+                    budgetMin: e.target.value ? parseFloat(e.target.value) : 0
                   })}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                 />
@@ -697,10 +676,10 @@ export default function ClientPage() {
                 <label className="block text-sm font-medium text-gray-700">Max Budget</label>
                 <input
                   type="number"
-                  value={editingRequirement.budgetMax}
+                  value={editingRequirement.budgetMax.toString()}
                   onChange={(e) => setEditingRequirement({
                     ...editingRequirement,
-                    budgetMax: parseFloat(e.target.value)
+                    budgetMax: e.target.value ? parseFloat(e.target.value) : 0
                   })}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                 />
@@ -712,7 +691,7 @@ export default function ClientPage() {
                 <label className="block text-sm font-medium text-gray-700">Bedrooms</label>
                 <input
                   type="number"
-                  value={editingRequirement.bedrooms || ''}
+                  value={editingRequirement.bedrooms?.toString() || ''}
                   onChange={(e) => setEditingRequirement({
                     ...editingRequirement,
                     bedrooms: e.target.value ? parseInt(e.target.value) : null
@@ -724,7 +703,7 @@ export default function ClientPage() {
                 <label className="block text-sm font-medium text-gray-700">Bathrooms</label>
                 <input
                   type="number"
-                  value={editingRequirement.bathrooms || ''}
+                  value={editingRequirement.bathrooms?.toString() || ''}
                   onChange={(e) => setEditingRequirement({
                     ...editingRequirement,
                     bathrooms: e.target.value ? parseInt(e.target.value) : null
@@ -955,6 +934,38 @@ export default function ClientPage() {
           clientId={params.id as string}
           onSubmit={handleInteractionAdded}
         />
+      )}
+
+      {/* Delete Requirement Confirmation Modal */}
+      {requirementToDelete && (
+        <Modal
+          isOpen={!!requirementToDelete}
+          onClose={() => setRequirementToDelete(null)}
+          title="Delete Requirement"
+        >
+          <div className="space-y-4">
+            <p className="text-gray-500">
+              Are you sure you want to delete the requirement "{requirementToDelete.name}"? 
+              This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button
+                onClick={() => setRequirementToDelete(null)}
+                variant="secondary"
+                disabled={isLoading('deleteRequirement')}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmDeleteRequirement}
+                variant="danger"
+                isLoading={isLoading('deleteRequirement')}
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

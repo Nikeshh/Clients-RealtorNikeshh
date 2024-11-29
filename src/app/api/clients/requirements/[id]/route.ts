@@ -214,4 +214,55 @@ export const GET = withAuth(async (request: NextRequest) => {
       { status: 500 }
     );
   }
+});
+
+// Add DELETE handler
+export const DELETE = withAuth(async (request: NextRequest) => {
+  try {
+    const matches = request.url.match(/\/requirements\/([^\/]+)/);
+    const requirementId = matches ? matches[1] : null;
+
+    if (!requirementId) {
+      return NextResponse.json(
+        { error: 'Requirement ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Get the requirement first to get the client ID
+    const requirement = await prisma.clientRequirement.findUnique({
+      where: { id: requirementId },
+      include: { client: true }
+    });
+
+    if (!requirement) {
+      return NextResponse.json(
+        { error: 'Requirement not found' },
+        { status: 404 }
+      );
+    }
+
+    // Delete the requirement
+    await prisma.clientRequirement.delete({
+      where: { id: requirementId }
+    });
+
+    // Create an interaction record for the deletion
+    await prisma.interaction.create({
+      data: {
+        clientId: requirement.client.id,
+        type: 'Requirement Deleted',
+        description: `Deleted ${requirement.type.toLowerCase()} requirement: ${requirement.name}`,
+        date: new Date(),
+      },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting requirement:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete requirement', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
+  }
 }); 
