@@ -218,44 +218,58 @@ export default function ClientPage() {
   const handleAddRequirement = async () => {
     setLoading('addRequirement', true);
     try {
+      const requirementData = {
+        name: newRequirement.name,
+        type: newRequirement.type,
+        propertyType: newRequirement.propertyType,
+        budgetMin: parseFloat(newRequirement.budgetMin) || 0,
+        budgetMax: parseFloat(newRequirement.budgetMax) || 0,
+        bedrooms: newRequirement.bedrooms ? parseInt(newRequirement.bedrooms) : null,
+        bathrooms: newRequirement.bathrooms ? parseInt(newRequirement.bathrooms) : null,
+        preferredLocations: newRequirement.preferredLocations.filter(loc => loc.trim() !== ''),
+        additionalRequirements: newRequirement.additionalRequirements || '',
+        status: 'Active',
+        ...(newRequirement.type === 'RENTAL' ? {
+          rentalPreferences: {
+            leaseTerm: newRequirement.rentalPreferences.leaseTerm,
+            furnished: newRequirement.rentalPreferences.furnished,
+            petsAllowed: newRequirement.rentalPreferences.petsAllowed,
+            maxRentalBudget: parseFloat(newRequirement.rentalPreferences.maxRentalBudget) || 0,
+            preferredMoveInDate: newRequirement.rentalPreferences.preferredMoveInDate || null,
+          }
+        } : {
+          purchasePreferences: {
+            propertyAge: newRequirement.purchasePreferences.propertyAge || null,
+            preferredStyle: newRequirement.purchasePreferences.preferredStyle || null,
+            parking: newRequirement.purchasePreferences.parking ? parseInt(newRequirement.purchasePreferences.parking) : null,
+            lotSize: newRequirement.purchasePreferences.lotSize ? parseFloat(newRequirement.purchasePreferences.lotSize) : null,
+            basement: newRequirement.purchasePreferences.basement,
+            garage: newRequirement.purchasePreferences.garage,
+          }
+        })
+      };
+
       const response = await fetch(`/api/clients/${params.id}/requirements`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          name: 'New Requirement',
-          type: 'PURCHASE',
-          propertyType: 'House',
-          budgetMin: 0,
-          budgetMax: 0,
-          preferredLocations: [],
-          purchasePreferences: {
-            propertyAge: null,
-            preferredStyle: null,
-            parking: null,
-            lotSize: null,
-            basement: false,
-            garage: false,
-          }
-        }),
+        body: JSON.stringify(requirementData),
       });
 
       if (!response.ok) throw new Error('Failed to add requirement');
 
-      const updatedClient = await response.json();
-      setClient(updatedClient);
+      const requirement = await response.json();
       addToast('Requirement added successfully', 'success');
       
-      // Find the newly added requirement and open edit modal
-      const newRequirement = updatedClient.requirements[updatedClient.requirements.length - 1];
-      setEditingRequirement(newRequirement);
-      setShowEditRequirementModal(true);
+      // Redirect to the individual requirement page
+      router.push(`/clients/requirements/${requirement.id}`);
     } catch (error) {
       console.error('Error:', error);
       addToast('Failed to add requirement', 'error');
     } finally {
       setLoading('addRequirement', false);
+      setShowNewRequirementModal(false);
     }
   };
 
@@ -283,28 +297,31 @@ export default function ClientPage() {
     }
   };
 
-  const handleEditRequirement = async (data: any) => {
+  const handleEditRequirement = async (requirement: ClientRequirement) => {
     setLoading('editRequirement', true);
     try {
-      const response = await fetch(`/api/clients/requirements/${editingRequirement?.id}`, {
+      const response = await fetch(`/api/clients/requirements/${requirement.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(requirement),
       });
 
       if (!response.ok) throw new Error('Failed to update requirement');
 
-      const updatedClient = await response.json();
-      setClient(updatedClient);
-      setShowEditRequirementModal(false);
+      const updatedRequirement = await response.json();
       addToast('Requirement updated successfully', 'success');
+      
+      // Redirect to the individual requirement page
+      router.push(`/clients/requirements/${requirement.id}`);
     } catch (error) {
       console.error('Error:', error);
       addToast('Failed to update requirement', 'error');
     } finally {
       setLoading('editRequirement', false);
+      setShowEditRequirementModal(false);
+      setEditingRequirement(null);
     }
   };
 

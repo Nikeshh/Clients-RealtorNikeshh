@@ -389,6 +389,249 @@ export default function RequirementPage() {
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-gray-700">Property Type</label>
+            <input
+              type="text"
+              value={editedRequirement?.propertyType || ''}
+              onChange={(e) => setEditedRequirement(prev => ({ ...prev!, propertyType: e.target.value }))}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Budget Min</label>
+              <input
+                type="number"
+                value={editedRequirement?.budgetMin || ''}
+                onChange={(e) => setEditedRequirement(prev => ({ ...prev!, budgetMin: parseFloat(e.target.value) }))}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Budget Max</label>
+              <input
+                type="number"
+                value={editedRequirement?.budgetMax || ''}
+                onChange={(e) => setEditedRequirement(prev => ({ ...prev!, budgetMax: parseFloat(e.target.value) }))}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Bedrooms</label>
+              <input
+                type="number"
+                value={editedRequirement?.bedrooms || ''}
+                onChange={(e) => setEditedRequirement(prev => ({ ...prev!, bedrooms: parseInt(e.target.value) }))}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Bathrooms</label>
+              <input
+                type="number"
+                value={editedRequirement?.bathrooms || ''}
+                onChange={(e) => setEditedRequirement(prev => ({ ...prev!, bathrooms: parseInt(e.target.value) }))}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Preferred Locations</label>
+            {editedRequirement?.preferredLocations.map((location, index) => (
+              <div key={index} className="flex gap-2 mt-2">
+                <input
+                  type="text"
+                  value={location}
+                  onChange={(e) => {
+                    const newLocations = [...editedRequirement.preferredLocations];
+                    newLocations[index] = e.target.value;
+                    setEditedRequirement(prev => ({ ...prev!, preferredLocations: newLocations }));
+                  }}
+                  className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+                {index > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newLocations = editedRequirement.preferredLocations.filter((_, i) => i !== index);
+                      setEditedRequirement(prev => ({ ...prev!, preferredLocations: newLocations }));
+                    }}
+                    className="text-red-600 hover:text-red-800"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                setEditedRequirement(prev => ({
+                  ...prev!,
+                  preferredLocations: [...prev!.preferredLocations, '']
+                }));
+              }}
+              className="mt-2 text-sm text-indigo-600 hover:text-indigo-800"
+            >
+              Add Location
+            </button>
+          </div>
+
+          {editedRequirement?.type === 'RENTAL' && (
+            <div className="space-y-4 border-t pt-4">
+              <h3 className="font-medium text-gray-900">Rental Preferences</h3>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Lease Term</label>
+                <select
+                  value={editedRequirement.rentalPreferences?.leaseTerm || 'Long-term'}
+                  onChange={(e) => setEditedRequirement(prev => ({
+                    ...prev!,
+                    rentalPreferences: {
+                      ...prev!.rentalPreferences!,
+                      leaseTerm: e.target.value
+                    }
+                  }))}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                >
+                  <option value="Short-term">Short-term</option>
+                  <option value="Long-term">Long-term</option>
+                </select>
+              </div>
+
+              <div className="flex gap-4">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={editedRequirement.rentalPreferences?.furnished}
+                    onChange={(e) => setEditedRequirement(prev => ({
+                      ...prev!,
+                      rentalPreferences: {
+                        ...prev!.rentalPreferences!,
+                        furnished: e.target.checked
+                      }
+                    }))}
+                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Furnished</span>
+                </label>
+
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={editedRequirement.rentalPreferences?.petsAllowed}
+                    onChange={(e) => setEditedRequirement(prev => ({
+                      ...prev!,
+                      rentalPreferences: {
+                        ...prev!.rentalPreferences!,
+                        petsAllowed: e.target.checked
+                      }
+                    }))}
+                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Pets Allowed</span>
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Preferred Move-in Date</label>
+                <input
+                  type="date"
+                  value={editedRequirement.rentalPreferences?.preferredMoveInDate?.toString().split('T')[0] || ''}
+                  onChange={(e) => setEditedRequirement(prev => ({
+                    ...prev!,
+                    rentalPreferences: {
+                      ...prev!.rentalPreferences!,
+                      preferredMoveInDate: e.target.value ? new Date(e.target.value) : undefined
+                    }
+                  }))}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+          )}
+
+          {editedRequirement?.type === 'PURCHASE' && (
+            <div className="space-y-4 border-t pt-4">
+              <h3 className="font-medium text-gray-900">Purchase Preferences</h3>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Property Age</label>
+                <select
+                  value={editedRequirement.purchasePreferences?.propertyAge || ''}
+                  onChange={(e) => setEditedRequirement(prev => ({
+                    ...prev!,
+                    purchasePreferences: {
+                      ...prev!.purchasePreferences!,
+                      propertyAge: e.target.value
+                    }
+                  }))}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                >
+                  <option value="">Any</option>
+                  <option value="New">New Construction</option>
+                  <option value="0-5">0-5 years</option>
+                  <option value="5-10">5-10 years</option>
+                  <option value="10+">10+ years</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Property Style</label>
+                <input
+                  type="text"
+                  value={editedRequirement.purchasePreferences?.preferredStyle || ''}
+                  onChange={(e) => setEditedRequirement(prev => ({
+                    ...prev!,
+                    purchasePreferences: {
+                      ...prev!.purchasePreferences!,
+                      preferredStyle: e.target.value
+                    }
+                  }))}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div className="flex gap-4">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={editedRequirement.purchasePreferences?.basement}
+                    onChange={(e) => setEditedRequirement(prev => ({
+                      ...prev!,
+                      purchasePreferences: {
+                        ...prev!.purchasePreferences!,
+                        basement: e.target.checked
+                      }
+                    }))}
+                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Basement</span>
+                </label>
+
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={editedRequirement.purchasePreferences?.garage}
+                    onChange={(e) => setEditedRequirement(prev => ({
+                      ...prev!,
+                      purchasePreferences: {
+                        ...prev!.purchasePreferences!,
+                        garage: e.target.checked
+                      }
+                    }))}
+                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Garage</span>
+                </label>
+              </div>
+            </div>
+          )}
+
+          <div>
             <label className="block text-sm font-medium text-gray-700">Status</label>
             <select
               value={editedRequirement?.status || ''}
@@ -399,6 +642,16 @@ export default function RequirementPage() {
               <option value="On Hold">On Hold</option>
               <option value="Completed">Completed</option>
             </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Additional Requirements</label>
+            <textarea
+              value={editedRequirement?.additionalRequirements || ''}
+              onChange={(e) => setEditedRequirement(prev => ({ ...prev!, additionalRequirements: e.target.value }))}
+              rows={3}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            />
           </div>
 
           <div className="flex justify-end gap-3">

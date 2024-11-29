@@ -8,6 +8,14 @@ export const POST = withAuth(async (request: NextRequest) => {
     const clientId = request.url.split('/clients/')[1].split('/requirements')[0];
     const data = await request.json();
 
+    // Validate required fields
+    if (!data.type || !data.propertyType) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
     // Create the requirement with type-specific preferences
     const requirement = await prisma.clientRequirement.create({
       data: {
@@ -15,91 +23,46 @@ export const POST = withAuth(async (request: NextRequest) => {
         name: data.name || "New Requirement",
         type: data.type,
         propertyType: data.propertyType,
-        budgetMin: parseFloat(data.budgetMin),
-        budgetMax: parseFloat(data.budgetMax),
-        bedrooms: data.bedrooms ? parseInt(data.bedrooms) : null,
-        bathrooms: data.bathrooms ? parseInt(data.bathrooms) : null,
-        preferredLocations: data.preferredLocations.filter((loc: string) => loc.trim() !== ''),
-        additionalRequirements: data.additionalRequirements || null,
-        status: "Active",
-        ...(data.type === 'RENTAL' ? {
+        budgetMin: data.budgetMin,
+        budgetMax: data.budgetMax,
+        bedrooms: data.bedrooms,
+        bathrooms: data.bathrooms,
+        preferredLocations: data.preferredLocations,
+        additionalRequirements: data.additionalRequirements,
+        status: data.status || "Active",
+        ...(data.type === 'RENTAL' && data.rentalPreferences ? {
           rentalPreferences: {
             create: {
-              leaseTerm: data.rentalPreferences.leaseTerm,
-              furnished: data.rentalPreferences.furnished,
-              petsAllowed: data.rentalPreferences.petsAllowed,
-              maxRentalBudget: parseFloat(data.budgetMax),
+              leaseTerm: data.rentalPreferences.leaseTerm || 'Long-term',
+              furnished: data.rentalPreferences.furnished || false,
+              petsAllowed: data.rentalPreferences.petsAllowed || false,
+              maxRentalBudget: data.rentalPreferences.maxRentalBudget || data.budgetMax,
               preferredMoveInDate: data.rentalPreferences.preferredMoveInDate 
                 ? new Date(data.rentalPreferences.preferredMoveInDate) 
                 : null,
             }
           }
-        } : {
+        } : {}),
+        ...(data.type === 'PURCHASE' && data.purchasePreferences ? {
           purchasePreferences: {
             create: {
-              propertyAge: data.purchasePreferences.propertyAge,
-              preferredStyle: data.purchasePreferences.preferredStyle,
-              parking: data.purchasePreferences.parking 
-                ? parseInt(data.purchasePreferences.parking) 
-                : null,
-              lotSize: data.purchasePreferences.lotSize 
-                ? parseFloat(data.purchasePreferences.lotSize) 
-                : null,
-              basement: data.purchasePreferences.basement,
-              garage: data.purchasePreferences.garage,
+              propertyAge: data.purchasePreferences.propertyAge || null,
+              preferredStyle: data.purchasePreferences.preferredStyle || null,
+              parking: data.purchasePreferences.parking || null,
+              lotSize: data.purchasePreferences.lotSize || null,
+              basement: data.purchasePreferences.basement || false,
+              garage: data.purchasePreferences.garage || false,
             }
           }
-        })
+        } : {})
       },
-    });
-
-    // Create an interaction record
-    await prisma.interaction.create({
-      data: {
-        clientId,
-        type: 'Requirement Added',
-        description: `Added new ${data.type.toLowerCase()} requirement: ${data.name}`,
-        date: new Date(),
-      },
-    });
-
-    // Return updated client with all requirements
-    const updatedClient = await prisma.client.findUnique({
-      where: { id: clientId },
       include: {
-        requirements: {
-          include: {
-            rentalPreferences: true,
-            purchasePreferences: true,
-            gatheredProperties: {
-              include: {
-                property: true,
-              }
-            }
-          }
-        },
-        interactions: {
-          orderBy: {
-            date: 'desc',
-          },
-        },
-        sharedProperties: {
-          include: {
-            property: true,
-          },
-        },
-      },
+        rentalPreferences: true,
+        purchasePreferences: true,
+      }
     });
 
-    if (!updatedClient) {
-      return NextResponse.json(
-        { error: 'Client not found after update' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json(updatedClient);
-
+    return NextResponse.json(requirement);
   } catch (error) {
     console.error('Error creating requirement:', error);
     return NextResponse.json(
