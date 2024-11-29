@@ -513,7 +513,28 @@ export default function RequirementPage() {
           {/* Gathered Properties */}
           <div className="bg-white shadow rounded-lg p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Gathered Properties</h2>
+              <div className="flex items-center gap-4">
+                <h2 className="text-lg font-semibold text-gray-900">Gathered Properties</h2>
+                {requirement.gatheredProperties.length > 0 && (
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedProperties.length === requirement.gatheredProperties.length}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          // Select all properties
+                          setSelectedProperties(requirement.gatheredProperties.map(gp => gp.property.id));
+                        } else {
+                          // Deselect all properties
+                          setSelectedProperties([]);
+                        }
+                      }}
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-600">Select All</span>
+                  </label>
+                )}
+              </div>
               <div className="flex gap-2">
                 <Link href={`/clients/requirements/${requirement.id}/gather`}>
                   <Button variant="primary">Gather Properties</Button>
