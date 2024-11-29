@@ -20,8 +20,27 @@ export const GET = withAuth(async (request: NextRequest) => {
         id: id,
       },
       include: {
-        requirements: true,
+        requirements: {
+          include: {
+            rentalPreferences: true,
+            purchasePreferences: true,
+            gatheredProperties: {
+              include: {
+                property: true,
+              }
+            }
+          }
+        },
         interactions: {
+          include: {
+            requirement: {
+              select: {
+                id: true,
+                name: true,
+                type: true
+              }
+            }
+          },
           orderBy: {
             date: 'desc',
           },

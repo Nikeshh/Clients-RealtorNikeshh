@@ -67,7 +67,11 @@ interface Client {
     date: string;
     description: string;
     notes?: string;
-    requirementId?: string;
+    requirement?: {
+      id: string;
+      name: string;
+      type: string;
+    };
   }>;
   sharedProperties: Array<{
     id: string;
@@ -557,12 +561,12 @@ export default function ClientPage() {
       {/* Notes and Interactions Section */}
       <div className="bg-white shadow rounded-lg overflow-hidden mb-6">
         <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
-          <h3 className="text-lg font-medium text-gray-900">Interactions</h3>
+          <h3 className="text-lg font-medium text-gray-900">Notes & Interactions</h3>
           <Button
             onClick={() => setShowAddInteractionModal(true)}
             variant="primary"
           >
-            Add Interaction
+            Add Note
           </Button>
         </div>
         <div className="px-4 py-5 sm:p-6 max-h-[500px] overflow-y-auto">
@@ -596,13 +600,13 @@ export default function ClientPage() {
                                 {interaction.notes}
                               </p>
                             )}
-                            {interaction.requirementId && (
+                            {interaction.requirement && (
                               <Link 
-                                href={`/clients/requirements/${interaction.requirementId}`}
+                                href={`/clients/requirements/${interaction.requirement.id}`}
                                 className="mt-1 text-xs text-blue-600 hover:text-blue-800"
                                 target="_blank"
                               >
-                                Related to requirement
+                                Related to requirement: {interaction.requirement.name} ({interaction.requirement.type.toLowerCase()})
                               </Link>
                             )}
                           </div>
