@@ -23,13 +23,6 @@ export default async function LandingPage() {
           </div>
           <div className="flex gap-x-12">
             <Link 
-              href="https://github.com/yourusername/realestatecrm" 
-              className="text-sm font-semibold leading-6 text-gray-900"
-              target="_blank"
-            >
-              GitHub
-            </Link>
-            <Link 
               href="/auth/signin" 
               className="text-sm font-semibold leading-6 text-gray-900"
             >
@@ -79,11 +72,10 @@ export default async function LandingPage() {
                 Get started
               </Link>
               <Link
-                href="https://github.com/yourusername/realestatecrm"
+                href="/about"
                 className="text-sm font-semibold leading-6 text-gray-900"
-                target="_blank"
               >
-                View on GitHub <span aria-hidden="true">→</span>
+                Learn More <span aria-hidden="true">→</span>
               </Link>
             </div>
           </div>
