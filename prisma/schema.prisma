@@ -13,6 +13,7 @@ model Client {
   email       String
   phone       String
   status      String   @default("Active")
+  notes       String?
   pinned      Boolean  @default(false)
   lastContact DateTime @default(now())
   createdAt   DateTime @default(now())
