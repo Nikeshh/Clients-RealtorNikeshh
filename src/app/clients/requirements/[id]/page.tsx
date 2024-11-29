@@ -10,6 +10,7 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import AddInteractionModal from '@/components/AddInteractionModal';
 import Modal from '@/components/ui/Modal';
 import Link from 'next/link';
+import EmailTemplateModal from '@/components/EmailTemplateModal';
 
 interface Requirement {
   id: string;
@@ -26,6 +27,7 @@ interface Requirement {
   client: {
     id: string;
     name: string;
+    email: string;
   };
   rentalPreferences?: {
     leaseTerm: string;
@@ -72,6 +74,8 @@ export default function RequirementPage() {
   const [editedRequirement, setEditedRequirement] = useState<Requirement | null>(null);
   const [showAddInteractionModal, setShowAddInteractionModal] = useState(false);
   const { setLoading, isLoading } = useLoadingStates();
+  const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
+  const [showEmailModal, setShowEmailModal] = useState(false);
 
   useEffect(() => {
     loadRequirement();
@@ -193,6 +197,46 @@ export default function RequirementPage() {
       addToast('Failed to remove property', 'error');
     } finally {
       setLoading(`deleteGathered-${gatheredProperty.id}`, false);
+    }
+  };
+
+  const handlePropertySelect = (propertyId: string) => {
+    setSelectedProperties(prev => 
+      prev.includes(propertyId) 
+        ? prev.filter(id => id !== propertyId)
+        : [...prev, propertyId]
+    );
+  };
+
+  const handleSendEmail = async (emailData: any) => {
+    setLoading('sendEmail', true);
+    try {
+      const selectedProps = requirement?.gatheredProperties
+        .filter(gp => selectedProperties.includes(gp.property.id))
+        .map(gp => gp.property);
+
+      await fetch('/api/email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          clientEmail: requirement?.client.email,
+          clientName: requirement?.client.name,
+          properties: selectedProps,
+          subject: emailData.subject,
+          message: emailData.message,
+        }),
+      });
+
+      addToast('Email sent successfully', 'success');
+      setShowEmailModal(false);
+      setSelectedProperties([]);
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to send email', 'error');
+    } finally {
+      setLoading('sendEmail', false);
     }
   };
 
@@ -353,9 +397,19 @@ export default function RequirementPage() {
           <div className="bg-white shadow rounded-lg p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Gathered Properties</h2>
-              <Link href={`/clients/requirements/${requirement.id}/gather`}>
-                <Button variant="primary">Gather Properties</Button>
-              </Link>
+              <div className="flex gap-2">
+                <Link href={`/clients/requirements/${requirement.id}/gather`}>
+                  <Button variant="primary">Gather Properties</Button>
+                </Link>
+                {selectedProperties.length > 0 && (
+                  <Button
+                    variant="primary"
+                    onClick={() => setShowEmailModal(true)}
+                  >
+                    Email Selected ({selectedProperties.length})
+                  </Button>
+                )}
+              </div>
             </div>
 
             {requirement.gatheredProperties.length > 0 ? (
@@ -366,17 +420,25 @@ export default function RequirementPage() {
                     className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-medium text-gray-900">{gathered.property.title}</h3>
-                        <p className="text-sm text-gray-500">{gathered.property.address}</p>
-                        <p className="text-sm font-medium text-blue-600 mt-1">
-                          {formatCurrency(gathered.property.price)}
-                        </p>
-                        {gathered.notes && (
-                          <p className="text-sm text-gray-600 mt-2 italic">
-                            Notes: {gathered.notes}
+                      <div className="flex items-start gap-4">
+                        <input
+                          type="checkbox"
+                          checked={selectedProperties.includes(gathered.property.id)}
+                          onChange={() => handlePropertySelect(gathered.property.id)}
+                          className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <div>
+                          <h3 className="font-medium text-gray-900">{gathered.property.title}</h3>
+                          <p className="text-sm text-gray-500">{gathered.property.address}</p>
+                          <p className="text-sm font-medium text-blue-600 mt-1">
+                            {formatCurrency(gathered.property.price)}
                           </p>
-                        )}
+                          {gathered.notes && (
+                            <p className="text-sm text-gray-600 mt-2 italic">
+                              Notes: {gathered.notes}
+                            </p>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <select
@@ -814,6 +876,23 @@ export default function RequirementPage() {
           clientId={requirement.client.id}
           requirementId={requirement.id}
           onSubmit={handleInteractionAdded}
+        />
+      )}
+
+      {/* Add Email Modal */}
+      {showEmailModal && (
+        <EmailTemplateModal
+          isOpen={showEmailModal}
+          onClose={() => setShowEmailModal(false)}
+          onSubmit={handleSendEmail}
+          properties={requirement.gatheredProperties
+            .filter(gp => selectedProperties.includes(gp.property.id))
+            .map(gp => gp.property)}
+          recipients={[{
+            id: requirement.client.id,
+            name: requirement.client.name,
+            email: requirement.client.email,
+          }]}
         />
       )}
     </div>
