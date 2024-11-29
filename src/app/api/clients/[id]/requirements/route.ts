@@ -8,6 +8,7 @@ export const POST = withAuth(async (request: NextRequest) => {
     const clientId = request.url.split('/clients/')[1].split('/requirements')[0];
     const data = await request.json();
 
+    // Create the requirement with type-specific preferences
     const requirement = await prisma.clientRequirement.create({
       data: {
         clientId,
@@ -18,7 +19,7 @@ export const POST = withAuth(async (request: NextRequest) => {
         budgetMax: parseFloat(data.budgetMax),
         bedrooms: data.bedrooms ? parseInt(data.bedrooms) : null,
         bathrooms: data.bathrooms ? parseInt(data.bathrooms) : null,
-        preferredLocations: data.preferredLocations || [],
+        preferredLocations: data.preferredLocations.filter((loc: string) => loc.trim() !== ''),
         additionalRequirements: data.additionalRequirements || null,
         status: "Active",
         ...(data.type === 'RENTAL' ? {
@@ -50,10 +51,6 @@ export const POST = withAuth(async (request: NextRequest) => {
           }
         })
       },
-      include: {
-        rentalPreferences: true,
-        purchasePreferences: true,
-      }
     });
 
     // Create an interaction record
@@ -82,16 +79,31 @@ export const POST = withAuth(async (request: NextRequest) => {
           }
         },
         interactions: {
-          orderBy: { date: 'desc' },
+          orderBy: {
+            date: 'desc',
+          },
+        },
+        sharedProperties: {
+          include: {
+            property: true,
+          },
         },
       },
     });
 
+    if (!updatedClient) {
+      return NextResponse.json(
+        { error: 'Client not found after update' },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json(updatedClient);
+
   } catch (error) {
     console.error('Error creating requirement:', error);
     return NextResponse.json(
-      { error: 'Failed to create requirement' },
+      { error: 'Failed to create requirement', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

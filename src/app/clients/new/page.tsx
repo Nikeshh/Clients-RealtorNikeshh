@@ -450,6 +450,7 @@ export default function NewClientPage() {
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                   >
                     <option value="">Select age</option>
+                    <option value="No Preference">No Preference</option>
                     <option value="New">New Construction</option>
                     <option value="0-5">0-5 years</option>
                     <option value="5-10">5-10 years</option>
