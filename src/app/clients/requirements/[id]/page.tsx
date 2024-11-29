@@ -8,6 +8,8 @@ import Button from '@/components/Button';
 import { useLoadingStates } from '@/hooks/useLoadingStates';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import AddInteractionModal from '@/components/AddInteractionModal';
+import Modal from '@/components/ui/Modal';
+import Link from 'next/link';
 
 interface Requirement {
   id: string;
@@ -20,6 +22,7 @@ interface Requirement {
   bathrooms: number | null;
   preferredLocations: string[];
   additionalRequirements?: string;
+  status: string;
   client: {
     id: string;
     name: string;
@@ -39,17 +42,6 @@ interface Requirement {
     basement: boolean;
     garage: boolean;
   };
-  gatheredProperties: Array<{
-    id: string;
-    status: string;
-    notes?: string;
-    property: {
-      id: string;
-      title: string;
-      price: number;
-      address: string;
-    };
-  }>;
   interactions: Array<{
     id: string;
     type: string;
@@ -59,13 +51,16 @@ interface Requirement {
   }>;
 }
 
-export default function RequirementDetailPage() {
+export default function RequirementPage() {
   const params = useParams();
   const router = useRouter();
   const { addToast } = useToast();
   const [requirement, setRequirement] = useState<Requirement | null>(null);
-  const { setLoading, isLoading } = useLoadingStates();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editedRequirement, setEditedRequirement] = useState<Requirement | null>(null);
   const [showAddInteractionModal, setShowAddInteractionModal] = useState(false);
+  const { setLoading, isLoading } = useLoadingStates();
 
   useEffect(() => {
     loadRequirement();
@@ -78,11 +73,61 @@ export default function RequirementDetailPage() {
       if (!response.ok) throw new Error('Failed to fetch requirement');
       const data = await response.json();
       setRequirement(data);
+      setEditedRequirement(data);
     } catch (error) {
       console.error('Error:', error);
       addToast('Failed to load requirement details', 'error');
     } finally {
       setLoading('loadRequirement', false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!requirement) return;
+
+    setLoading('deleteRequirement', true);
+    try {
+      const response = await fetch(`/api/clients/requirements/${requirement.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete requirement');
+
+      addToast('Requirement deleted successfully', 'success');
+      router.push(`/clients/${requirement.client.id}`);
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to delete requirement', 'error');
+    } finally {
+      setLoading('deleteRequirement', false);
+      setShowDeleteModal(false);
+    }
+  };
+
+  const handleEdit = async () => {
+    if (!editedRequirement) return;
+
+    setLoading('editRequirement', true);
+    try {
+      const response = await fetch(`/api/clients/requirements/${editedRequirement.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(editedRequirement),
+      });
+
+      if (!response.ok) throw new Error('Failed to update requirement');
+
+      const updatedRequirement = await response.json();
+      setRequirement(updatedRequirement);
+      addToast('Requirement updated successfully', 'success');
+      setShowEditModal(false);
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to update requirement', 'error');
+    } finally {
+      setLoading('editRequirement', false);
     }
   };
 
@@ -101,158 +146,154 @@ export default function RequirementDetailPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <div className="flex justify-between items-start mb-6">
+      <div className="flex justify-between items-center mb-6">
         <div>
+          <Link 
+            href={`/clients/${requirement.client.id}`}
+            className="text-blue-600 hover:text-blue-800 mb-2 inline-block"
+          >
+            ← Back to {requirement.client.name}
+          </Link>
           <h1 className="text-2xl font-bold text-gray-900">{requirement.name}</h1>
-          <p className="text-sm text-gray-500">
-            Client: {requirement.client.name}
-          </p>
         </div>
-        <Button
-          onClick={() => setShowAddInteractionModal(true)}
-          variant="primary"
-        >
-          Add Interaction
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => setShowEditModal(true)}
+            variant="primary"
+          >
+            Edit
+          </Button>
+          <Button
+            onClick={() => setShowDeleteModal(true)}
+            variant="danger"
+          >
+            Delete
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Details */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Basic Information */}
-          <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-semibold mb-4">Basic Information</h2>
-            <dl className="grid grid-cols-2 gap-4">
+      {/* Requirement Details */}
+      <div className="bg-white shadow rounded-lg p-6 mb-6">
+        <dl className="grid grid-cols-2 gap-4">
+          <div>
+            <dt className="text-sm font-medium text-gray-500">Type</dt>
+            <dd className="mt-1 text-sm text-gray-900">{requirement.type}</dd>
+          </div>
+          <div>
+            <dt className="text-sm font-medium text-gray-500">Property Type</dt>
+            <dd className="mt-1 text-sm text-gray-900">{requirement.propertyType}</dd>
+          </div>
+          <div>
+            <dt className="text-sm font-medium text-gray-500">Budget Range</dt>
+            <dd className="mt-1 text-sm text-gray-900">
+              {formatCurrency(requirement.budgetMin)} - {formatCurrency(requirement.budgetMax)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-sm font-medium text-gray-500">Status</dt>
+            <dd className="mt-1 text-sm text-gray-900">{requirement.status}</dd>
+          </div>
+          {requirement.bedrooms && (
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Bedrooms</dt>
+              <dd className="mt-1 text-sm text-gray-900">{requirement.bedrooms}</dd>
+            </div>
+          )}
+          {requirement.bathrooms && (
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Bathrooms</dt>
+              <dd className="mt-1 text-sm text-gray-900">{requirement.bathrooms}</dd>
+            </div>
+          )}
+          <div className="col-span-2">
+            <dt className="text-sm font-medium text-gray-500">Preferred Locations</dt>
+            <dd className="mt-1 text-sm text-gray-900">
+              {requirement.preferredLocations.join(', ')}
+            </dd>
+          </div>
+          {requirement.additionalRequirements && (
+            <div className="col-span-2">
+              <dt className="text-sm font-medium text-gray-500">Additional Requirements</dt>
+              <dd className="mt-1 text-sm text-gray-900">{requirement.additionalRequirements}</dd>
+            </div>
+          )}
+        </dl>
+      </div>
+
+      {/* Type-specific Preferences */}
+      {requirement.type === 'RENTAL' && requirement.rentalPreferences && (
+        <div className="bg-white shadow rounded-lg p-6 mb-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Rental Preferences</h3>
+          <dl className="grid grid-cols-2 gap-4">
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Lease Term</dt>
+              <dd className="mt-1 text-sm text-gray-900">{requirement.rentalPreferences.leaseTerm}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Features</dt>
+              <dd className="mt-1 text-sm text-gray-900">
+                {requirement.rentalPreferences.furnished && 'Furnished • '}
+                {requirement.rentalPreferences.petsAllowed && 'Pets Allowed'}
+              </dd>
+            </div>
+            {requirement.rentalPreferences.preferredMoveInDate && (
               <div>
-                <dt className="text-sm text-gray-500">Type</dt>
-                <dd className="text-sm font-medium">{requirement.type}</dd>
-              </div>
-              <div>
-                <dt className="text-sm text-gray-500">Property Type</dt>
-                <dd className="text-sm font-medium">{requirement.propertyType}</dd>
-              </div>
-              <div>
-                <dt className="text-sm text-gray-500">Budget Range</dt>
-                <dd className="text-sm font-medium">
-                  {formatCurrency(requirement.budgetMin)} - {formatCurrency(requirement.budgetMax)}
+                <dt className="text-sm font-medium text-gray-500">Preferred Move-in Date</dt>
+                <dd className="mt-1 text-sm text-gray-900">
+                  {formatDate(requirement.rentalPreferences.preferredMoveInDate)}
                 </dd>
               </div>
-              {requirement.bedrooms && (
-                <div>
-                  <dt className="text-sm text-gray-500">Bedrooms</dt>
-                  <dd className="text-sm font-medium">{requirement.bedrooms}</dd>
-                </div>
-              )}
-              {requirement.bathrooms && (
-                <div>
-                  <dt className="text-sm text-gray-500">Bathrooms</dt>
-                  <dd className="text-sm font-medium">{requirement.bathrooms}</dd>
-                </div>
-              )}
-              {requirement.preferredLocations.length > 0 && (
-                <div className="col-span-2">
-                  <dt className="text-sm text-gray-500">Preferred Locations</dt>
-                  <dd className="text-sm font-medium">
-                    {requirement.preferredLocations.join(', ')}
-                  </dd>
-                </div>
-              )}
-            </dl>
-          </div>
-
-          {/* Type-specific Preferences */}
-          {requirement.type === 'RENTAL' && requirement.rentalPreferences && (
-            <div className="bg-white shadow rounded-lg p-6">
-              <h2 className="text-lg font-semibold mb-4">Rental Preferences</h2>
-              <dl className="grid grid-cols-2 gap-4">
-                <div>
-                  <dt className="text-sm text-gray-500">Lease Term</dt>
-                  <dd className="text-sm font-medium">{requirement.rentalPreferences.leaseTerm}</dd>
-                </div>
-                <div>
-                  <dt className="text-sm text-gray-500">Features</dt>
-                  <dd className="text-sm font-medium">
-                    {requirement.rentalPreferences.furnished && 'Furnished • '}
-                    {requirement.rentalPreferences.petsAllowed && 'Pets Allowed'}
-                  </dd>
-                </div>
-                {requirement.rentalPreferences.preferredMoveInDate && (
-                  <div>
-                    <dt className="text-sm text-gray-500">Preferred Move-in Date</dt>
-                    <dd className="text-sm font-medium">
-                      {formatDate(requirement.rentalPreferences.preferredMoveInDate)}
-                    </dd>
-                  </div>
-                )}
-              </dl>
-            </div>
-          )}
-
-          {requirement.type === 'PURCHASE' && requirement.purchasePreferences && (
-            <div className="bg-white shadow rounded-lg p-6">
-              <h2 className="text-lg font-semibold mb-4">Purchase Preferences</h2>
-              <dl className="grid grid-cols-2 gap-4">
-                {requirement.purchasePreferences.propertyAge && (
-                  <div>
-                    <dt className="text-sm text-gray-500">Property Age</dt>
-                    <dd className="text-sm font-medium">{requirement.purchasePreferences.propertyAge}</dd>
-                  </div>
-                )}
-                {requirement.purchasePreferences.preferredStyle && (
-                  <div>
-                    <dt className="text-sm text-gray-500">Preferred Style</dt>
-                    <dd className="text-sm font-medium">{requirement.purchasePreferences.preferredStyle}</dd>
-                  </div>
-                )}
-                <div>
-                  <dt className="text-sm text-gray-500">Features</dt>
-                  <dd className="text-sm font-medium">
-                    {requirement.purchasePreferences.basement && 'Basement • '}
-                    {requirement.purchasePreferences.garage && 'Garage'}
-                  </dd>
-                </div>
-              </dl>
-            </div>
-          )}
-
-          {/* Gathered Properties */}
-          <div className="bg-white shadow rounded-lg p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">Gathered Properties</h2>
-              <Button
-                onClick={() => router.push(`/clients/requirements/${requirement.id}/gather`)}
-                variant="secondary"
-              >
-                Gather Properties
-              </Button>
-            </div>
-            {requirement.gatheredProperties.length > 0 ? (
-              <div className="space-y-4">
-                {requirement.gatheredProperties.map((gathered) => (
-                  <div key={gathered.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <h3 className="font-medium">{gathered.property.title}</h3>
-                      <p className="text-sm text-gray-500">{gathered.property.address}</p>
-                      <p className="text-sm font-medium">{formatCurrency(gathered.property.price)}</p>
-                    </div>
-                    <span className="px-2 py-1 text-sm rounded-full bg-blue-100 text-blue-800">
-                      {gathered.status}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-center text-gray-500 py-4">
-                No properties gathered yet
-              </p>
             )}
-          </div>
+          </dl>
         </div>
+      )}
 
-        {/* Interactions Timeline */}
-        <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-semibold mb-4">Interactions</h2>
-          {requirement.interactions?.length > 0 ? (
+      {requirement.type === 'PURCHASE' && requirement.purchasePreferences && (
+        <div className="bg-white shadow rounded-lg p-6 mb-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Purchase Preferences</h3>
+          <dl className="grid grid-cols-2 gap-4">
+            {requirement.purchasePreferences.propertyAge && (
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Property Age</dt>
+                <dd className="mt-1 text-sm text-gray-900">{requirement.purchasePreferences.propertyAge}</dd>
+              </div>
+            )}
+            {requirement.purchasePreferences.preferredStyle && (
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Preferred Style</dt>
+                <dd className="mt-1 text-sm text-gray-900">{requirement.purchasePreferences.preferredStyle}</dd>
+              </div>
+            )}
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Features</dt>
+              <dd className="mt-1 text-sm text-gray-900">
+                {requirement.purchasePreferences.basement && 'Basement • '}
+                {requirement.purchasePreferences.garage && 'Garage'}
+              </dd>
+            </div>
+            {requirement.purchasePreferences.lotSize && (
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Minimum Lot Size</dt>
+                <dd className="mt-1 text-sm text-gray-900">{requirement.purchasePreferences.lotSize} sqft</dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      )}
+
+      {/* Interactions Section */}
+      <div className="bg-white shadow rounded-lg overflow-hidden mb-6">
+        <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
+          <h3 className="text-lg font-medium text-gray-900">Interactions</h3>
+          <Button
+            onClick={() => setShowAddInteractionModal(true)}
+            variant="primary"
+          >
+            Add Interaction
+          </Button>
+        </div>
+        <div className="px-4 py-5 sm:p-6 max-h-[500px] overflow-y-auto">
+          {requirement.interactions.length > 0 ? (
             <div className="flow-root">
               <ul className="-mb-8">
                 {requirement.interactions.map((interaction, idx) => (
@@ -274,11 +315,11 @@ export default function RequirementDetailPage() {
                         </div>
                         <div className="flex min-w-0 flex-1 justify-between space-x-4 pt-1.5">
                           <div>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-gray-600">
                               {interaction.description}
                             </p>
                             {interaction.notes && (
-                              <p className="mt-1 text-sm text-gray-600">
+                              <p className="mt-1 text-sm text-gray-500">
                                 {interaction.notes}
                               </p>
                             )}
@@ -300,6 +341,84 @@ export default function RequirementDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title="Delete Requirement"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-500">
+            Are you sure you want to delete this requirement? This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-3">
+            <Button
+              onClick={() => setShowDeleteModal(false)}
+              variant="secondary"
+              disabled={isLoading('deleteRequirement')}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDelete}
+              variant="danger"
+              isLoading={isLoading('deleteRequirement')}
+            >
+              Delete
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="Edit Requirement"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Name</label>
+            <input
+              type="text"
+              value={editedRequirement?.name || ''}
+              onChange={(e) => setEditedRequirement(prev => ({ ...prev!, name: e.target.value }))}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Status</label>
+            <select
+              value={editedRequirement?.status || ''}
+              onChange={(e) => setEditedRequirement(prev => ({ ...prev!, status: e.target.value }))}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            >
+              <option value="Active">Active</option>
+              <option value="On Hold">On Hold</option>
+              <option value="Completed">Completed</option>
+            </select>
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <Button
+              onClick={() => setShowEditModal(false)}
+              variant="secondary"
+              disabled={isLoading('editRequirement')}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleEdit}
+              variant="primary"
+              isLoading={isLoading('editRequirement')}
+            >
+              Save Changes
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Add Interaction Modal */}
       {showAddInteractionModal && (

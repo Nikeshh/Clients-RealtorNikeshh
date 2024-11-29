@@ -507,46 +507,26 @@ export default function ClientPage() {
           {client?.requirements && client.requirements.length > 0 ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {client.requirements.map((requirement) => (
-                <div
-                  key={requirement.id}
-                  className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors"
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <Link 
-                      href={`/clients/requirements/${requirement.id}`}
-                      className="text-lg font-medium text-gray-900 hover:text-blue-600"
-                    >
+                <div key={requirement.id} className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors">
+                  <Link 
+                    href={`/clients/requirements/${requirement.id}`}
+                    className="block"
+                  >
+                    <h3 className="text-lg font-medium text-gray-900 hover:text-blue-600">
                       {requirement.name}
-                    </Link>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          setEditingRequirement(requirement);
-                          setShowEditRequirementModal(true);
-                        }}
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteRequirement(requirement)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-500 mb-2">
-                    {requirement.type} - {requirement.propertyType}
-                  </p>
-                  <p className="text-sm text-gray-700">
-                    Budget: {formatCurrency(requirement.budgetMin)} - {formatCurrency(requirement.budgetMax)}
-                  </p>
-                  {requirement.preferredLocations.length > 0 && (
-                    <p className="text-sm text-gray-700 mt-2">
-                      Locations: {requirement.preferredLocations.join(', ')}
+                    </h3>
+                    <p className="text-sm text-gray-500 mb-2">
+                      {requirement.type} - {requirement.propertyType}
                     </p>
-                  )}
+                    <p className="text-sm text-gray-700">
+                      Budget: {formatCurrency(requirement.budgetMin)} - {formatCurrency(requirement.budgetMax)}
+                    </p>
+                    {requirement.preferredLocations.length > 0 && (
+                      <p className="text-sm text-gray-700 mt-2">
+                        Locations: {requirement.preferredLocations.join(', ')}
+                      </p>
+                    )}
+                  </Link>
                 </div>
               ))}
             </div>
@@ -558,15 +538,15 @@ export default function ClientPage() {
         </div>
       </div>
 
-      {/* Notes and Interactions Section */}
+      {/* Interactions Section */}
       <div className="bg-white shadow rounded-lg overflow-hidden mb-6">
         <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
-          <h3 className="text-lg font-medium text-gray-900">Notes & Interactions</h3>
+          <h3 className="text-lg font-medium text-gray-900">Interactions</h3>
           <Button
             onClick={() => setShowAddInteractionModal(true)}
             variant="primary"
           >
-            Add Note
+            Add Interaction
           </Button>
         </div>
         <div className="px-4 py-5 sm:p-6 max-h-[500px] overflow-y-auto">
