@@ -49,6 +49,17 @@ interface Requirement {
     description: string;
     notes?: string;
   }>;
+  gatheredProperties: Array<{
+    id: string;
+    property: {
+      id: string;
+      title: string;
+      address: string;
+      price: number;
+    };
+    status: string;
+    notes?: string;
+  }>;
 }
 
 export default function RequirementPage() {
@@ -133,6 +144,56 @@ export default function RequirementPage() {
 
   const handleInteractionAdded = () => {
     loadRequirement();
+  };
+
+  const handleGatheredPropertyStatusChange = async (propertyId: string, status: string) => {
+    setLoading(`updateStatus-${propertyId}`, true);
+    try {
+      const response = await fetch(`/api/clients/requirements/${params.id}/gather/${propertyId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update status');
+
+      addToast('Status updated successfully', 'success');
+      loadRequirement(); // Reload the requirement data
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to update status', 'error');
+    } finally {
+      setLoading(`updateStatus-${propertyId}`, false);
+    }
+  };
+
+  const handleDeleteGatheredProperty = async (gatheredProperty: any) => {
+    if (!confirm('Are you sure you want to remove this property?')) return;
+
+    setLoading(`deleteGathered-${gatheredProperty.id}`, true);
+    try {
+      console.log('Deleting gathered property:', gatheredProperty);
+
+      const response = await fetch(`/api/clients/requirements/${params.id}/gather/${gatheredProperty.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('Delete error:', error);
+        throw new Error('Failed to remove property');
+      }
+
+      addToast('Property removed successfully', 'success');
+      loadRequirement(); // Reload the requirement data
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to remove property', 'error');
+    } finally {
+      setLoading(`deleteGathered-${gatheredProperty.id}`, false);
+    }
   };
 
   if (isLoading('loadRequirement')) {
@@ -296,7 +357,66 @@ export default function RequirementPage() {
                 <Button variant="primary">Gather Properties</Button>
               </Link>
             </div>
-            {/* ... gathered properties content ... */}
+
+            {requirement.gatheredProperties.length > 0 ? (
+              <div className="space-y-4">
+                {requirement.gatheredProperties.map((gathered) => (
+                  <div 
+                    key={gathered.id} 
+                    className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-medium text-gray-900">{gathered.property.title}</h3>
+                        <p className="text-sm text-gray-500">{gathered.property.address}</p>
+                        <p className="text-sm font-medium text-blue-600 mt-1">
+                          {formatCurrency(gathered.property.price)}
+                        </p>
+                        {gathered.notes && (
+                          <p className="text-sm text-gray-600 mt-2 italic">
+                            Notes: {gathered.notes}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={gathered.status}
+                          onChange={(e) => handleGatheredPropertyStatusChange(gathered.property.id, e.target.value)}
+                          className="text-sm rounded-md border-gray-300"
+                        >
+                          <option value="Pending">Pending</option>
+                          <option value="Interested">Interested</option>
+                          <option value="Not Interested">Not Interested</option>
+                          <option value="Viewed">Viewed</option>
+                        </select>
+                        <Link 
+                          href={`/properties/${gathered.property.id}`}
+                          className="text-blue-600 hover:text-blue-800"
+                          target="_blank"
+                        >
+                          View
+                        </Link>
+                        <button
+                          onClick={() => handleDeleteGatheredProperty(gathered)}
+                          disabled={isLoading(`deleteGathered-${gathered.id}`)}
+                          className="text-red-600 hover:text-red-800 disabled:opacity-50"
+                        >
+                          {isLoading(`deleteGathered-${gathered.id}`) ? (
+                            <div className="h-5 w-5 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
+                          ) : (
+                            'Remove'
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-gray-500 py-4">
+                No properties gathered yet
+              </p>
+            )}
           </div>
         </div>
 
