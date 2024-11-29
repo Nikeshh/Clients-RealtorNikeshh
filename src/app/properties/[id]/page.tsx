@@ -6,10 +6,11 @@ import { useToast } from '@/components/ui/toast-context';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Button from '@/components/Button';
 import { useLoadingStates } from '@/hooks/useLoadingStates';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/utils';
 import Modal from '@/components/ui/Modal';
 import Link from 'next/link';
 import { Upload } from 'lucide-react';
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Property {
   id: string;
@@ -69,6 +70,8 @@ export default function PropertyPage() {
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editedProperty, setEditedProperty] = useState<Property | null>(null);
+  const [selectedClients, setSelectedClients] = useState<string[]>([]);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   useEffect(() => {
     loadProperty();
@@ -76,11 +79,16 @@ export default function PropertyPage() {
 
   useEffect(() => {
     if (clientSearchTerm) {
-      searchClients();
-    } else {
-      setSearchResults([]);
+      const filtered = searchResults.filter(
+        client => 
+          client.name.toLowerCase().includes(clientSearchTerm.toLowerCase()) ||
+          client.email.toLowerCase().includes(clientSearchTerm.toLowerCase())
+      );
+      setSearchResults(filtered);
+    } else if (isSearchFocused) {
+      loadClients();
     }
-  }, [clientSearchTerm]);
+  }, [clientSearchTerm, isSearchFocused]);
 
   const loadProperty = async () => {
     setLoading('loadProperty', true);
@@ -99,43 +107,45 @@ export default function PropertyPage() {
     }
   };
 
-  const searchClients = async () => {
+  const loadClients = async () => {
     try {
-      const response = await fetch(`/api/clients/search?q=${encodeURIComponent(clientSearchTerm)}`);
-      if (!response.ok) throw new Error('Failed to search clients');
+      const response = await fetch('/api/clients');
+      if (!response.ok) throw new Error('Failed to fetch clients');
       const data = await response.json();
       setSearchResults(data);
     } catch (error) {
-      console.error('Error searching clients:', error);
+      console.error('Error loading clients:', error);
+      addToast('Failed to load clients', 'error');
     }
   };
 
-  const handleShare = async (clientId: string) => {
+  const handleShare = async () => {
+    if (selectedClients.length === 0) {
+      addToast('Please select at least one client', 'error');
+      return;
+    }
+
     setLoading('shareProperty', true);
     try {
-      const shareResponse = await fetch('/api/properties/share', {
+      const response = await fetch('/api/properties/share', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           propertyId: property?.id,
-          clientId,
+          clientIds: selectedClients,
         }),
       });
 
-      if (!shareResponse.ok) {
-        const error = await shareResponse.json();
-        throw new Error(error.error || 'Failed to share property');
-      }
+      if (!response.ok) throw new Error('Failed to share property');
 
       addToast('Property shared successfully', 'success');
       loadProperty(); // Reload to update shared with list
-      
-      // Close the modal and reset states
       setShowShareModal(false);
       setClientSearchTerm('');
       setSearchResults([]);
+      setSelectedClients([]);
     } catch (error) {
       console.error('Error:', error);
       addToast('Failed to share property', 'error');
@@ -487,84 +497,107 @@ export default function PropertyPage() {
           setShowShareModal(false);
           setClientSearchTerm('');
           setSearchResults([]);
+          setSelectedClients([]);
+          setIsSearchFocused(false);
         }}
         title="Share Property"
       >
         <div className="space-y-6">
           {/* Property Preview */}
           <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-medium text-gray-900">{property.title}</h4>
-            <p className="text-sm text-gray-500">{property.address}</p>
-            <p className="text-sm font-medium text-blue-600 mt-1">
-              {formatCurrency(property.price)}
-              {property.listingType === 'RENTAL' && <span className="text-sm font-normal">/month</span>}
-            </p>
+            <div className="flex items-center gap-3">
+              {property.images[0] && (
+                <img
+                  src={property.images[0]}
+                  alt={property.title}
+                  className="h-12 w-12 object-cover rounded"
+                />
+              )}
+              <div>
+                <h4 className="font-medium text-gray-900">{property.title}</h4>
+                <p className="text-sm text-gray-500">{property.address}</p>
+                <p className="text-sm font-medium text-blue-600 mt-1">
+                  {formatCurrency(property.price)}
+                  {property.listingType === 'RENTAL' && <span className="text-sm font-normal">/month</span>}
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Client Search */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Search Client
+              Search Clients
             </label>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Type client name or email..."
-                value={clientSearchTerm}
-                onChange={(e) => setClientSearchTerm(e.target.value)}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-              {searchResults.length > 0 && (
-                <div className="absolute z-50 w-full mt-1 bg-white rounded-md shadow-lg max-h-60 overflow-y-auto border border-gray-200">
-                  {searchResults.map((client) => (
-                    <button
-                      key={client.id}
-                      onClick={() => handleShare(client.id)}
-                      disabled={isLoading('shareProperty')}
-                      className="w-full px-4 py-3 text-left hover:bg-gray-50 disabled:opacity-50 border-b last:border-b-0 transition-colors"
-                    >
-                      <div className="font-medium text-gray-900">{client.name}</div>
-                      <div className="text-sm text-gray-500">{client.email}</div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <input
+              type="text"
+              value={clientSearchTerm}
+              onChange={(e) => setClientSearchTerm(e.target.value)}
+              onFocus={() => {
+                setIsSearchFocused(true);
+                if (!searchResults.length) {
+                  loadClients();
+                }
+              }}
+              placeholder="Search by name or email..."
+              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            />
           </div>
 
-          {/* Shared With List */}
-          {property.sharedWith?.length > 0 && (
-            <div>
-              <h4 className="text-sm font-medium text-gray-900 mb-2">Already shared with:</h4>
-              <div className="space-y-2 max-h-40 overflow-y-auto bg-gray-50 rounded-lg p-3">
-                {property.sharedWith.map((share) => (
-                  <div key={share.id} className="flex justify-between items-center text-sm p-2 hover:bg-gray-100 rounded-md">
-                    <div>
-                      <div className="font-medium text-gray-900">{share.client.name}</div>
-                      <div className="text-gray-500">{share.client.email}</div>
-                    </div>
-                    <div className="text-gray-500 text-xs">
-                      {new Date(share.sharedDate).toLocaleDateString()}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-        
-        {/* Add a close button at the bottom */}
-        <div className="mt-6 flex justify-end">
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setShowShareModal(false);
-              setClientSearchTerm('');
-              setSearchResults([]);
-            }}
-          >
-            Close
-          </Button>
+          {/* Client List */}
+          <div className="border rounded-md max-h-60 overflow-y-auto">
+            {isSearchFocused && searchResults.map((client) => (
+              <label
+                key={`client-${client.id}`}
+                className="flex items-center gap-2 p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
+              >
+                <Checkbox
+                  checked={selectedClients.includes(client.id)}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setSelectedClients([...selectedClients, client.id]);
+                    } else {
+                      setSelectedClients(selectedClients.filter(id => id !== client.id));
+                    }
+                  }}
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-900">{client.name}</p>
+                  <p className="text-sm text-gray-500">{client.email}</p>
+                </div>
+              </label>
+            ))}
+            {isSearchFocused && searchResults.length === 0 && (
+              <p className="text-center py-4 text-gray-500">
+                No clients found matching your search
+              </p>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-3">
+            <Button
+              onClick={() => {
+                setShowShareModal(false);
+                setClientSearchTerm('');
+                setSearchResults([]);
+                setSelectedClients([]);
+                setIsSearchFocused(false);
+              }}
+              variant="secondary"
+              disabled={isLoading('shareProperty')}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleShare}
+              variant="primary"
+              isLoading={isLoading('shareProperty')}
+              disabled={selectedClients.length === 0}
+            >
+              Share with {selectedClients.length} client{selectedClients.length !== 1 ? 's' : ''}
+            </Button>
+          </div>
         </div>
       </Modal>
 

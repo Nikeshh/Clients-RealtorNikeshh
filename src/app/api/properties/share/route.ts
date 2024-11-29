@@ -3,58 +3,151 @@ import { withAuth } from '@/lib/api-middleware';
 import prisma from '@/lib/prisma';
 import { sendEmail } from '../../email/route';
 
+interface SharedPropertyWithRelations {
+  id: string;
+  propertyId: string;
+  clientId: string;
+  status: string;
+  sharedDate: Date;
+  client: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  property: {
+    id: string;
+    title: string;
+    // Add other property fields you need
+  };
+}
+
 export const POST = withAuth(async (request: NextRequest) => {
   try {
-    const { propertyId, clientId } = await request.json();
+    const { propertyId, clientIds } = await request.json();
 
-    if (!propertyId || !clientId) {
+    // Validate input
+    if (!propertyId || !clientIds || !Array.isArray(clientIds)) {
       return NextResponse.json(
-        { error: 'Property ID and Client ID are required' },
+        { error: 'Property ID and Client IDs array are required' },
         { status: 400 }
       );
     }
 
-    // Get client and property details
-    const [client, property] = await Promise.all([
-      prisma.client.findUnique({ where: { id: clientId } }),
-      prisma.property.findUnique({ where: { id: propertyId } }),
-    ]);
+    // Get property details
+    const property = await prisma.property.findUnique({
+      where: { id: propertyId }
+    });
 
-    if (!client || !property) {
+    if (!property) {
       return NextResponse.json(
-        { error: 'Client or Property not found' },
+        { error: 'Property not found' },
         { status: 404 }
       );
     }
 
-    // Create share record
-    const sharedProperty = await prisma.sharedProperty.create({
-      data: {
-        propertyId,
-        clientId,
-        status: 'Shared',
-        sharedDate: new Date(),
-      },
-      include: {
-        client: true,
-        property: true,
-      },
+    // Group shares by client to send one email per client with all properties
+    const clientShares = new Map<string, { client: any; properties: any[] }>();
+
+    // Create share records for each client
+    const shares: SharedPropertyWithRelations[] = await Promise.all(
+      clientIds.map(async (clientId) => {
+        // Check if client exists
+        const client = await prisma.client.findUnique({
+          where: { id: clientId }
+        });
+
+        if (!client) {
+          throw new Error(`Client with ID ${clientId} not found`);
+        }
+
+        // Check if already shared
+        const existingShare = await prisma.sharedProperty.findFirst({
+          where: {
+            propertyId,
+            clientId: clientId
+          },
+          include: {
+            client: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            },
+            property: true
+          }
+        });
+
+        if (existingShare) {
+          // Add to client's properties group
+          if (!clientShares.has(clientId)) {
+            clientShares.set(clientId, { client, properties: [] });
+          }
+          clientShares.get(clientId)?.properties.push(property);
+          return existingShare;
+        }
+
+        // Create new share record
+        const newShare = await prisma.sharedProperty.create({
+          data: {
+            propertyId,
+            clientId: clientId,
+            status: 'Shared',
+            sharedDate: new Date(),
+          },
+          include: {
+            client: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            },
+            property: true
+          }
+        });
+
+        // Add to client's properties group
+        if (!clientShares.has(clientId)) {
+          clientShares.set(clientId, { client, properties: [] });
+        }
+        clientShares.get(clientId)?.properties.push(property);
+
+        return newShare;
+      })
+    );
+
+    // Send one email per client with all their shared properties
+    await Promise.all(
+      Array.from(clientShares.values()).map(async ({ client, properties }) => {
+        if (client.email) {
+          await sendEmail(
+            client.email,
+            client.name,
+            properties // Send all properties for this client in one email
+          );
+        }
+      })
+    );
+
+    // Create interaction records
+    await Promise.all(
+      Array.from(clientShares.entries()).map(([clientId, { properties }]) =>
+        prisma.interaction.create({
+          data: {
+            clientId,
+            type: 'Property Shared',
+            description: `Shared ${properties.length} properties: ${properties.map(p => p.title).join(', ')}`,
+            date: new Date(),
+          },
+        })
+      )
+    );
+
+    return NextResponse.json({
+      success: true,
+      shares
     });
-
-    // Create an interaction record
-    await prisma.interaction.create({
-      data: {
-        clientId,
-        type: 'Property Shared',
-        description: `Shared property: ${property.title}`,
-        date: new Date(),
-      },
-    });
-
-    // Send email using the email API endpoint with absolute URL
-    await sendEmail(client.email, client.name, [property]);
-
-    return NextResponse.json(sharedProperty);
   } catch (error) {
     console.error('Error sharing property:', error);
     return NextResponse.json(
@@ -64,13 +157,16 @@ export const POST = withAuth(async (request: NextRequest) => {
   }
 });
 
-export async function GET(request: Request) {
+export const GET = withAuth(async (request: NextRequest) => {
   try {
     const { searchParams } = new URL(request.url);
     const clientId = searchParams.get('clientId');
 
     if (!clientId) {
-      return NextResponse.json({ error: 'Client ID is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Client ID is required' },
+        { status: 400 }
+      );
     }
 
     const sharedProperties = await prisma.sharedProperty.findMany({
@@ -103,4 +199,4 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
-} 
+}); 

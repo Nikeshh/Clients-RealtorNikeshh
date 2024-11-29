@@ -7,6 +7,9 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import Button from '@/components/Button';
 import { useLoadingStates } from '@/hooks/useLoadingStates';
 import { formatCurrency } from '@/lib/utils';
+import SharePropertiesModal from '@/components/SharePropertiesModal';
+import { Checkbox } from "@/components/ui/checkbox";
+import ImportPropertyModal from '@/components/ImportPropertyModal';
 
 interface Property {
   id: string;
@@ -38,6 +41,7 @@ interface Property {
   parkingSpaces?: number | null;
   propertyStyle?: string | null;
   createdAt: string;
+  selected?: boolean;
 }
 
 export default function PropertiesPage() {
@@ -65,6 +69,9 @@ export default function PropertiesPage() {
     hasBasement: false,
     hasGarage: false,
   });
+  const [selectedProperties, setSelectedProperties] = useState<Property[]>([]);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   useEffect(() => {
     loadProperties();
@@ -165,6 +172,22 @@ export default function PropertiesPage() {
     }
   });
 
+  const handleSelectProperty = (property: Property) => {
+    if (selectedProperties.find(p => p.id === property.id)) {
+      setSelectedProperties(selectedProperties.filter(p => p.id !== property.id));
+    } else {
+      setSelectedProperties([...selectedProperties, property]);
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (selectedProperties.length === properties.length) {
+      setSelectedProperties([]);
+    } else {
+      setSelectedProperties([...properties]);
+    }
+  };
+
   if (isLoading('loadProperties')) {
     return <LoadingSpinner size="large" />;
   }
@@ -178,7 +201,13 @@ export default function PropertiesPage() {
             Properties
           </h2>
         </div>
-        <div className="mt-4 flex md:ml-4 md:mt-0">
+        <div className="mt-4 flex md:ml-4 md:mt-0 gap-2">
+          <Button
+            onClick={() => setShowImportModal(true)}
+            variant="secondary"
+          >
+            Import Property
+          </Button>
           <Link href="/properties/new">
             <Button variant="primary">Add New Property</Button>
           </Link>
@@ -425,91 +454,126 @@ export default function PropertiesPage() {
       </div>
 
       {/* Properties Display */}
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-4">
+          <Checkbox
+            checked={selectedProperties.length === properties.length}
+            onCheckedChange={handleSelectAll}
+            id="select-all"
+          />
+          <label htmlFor="select-all" className="text-sm text-gray-600">
+            Select All ({selectedProperties.length} selected)
+          </label>
+        </div>
+        {selectedProperties.length > 0 && (
+          <Button
+            onClick={() => setShowShareModal(true)}
+            variant="secondary"
+          >
+            Share Selected ({selectedProperties.length})
+          </Button>
+        )}
+      </div>
+
       {viewMode === 'grid' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {sortedProperties.map((property) => (
-            <Link
-              key={property.id}
-              href={`/properties/${property.id}`}
-              className="block bg-white shadow rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
-            >
-              {property.images[0] && (
-                <div className="aspect-w-16 aspect-h-9">
-                  <img
-                    src={property.images[0]}
-                    alt={property.title}
-                    className="object-cover w-full h-48"
-                  />
-                </div>
-              )}
-              <div className="p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">{property.title}</h3>
-                    <p className="text-sm text-gray-500">{property.address}</p>
-                  </div>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    {property.status}
-                  </span>
-                </div>
-                <p className="mt-2 text-lg font-bold text-blue-600">
-                  {formatCurrency(property.price)}
-                  {property.listingType === 'RENTAL' && <span className="text-sm font-normal">/month</span>}
-                </p>
-                <div className="mt-2 flex items-center gap-4 text-sm text-gray-500">
-                  {property.bedrooms && <span>{property.bedrooms} beds</span>}
-                  {property.bathrooms && <span>{property.bathrooms} baths</span>}
-                  <span>{property.area} sqft</span>
-                </div>
+            <div key={property.id} className="relative">
+              <div className="absolute top-2 left-2 z-10">
+                <Checkbox
+                  checked={selectedProperties.some(p => p.id === property.id)}
+                  onCheckedChange={() => handleSelectProperty(property)}
+                />
               </div>
-            </Link>
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {sortedProperties.map((property) => (
-            <Link
-              key={property.id}
-              href={`/properties/${property.id}`}
-              className="block bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition-shadow"
-            >
-              <div className="flex">
+              <Link
+                href={`/properties/${property.id}`}
+                className="block bg-white shadow rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
+              >
                 {property.images[0] && (
-                  <div className="flex-shrink-0 w-48">
+                  <div className="aspect-w-16 aspect-h-9">
                     <img
                       src={property.images[0]}
                       alt={property.title}
-                      className="h-full w-full object-cover"
+                      className="object-cover w-full h-48"
                     />
                   </div>
                 )}
-                <div className="flex-1 p-6">
+                <div className="p-4">
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900">{property.title}</h3>
                       <p className="text-sm text-gray-500">{property.address}</p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-blue-600">
-                        {formatCurrency(property.price)}
-                        {property.listingType === 'RENTAL' && <span className="text-sm font-normal">/month</span>}
-                      </p>
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {property.status}
-                      </span>
-                    </div>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      {property.status}
+                    </span>
                   </div>
-                  <div className="mt-4 flex items-center gap-4 text-sm text-gray-500">
+                  <p className="mt-2 text-lg font-bold text-blue-600">
+                    {formatCurrency(property.price)}
+                    {property.listingType === 'RENTAL' && <span className="text-sm font-normal">/month</span>}
+                  </p>
+                  <div className="mt-2 flex items-center gap-4 text-sm text-gray-500">
                     {property.bedrooms && <span>{property.bedrooms} beds</span>}
                     {property.bathrooms && <span>{property.bathrooms} baths</span>}
                     <span>{property.area} sqft</span>
                   </div>
-                  {property.description && (
-                    <p className="mt-2 text-sm text-gray-600 line-clamp-2">{property.description}</p>
-                  )}
                 </div>
+              </Link>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {sortedProperties.map((property) => (
+            <div key={property.id} className="relative">
+              <div className="absolute top-2 left-2 z-10">
+                <Checkbox
+                  checked={selectedProperties.some(p => p.id === property.id)}
+                  onCheckedChange={() => handleSelectProperty(property)}
+                />
               </div>
-            </Link>
+              <Link
+                href={`/properties/${property.id}`}
+                className="block bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition-shadow"
+              >
+                <div className="flex">
+                  {property.images[0] && (
+                    <div className="flex-shrink-0 w-48">
+                      <img
+                        src={property.images[0]}
+                        alt={property.title}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <div className="flex-1 p-6">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">{property.title}</h3>
+                        <p className="text-sm text-gray-500">{property.address}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-blue-600">
+                          {formatCurrency(property.price)}
+                          {property.listingType === 'RENTAL' && <span className="text-sm font-normal">/month</span>}
+                        </p>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {property.status}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-4 flex items-center gap-4 text-sm text-gray-500">
+                      {property.bedrooms && <span>{property.bedrooms} beds</span>}
+                      {property.bathrooms && <span>{property.bathrooms} baths</span>}
+                      <span>{property.area} sqft</span>
+                    </div>
+                    {property.description && (
+                      <p className="mt-2 text-sm text-gray-600 line-clamp-2">{property.description}</p>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            </div>
           ))}
         </div>
       )}
@@ -519,6 +583,25 @@ export default function PropertiesPage() {
           <p className="text-gray-500">No properties found matching your criteria.</p>
         </div>
       )}
+
+      <SharePropertiesModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        properties={selectedProperties}
+        onShare={() => {
+          setShowShareModal(false);
+          setSelectedProperties([]);
+          addToast('Properties shared successfully', 'success');
+        }}
+      />
+
+      <ImportPropertyModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImport={() => {
+          loadProperties();
+        }}
+      />
     </div>
   );
 } 
