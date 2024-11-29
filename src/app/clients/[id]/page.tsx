@@ -528,40 +528,42 @@ export default function ClientPage() {
               </Button>
             </div>
 
-            {/* Requirements List */}
-            <div className="space-y-4">
-              {client?.requirements.map((requirement) => (
-                <div
-                  key={requirement.id}
-                  className="border rounded-lg p-4 hover:bg-gray-50"
-                >
-                  <Link 
-                    href={`/clients/requirements/${requirement.id}`}
-                    className="block"
+            {/* Requirements List - Now Scrollable */}
+            <div className="max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+              <div className="space-y-4">
+                {client?.requirements.map((requirement) => (
+                  <div
+                    key={requirement.id}
+                    className="border rounded-lg p-4 hover:bg-gray-50"
                   >
-                    <h3 className="text-lg font-medium text-gray-900 hover:text-blue-600">
-                      {requirement.name}
-                    </h3>
-                    <p className="text-sm text-gray-500 mb-2">
-                      {requirement.type} - {requirement.propertyType}
-                    </p>
-                    <p className="text-sm text-gray-700">
-                      Budget: {formatCurrency(requirement.budgetMin)} - {formatCurrency(requirement.budgetMax)}
-                    </p>
-                    {requirement.preferredLocations.length > 0 && (
-                      <p className="text-sm text-gray-700 mt-2">
-                        Locations: {requirement.preferredLocations.join(', ')}
+                    <Link 
+                      href={`/clients/requirements/${requirement.id}`}
+                      className="block"
+                    >
+                      <h3 className="text-lg font-medium text-gray-900 hover:text-blue-600">
+                        {requirement.name}
+                      </h3>
+                      <p className="text-sm text-gray-500 mb-2">
+                        {requirement.type} - {requirement.propertyType}
                       </p>
-                    )}
-                  </Link>
-                </div>
-              ))}
-              
-              {client?.requirements.length === 0 && (
-                <p className="text-center text-gray-500 py-4">
-                  No requirements added yet
-                </p>
-              )}
+                      <p className="text-sm text-gray-700">
+                        Budget: {formatCurrency(requirement.budgetMin)} - {formatCurrency(requirement.budgetMax)}
+                      </p>
+                      {requirement.preferredLocations.length > 0 && (
+                        <p className="text-sm text-gray-700 mt-2">
+                          Locations: {requirement.preferredLocations.join(', ')}
+                        </p>
+                      )}
+                    </Link>
+                  </div>
+                ))}
+                
+                {client?.requirements.length === 0 && (
+                  <p className="text-center text-gray-500 py-4">
+                    No requirements added yet
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 
@@ -682,42 +684,44 @@ export default function ClientPage() {
               </Button>
             </div>
 
-            <div className="space-y-4">
-              {client?.interactions.map((interaction) => (
-                <div
-                  key={interaction.id}
-                  className="border-b pb-4 last:border-b-0 last:pb-0"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mb-1">
-                        {interaction.type}
+            <div className="max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+              <div className="space-y-4">
+                {client?.interactions.map((interaction) => (
+                  <div
+                    key={interaction.id}
+                    className="border-b pb-4 last:border-b-0 last:pb-0"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mb-1">
+                          {interaction.type}
+                        </span>
+                        <p className="text-sm text-gray-900">{interaction.description}</p>
+                        {interaction.notes && (
+                          <p className="mt-1 text-sm text-gray-500">{interaction.notes}</p>
+                        )}
+                        {interaction.requirement && (
+                          <Link 
+                            href={`/clients/requirements/${interaction.requirement.id}`}
+                            className="mt-1 text-sm text-blue-600 hover:text-blue-800"
+                          >
+                            Related to: {interaction.requirement.name}
+                          </Link>
+                        )}
+                      </div>
+                      <span className="text-sm text-gray-500 whitespace-nowrap ml-4">
+                        {formatDate(interaction.date)}
                       </span>
-                      <p className="text-sm text-gray-900">{interaction.description}</p>
-                      {interaction.notes && (
-                        <p className="mt-1 text-sm text-gray-500">{interaction.notes}</p>
-                      )}
-                      {interaction.requirement && (
-                        <Link 
-                          href={`/clients/requirements/${interaction.requirement.id}`}
-                          className="mt-1 text-sm text-blue-600 hover:text-blue-800"
-                        >
-                          Related to: {interaction.requirement.name}
-                        </Link>
-                      )}
                     </div>
-                    <span className="text-sm text-gray-500">
-                      {formatDate(interaction.date)}
-                    </span>
                   </div>
-                </div>
-              ))}
-              
-              {client?.interactions.length === 0 && (
-                <p className="text-center text-gray-500 py-4">
-                  No interactions recorded yet
-                </p>
-              )}
+                ))}
+                
+                {client?.interactions.length === 0 && (
+                  <p className="text-center text-gray-500 py-4">
+                    No interactions recorded yet
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>

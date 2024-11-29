@@ -692,36 +692,38 @@ export default function RequirementPage() {
                 </Button>
               </div>
               
-              <div className="space-y-4">
-                {requirement.interactions?.map((interaction) => (
-                  <div 
-                    key={interaction.id} 
-                    className="border-l-4 border-blue-500 pl-4 py-2"
-                  >
-                    <div className="flex justify-between items-start">
-                      <span className="text-sm font-medium text-gray-900">
-                        {interaction.type}
-                      </span>
-                      <span className="text-sm text-gray-500">
-                        {formatDate(interaction.date)}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {interaction.description}
-                    </p>
-                    {interaction.notes && (
-                      <p className="text-sm text-gray-500 mt-1 italic">
-                        {interaction.notes}
+              <div className="max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                <div className="space-y-4">
+                  {requirement.interactions?.map((interaction) => (
+                    <div 
+                      key={interaction.id} 
+                      className="border-l-4 border-blue-500 pl-4 py-2"
+                    >
+                      <div className="flex justify-between items-start">
+                        <span className="text-sm font-medium text-gray-900">
+                          {interaction.type}
+                        </span>
+                        <span className="text-sm text-gray-500 whitespace-nowrap ml-4">
+                          {formatDate(interaction.date)}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {interaction.description}
                       </p>
-                    )}
-                  </div>
-                ))}
+                      {interaction.notes && (
+                        <p className="text-sm text-gray-500 mt-1 italic">
+                          {interaction.notes}
+                        </p>
+                      )}
+                    </div>
+                  ))}
 
-                {requirement.interactions?.length === 0 && (
-                  <p className="text-center text-gray-500 py-4">
-                    No interactions yet
-                  </p>
-                )}
+                  {requirement.interactions?.length === 0 && (
+                    <p className="text-center text-gray-500 py-4">
+                      No interactions yet
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
