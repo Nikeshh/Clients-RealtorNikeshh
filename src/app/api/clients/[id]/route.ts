@@ -75,6 +75,7 @@ export const PATCH = withAuth(async (request: NextRequest) => {
         ...(data.name && { name: data.name }),
         ...(data.email && { email: data.email }),
         ...(data.phone && { phone: data.phone }),
+        ...(data.notes && { notes: data.notes }),
         ...(typeof data.pinned !== 'undefined' && { pinned: data.pinned }),
       },
       include: {

@@ -66,6 +66,8 @@ interface Client {
     type: string;
     date: string;
     description: string;
+    notes?: string;
+    requirementId?: string;
   }>;
   sharedProperties: Array<{
     id: string;
@@ -167,10 +169,10 @@ export default function ClientPage() {
       setClient(data);
       setEditedClientData({
         name: data.name,
-        email: data.email,
-        phone: data.phone,
-        status: data.status,
-        notes: data.notes,
+        email: data.email || "",
+        phone: data.phone || "",
+        status: data.status || "",
+        notes: data.notes || "",
       });
     } catch (error) {
       console.error("Error:", error);
@@ -189,7 +191,10 @@ export default function ClientPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(editedClientData),
+        body: JSON.stringify({
+          ...editedClientData,
+          notes: editedClientData.notes || '',
+        }),
       });
 
       if (!response.ok) throw new Error('Failed to update client');
@@ -271,31 +276,6 @@ export default function ClientPage() {
       addToast('Failed to update status', 'error');
     } finally {
       setLoading('statusUpdate', false);
-    }
-  };
-
-  const handleAddInteraction = async (data: any) => {
-    setLoading('addInteraction', true);
-    try {
-      const response = await fetch(`/api/clients/${params.id}/interactions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) throw new Error('Failed to add interaction');
-
-      const updatedClient = await response.json();
-      setClient(updatedClient);
-      setShowAddInteractionModal(false);
-      addToast('Interaction added successfully', 'success');
-    } catch (error) {
-      console.error('Error:', error);
-      addToast('Failed to add interaction', 'error');
-    } finally {
-      setLoading('addInteraction', false);
     }
   };
 
@@ -574,28 +554,73 @@ export default function ClientPage() {
         </div>
       </div>
 
-      {/* Recent Interactions */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-lg font-medium text-gray-900">Recent Interactions</h2>
-          <Button variant="outline" onClick={() => setShowAddInteractionModal(true)}>
+      {/* Notes and Interactions Section */}
+      <div className="bg-white shadow rounded-lg overflow-hidden mb-6">
+        <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
+          <h3 className="text-lg font-medium text-gray-900">Interactions</h3>
+          <Button
+            onClick={() => setShowAddInteractionModal(true)}
+            variant="primary"
+          >
             Add Interaction
           </Button>
         </div>
-        <div className="divide-y divide-gray-200">
-          {client?.interactions.map((interaction) => (
-            <div key={interaction.id} className="p-6">
-              <div className="flex justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{interaction.type}</p>
-                  <p className="mt-1 text-sm text-gray-500">{interaction.description}</p>
-                </div>
-                <p className="text-sm text-gray-500">
-                  {formatDate(interaction.date)}
-                </p>
-              </div>
+        <div className="px-4 py-5 sm:p-6 max-h-[500px] overflow-y-auto">
+          {client?.interactions && client.interactions.length > 0 ? (
+            <div className="flow-root">
+              <ul className="-mb-8">
+                {client.interactions.map((interaction, idx) => (
+                  <li key={interaction.id}>
+                    <div className="relative pb-8">
+                      {idx !== client.interactions.length - 1 && (
+                        <span
+                          className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200"
+                          aria-hidden="true"
+                        />
+                      )}
+                      <div className="relative flex space-x-3">
+                        <div>
+                          <span className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center ring-8 ring-white">
+                            <span className="text-white text-sm">
+                              {interaction.type[0]}
+                            </span>
+                          </span>
+                        </div>
+                        <div className="flex min-w-0 flex-1 justify-between space-x-4 pt-1.5">
+                          <div>
+                            <p className="text-sm text-gray-600">
+                              {interaction.description}
+                            </p>
+                            {interaction.notes && (
+                              <p className="mt-1 text-sm text-gray-500">
+                                {interaction.notes}
+                              </p>
+                            )}
+                            {interaction.requirementId && (
+                              <Link 
+                                href={`/clients/requirements/${interaction.requirementId}`}
+                                className="mt-1 text-xs text-blue-600 hover:text-blue-800"
+                                target="_blank"
+                              >
+                                Related to requirement
+                              </Link>
+                            )}
+                          </div>
+                          <div className="whitespace-nowrap text-right text-sm text-gray-500">
+                            {formatDate(interaction.date)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
-          ))}
+          ) : (
+            <p className="text-center text-gray-500 py-4">
+              No interactions recorded yet
+            </p>
+          )}
         </div>
       </div>
 

@@ -30,6 +30,11 @@ export default function AddInteractionModal({
   const { addToast } = useToast();
 
   const handleSubmit = async () => {
+    if (!formData.description.trim()) {
+      addToast('Please enter a description', 'error');
+      return;
+    }
+
     setLoading('addInteraction', true);
     try {
       const response = await fetch(`/api/clients/${clientId}/interactions`, {
@@ -41,6 +46,7 @@ export default function AddInteractionModal({
           ...formData,
           date: new Date(),
           requirementId,
+          notes: formData.notes.trim() || undefined,
         }),
       });
 
