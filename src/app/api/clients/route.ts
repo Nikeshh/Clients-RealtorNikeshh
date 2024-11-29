@@ -74,49 +74,6 @@ export const POST = withAuth(async (req: NextRequest) => {
           phone: data.phone,
           status: data.status || "Active",
           pinned: false,
-          requirements: {
-            create: {
-              name: data.requirements.name || "Initial Requirement",
-              type: data.requirements.type,
-              propertyType: data.requirements.propertyType,
-              budgetMin: parseFloat(data.requirements.budgetMin),
-              budgetMax: parseFloat(data.requirements.budgetMax),
-              bedrooms: data.requirements.bedrooms ? parseInt(data.requirements.bedrooms) : null,
-              bathrooms: data.requirements.bathrooms ? parseInt(data.requirements.bathrooms) : null,
-              preferredLocations: data.requirements.preferredLocations || [],
-              additionalRequirements: data.requirements.additionalRequirements || null,
-              status: "Active",
-              // Create type-specific preferences
-              ...(data.requirements.type === 'RENTAL' ? {
-                rentalPreferences: {
-                  create: {
-                    leaseTerm: data.requirements.rentalPreferences.leaseTerm,
-                    furnished: data.requirements.rentalPreferences.furnished,
-                    petsAllowed: data.requirements.rentalPreferences.petsAllowed,
-                    maxRentalBudget: parseFloat(data.requirements.budgetMax),
-                    preferredMoveInDate: data.requirements.rentalPreferences.preferredMoveInDate 
-                      ? new Date(data.requirements.rentalPreferences.preferredMoveInDate) 
-                      : null,
-                  }
-                }
-              } : {
-                purchasePreferences: {
-                  create: {
-                    propertyAge: data.requirements.purchasePreferences.propertyAge,
-                    preferredStyle: data.requirements.purchasePreferences.preferredStyle,
-                    parking: data.requirements.purchasePreferences.parking 
-                      ? parseInt(data.requirements.purchasePreferences.parking) 
-                      : null,
-                    lotSize: data.requirements.purchasePreferences.lotSize 
-                      ? parseFloat(data.requirements.purchasePreferences.lotSize) 
-                      : null,
-                    basement: data.requirements.purchasePreferences.basement,
-                    garage: data.requirements.purchasePreferences.garage,
-                  }
-                }
-              })
-            }
-          },
           interactions: {
             create: {
               type: 'Created',
@@ -126,12 +83,6 @@ export const POST = withAuth(async (req: NextRequest) => {
           }
         },
         include: {
-          requirements: {
-            include: {
-              rentalPreferences: true,
-              purchasePreferences: true,
-            }
-          },
           interactions: true,
         }
       });
