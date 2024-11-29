@@ -62,6 +62,19 @@ interface Requirement {
     status: string;
     notes?: string;
   }>;
+  checklist?: Array<{
+    id: string;
+    text: string;
+    completed: boolean;
+    createdAt: string;
+  }>;
+}
+
+interface ChecklistItem {
+  id: string;
+  text: string;
+  completed: boolean;
+  createdAt: string;
 }
 
 export default function RequirementPage() {
@@ -76,6 +89,8 @@ export default function RequirementPage() {
   const { setLoading, isLoading } = useLoadingStates();
   const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [newChecklistItem, setNewChecklistItem] = useState('');
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   useEffect(() => {
     loadRequirement();
@@ -94,6 +109,7 @@ export default function RequirementPage() {
       addToast('Failed to load requirement details', 'error');
     } finally {
       setLoading('loadRequirement', false);
+      setInitialLoadComplete(true);
     }
   };
 
@@ -240,12 +256,113 @@ export default function RequirementPage() {
     }
   };
 
-  if (isLoading('loadRequirement')) {
+  const handleAddChecklistItem = async () => {
+    if (!newChecklistItem.trim()) return;
+
+    setLoading('addChecklistItem', true);
+    try {
+      const response = await fetch(`/api/clients/requirements/${params.id}/checklist`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text: newChecklistItem }),
+      });
+
+      if (!response.ok) throw new Error('Failed to add checklist item');
+      const newItem = await response.json();
+
+      // Update the requirement state directly instead of reloading
+      setRequirement(prev => ({
+        ...prev!,
+        checklist: [...(prev?.checklist || []), newItem],
+      }));
+
+      setNewChecklistItem('');
+      addToast('Checklist item added successfully', 'success');
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to add checklist item', 'error');
+    } finally {
+      setLoading('addChecklistItem', false);
+    }
+  };
+
+  const handleToggleChecklistItem = async (itemId: string, completed: boolean) => {
+    setLoading(`toggleChecklist-${itemId}`, true);
+    try {
+      const response = await fetch(`/api/clients/requirements/${params.id}/checklist/${itemId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ completed }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update checklist item');
+      const updatedItem = await response.json();
+
+      // Update the requirement state directly instead of reloading
+      setRequirement(prev => ({
+        ...prev!,
+        checklist: prev?.checklist?.map(item => 
+          item.id === itemId ? { ...item, completed } : item
+        ) ?? [],
+      }));
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to update checklist item', 'error');
+    } finally {
+      setLoading(`toggleChecklist-${itemId}`, false);
+    }
+  };
+
+  const handleDeleteChecklistItem = async (itemId: string) => {
+    if (!confirm('Are you sure you want to delete this checklist item?')) return;
+
+    setLoading(`deleteChecklist-${itemId}`, true);
+    try {
+      const response = await fetch(`/api/clients/requirements/${params.id}/checklist/${itemId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete checklist item');
+
+      // Update the requirement state directly instead of reloading
+      setRequirement(prev => ({
+        ...prev!,
+        checklist: prev?.checklist?.filter(item => item.id !== itemId) ?? [],
+      }));
+
+      addToast('Checklist item deleted successfully', 'success');
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to delete checklist item', 'error');
+    } finally {
+      setLoading(`deleteChecklist-${itemId}`, false);
+    }
+  };
+
+  // Show loading spinner during initial load
+  if (!initialLoadComplete || isLoading('loadRequirement')) {
     return <LoadingSpinner size="large" />;
   }
 
+  // Show error state if requirement is not found after loading
   if (!requirement) {
-    return <div>Requirement not found</div>;
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900">Requirement not found</h2>
+          <p className="mt-2 text-gray-600">The requirement you're looking for doesn't exist or you don't have permission to view it.</p>
+          <div className="mt-6">
+            <Link href="/clients">
+              <Button variant="primary">Back to Clients</Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -482,49 +599,130 @@ export default function RequirementPage() {
           </div>
         </div>
 
-        {/* Right Column - Interactions */}
-        <div className="lg:col-span-1">
+        {/* Right Column - Checklist & Interactions */}
+        <div className="lg:col-span-1 space-y-6">
+          {/* Checklist Section */}
           <div className="bg-white shadow rounded-lg p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Interactions</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Checklist</h2>
+            
+            {/* Add New Item */}
+            <div className="flex gap-2 mb-4">
+              <input
+                type="text"
+                value={newChecklistItem}
+                onChange={(e) => setNewChecklistItem(e.target.value)}
+                placeholder="Add new checklist item..."
+                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                onKeyPress={(e) => e.key === 'Enter' && handleAddChecklistItem()}
+              />
               <Button
-                onClick={() => setShowAddInteractionModal(true)}
+                onClick={handleAddChecklistItem}
                 variant="primary"
+                isLoading={isLoading('addChecklistItem')}
+                disabled={!newChecklistItem.trim()}
+                size="small"
               >
-                Add Interaction
+                Add
               </Button>
             </div>
-            
-            <div className="space-y-4">
-              {requirement.interactions?.map((interaction) => (
-                <div 
-                  key={interaction.id} 
-                  className="border-l-4 border-blue-500 pl-4 py-2"
+
+            {/* Checklist Items */}
+            <div className="space-y-2">
+              {requirement?.checklist?.map((item) => (
+                <div
+                  key={item.id}
+                  className={`flex items-center gap-2 p-2 hover:bg-gray-50 rounded-md group transition-opacity ${
+                    isLoading(`toggleChecklist-${item.id}`) || isLoading(`deleteChecklist-${item.id}`)
+                      ? 'opacity-50'
+                      : ''
+                  }`}
                 >
-                  <div className="flex justify-between items-start">
-                    <span className="text-sm font-medium text-gray-900">
-                      {interaction.type}
-                    </span>
-                    <span className="text-sm text-gray-500">
-                      {formatDate(interaction.date)}
-                    </span>
+                  <div className="relative flex items-center w-5 h-5">
+                    <input
+                      type="checkbox"
+                      checked={item.completed}
+                      onChange={(e) => handleToggleChecklistItem(item.id, e.target.checked)}
+                      className={`rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 ${
+                        isLoading(`toggleChecklist-${item.id}`) ? 'opacity-0' : ''
+                      }`}
+                      disabled={isLoading(`toggleChecklist-${item.id}`)}
+                    />
+                    {isLoading(`toggleChecklist-${item.id}`) && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-indigo-600 border-t-transparent" />
+                      </div>
+                    )}
                   </div>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {interaction.description}
-                  </p>
-                  {interaction.notes && (
-                    <p className="text-sm text-gray-500 mt-1 italic">
-                      {interaction.notes}
-                    </p>
-                  )}
+                  <span className={`flex-1 ${item.completed ? 'line-through text-gray-500' : ''}`}>
+                    {item.text}
+                  </span>
+                  <button
+                    onClick={() => handleDeleteChecklistItem(item.id)}
+                    className={`text-red-600 hover:text-red-800 opacity-0 group-hover:opacity-100 transition-opacity ${
+                      isLoading(`deleteChecklist-${item.id}`) ? 'cursor-not-allowed' : ''
+                    }`}
+                    disabled={isLoading(`deleteChecklist-${item.id}`)}
+                  >
+                    {isLoading(`deleteChecklist-${item.id}`) ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-red-600 border-t-transparent" />
+                    ) : (
+                      'Delete'
+                    )}
+                  </button>
                 </div>
               ))}
-
-              {requirement.interactions?.length === 0 && (
+              {requirement?.checklist?.length === 0 && (
                 <p className="text-center text-gray-500 py-4">
-                  No interactions yet
+                  No checklist items yet
                 </p>
               )}
+            </div>
+          </div>
+
+          {/* Interactions Section */}
+          <div className="lg:col-span-1">
+            <div className="bg-white shadow rounded-lg p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">Interactions</h2>
+                <Button
+                  onClick={() => setShowAddInteractionModal(true)}
+                  variant="primary"
+                >
+                  Add Interaction
+                </Button>
+              </div>
+              
+              <div className="space-y-4">
+                {requirement.interactions?.map((interaction) => (
+                  <div 
+                    key={interaction.id} 
+                    className="border-l-4 border-blue-500 pl-4 py-2"
+                  >
+                    <div className="flex justify-between items-start">
+                      <span className="text-sm font-medium text-gray-900">
+                        {interaction.type}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        {formatDate(interaction.date)}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {interaction.description}
+                    </p>
+                    {interaction.notes && (
+                      <p className="text-sm text-gray-500 mt-1 italic">
+                        {interaction.notes}
+                      </p>
+                    )}
+                  </div>
+                ))}
+
+                {requirement.interactions?.length === 0 && (
+                  <p className="text-center text-gray-500 py-4">
+                    No interactions yet
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>

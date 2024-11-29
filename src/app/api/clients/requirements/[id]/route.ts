@@ -163,9 +163,14 @@ export const GET = withAuth(async (request: NextRequest) => {
             property: true,
           }
         },
-        interactions: {  // Include interactions
+        interactions: {
           orderBy: {
             date: 'desc',
+          },
+        },
+        checklist: {
+          orderBy: {
+            createdAt: 'asc',
           },
         },
       },
