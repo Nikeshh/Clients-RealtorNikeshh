@@ -10,6 +10,7 @@ interface AddInteractionModalProps {
   isOpen: boolean;
   onClose: () => void;
   clientId: string;
+  requirementId?: string;
   onSubmit?: () => void;
 }
 
@@ -17,6 +18,7 @@ export default function AddInteractionModal({
   isOpen,
   onClose,
   clientId,
+  requirementId,
   onSubmit,
 }: AddInteractionModalProps) {
   const [formData, setFormData] = useState({
@@ -38,6 +40,7 @@ export default function AddInteractionModal({
         body: JSON.stringify({
           ...formData,
           date: new Date(),
+          requirementId,
         }),
       });
 
@@ -77,6 +80,7 @@ export default function AddInteractionModal({
             <option value="Email">Email</option>
             <option value="Meeting">Meeting</option>
             <option value="Property Viewing">Property Viewing</option>
+            <option value="Requirement Discussion">Requirement Discussion</option>
             <option value="Other">Other</option>
           </select>
         </div>

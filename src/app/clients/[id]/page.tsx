@@ -152,6 +152,7 @@ export default function ClientPage() {
   const [editingRequirement, setEditingRequirement] = useState<ClientRequirement | null>(null);
   const [showEditRequirementModal, setShowEditRequirementModal] = useState(false);
   const [requirementToDelete, setRequirementToDelete] = useState<ClientRequirement | null>(null);
+  const [selectedRequirement, setSelectedRequirement] = useState<ClientRequirement | null>(null);
 
   useEffect(() => {
     loadClient();
@@ -559,13 +560,23 @@ export default function ClientPage() {
                       Locations: {requirement.preferredLocations.join(', ')}
                     </p>
                   )}
-                  <div className="mt-4">
+                  <div className="mt-4 flex justify-between items-center">
                     <Link
                       href={`/clients/requirements/${requirement.id}/gather`}
                       className="text-blue-600 hover:text-blue-800 text-sm"
                     >
                       Gather Properties →
                     </Link>
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      onClick={() => {
+                        setShowAddInteractionModal(true);
+                        setSelectedRequirement(requirement);
+                      }}
+                    >
+                      Add Interaction
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -930,8 +941,12 @@ export default function ClientPage() {
       {showAddInteractionModal && (
         <AddInteractionModal
           isOpen={showAddInteractionModal}
-          onClose={() => setShowAddInteractionModal(false)}
+          onClose={() => {
+            setShowAddInteractionModal(false);
+            setSelectedRequirement(null);
+          }}
           clientId={params.id as string}
+          requirementId={selectedRequirement?.id}
           onSubmit={handleInteractionAdded}
         />
       )}
