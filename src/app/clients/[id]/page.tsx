@@ -160,10 +160,6 @@ export default function ClientPage() {
     }
   });
   const [showAddInteractionModal, setShowAddInteractionModal] = useState(false);
-  const [editingRequirement, setEditingRequirement] = useState<ClientRequirement | null>(null);
-  const [showEditRequirementModal, setShowEditRequirementModal] = useState(false);
-  const [requirementToDelete, setRequirementToDelete] = useState<ClientRequirement | null>(null);
-  const [selectedRequirement, setSelectedRequirement] = useState<ClientRequirement | null>(null);
   const [newChecklistItem, setNewChecklistItem] = useState('');
 
   useEffect(() => {
