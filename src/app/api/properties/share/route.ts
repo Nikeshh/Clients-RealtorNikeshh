@@ -1,43 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/api-middleware';
 import prisma from '@/lib/prisma';
+import { sendEmail } from '../../email/route';
 
-export const POST = withAuth(async (req: NextRequest) => {
+export const POST = withAuth(async (request: NextRequest) => {
   try {
-    const { clientId, propertyIds } = await req.json();
+    const { propertyId, clientId } = await request.json();
 
-    // Create shared property records
-    const sharedProperties = await Promise.all(
-      propertyIds.map((propertyId: string) =>
-        prisma.sharedProperty.create({
-          data: {
-            clientId,
-            propertyId,
-            status: 'Shared',
-          },
-          include: {
-            property: true,
-            client: true,
-          },
-        })
-      )
-    );
+    if (!propertyId || !clientId) {
+      return NextResponse.json(
+        { error: 'Property ID and Client ID are required' },
+        { status: 400 }
+      );
+    }
 
-    // Create an interaction record for the sharing
+    // Get client and property details
+    const [client, property] = await Promise.all([
+      prisma.client.findUnique({ where: { id: clientId } }),
+      prisma.property.findUnique({ where: { id: propertyId } }),
+    ]);
+
+    if (!client || !property) {
+      return NextResponse.json(
+        { error: 'Client or Property not found' },
+        { status: 404 }
+      );
+    }
+
+    // Create share record
+    const sharedProperty = await prisma.sharedProperty.create({
+      data: {
+        propertyId,
+        clientId,
+        status: 'Shared',
+        sharedDate: new Date(),
+      },
+      include: {
+        client: true,
+        property: true,
+      },
+    });
+
+    // Create an interaction record
     await prisma.interaction.create({
       data: {
         clientId,
-        type: 'Property Share',
-        description: `Shared ${propertyIds.length} properties`,
+        type: 'Property Shared',
+        description: `Shared property: ${property.title}`,
         date: new Date(),
       },
     });
 
-    return NextResponse.json(sharedProperties);
+    // Send email using the email API endpoint with absolute URL
+    await sendEmail(client.email, client.name, [property]);
+
+    return NextResponse.json(sharedProperty);
   } catch (error) {
-    console.error('Error sharing properties:', error);
+    console.error('Error sharing property:', error);
     return NextResponse.json(
-      { error: 'Failed to share properties' },
+      { error: 'Failed to share property' },
       { status: 500 }
     );
   }

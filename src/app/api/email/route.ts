@@ -16,21 +16,7 @@ const transporter = nodemailer.createTransport({
 export const POST = withAuth(async (req: NextRequest) => {
   try {
     const { clientEmail, clientName, properties } = await req.json();
-
-    // Render email HTML using react-email
-    const emailHtml = await render(PropertyEmail({ 
-      clientName,
-      properties,
-    }));
-
-    // Send email
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: clientEmail,
-      subject: 'Properties You Might Be Interested In',
-      html: emailHtml,
-    });
-
+    await sendEmail(clientEmail, clientName, properties);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error sending email:', error);
@@ -40,3 +26,19 @@ export const POST = withAuth(async (req: NextRequest) => {
     );
   }
 }); 
+
+export const sendEmail = async (clientEmail: string, clientName: string, properties: any) => {
+  // Render email HTML using react-email
+  const emailHtml = await render(PropertyEmail({ 
+    clientName,
+    properties,
+  }));
+
+  // Send email
+  await transporter.sendMail({
+    from: process.env.EMAIL_USER,
+    to: clientEmail,
+    subject: 'Properties You Might Be Interested In',
+    html: emailHtml,
+  });
+};
