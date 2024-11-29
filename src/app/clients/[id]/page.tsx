@@ -528,41 +528,46 @@ export default function ClientPage() {
               </Button>
             </div>
 
-            {/* Requirements List - Now Scrollable */}
-            <div className="max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-              <div className="space-y-4">
-                {client?.requirements.map((requirement) => (
-                  <div
-                    key={requirement.id}
-                    className="border rounded-lg p-4 hover:bg-gray-50"
-                  >
-                    <Link 
-                      href={`/clients/requirements/${requirement.id}`}
-                      className="block"
+            <div className="relative">
+              <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                <div className="flex gap-4 pb-4">
+                  {client?.requirements.map((requirement) => (
+                    <div
+                      key={requirement.id}
+                      className="flex-none w-80 border rounded-lg p-4 hover:shadow-lg transition-shadow bg-white"
                     >
-                      <h3 className="text-lg font-medium text-gray-900 hover:text-blue-600">
-                        {requirement.name}
-                      </h3>
-                      <p className="text-sm text-gray-500 mb-2">
-                        {requirement.type} - {requirement.propertyType}
-                      </p>
-                      <p className="text-sm text-gray-700">
-                        Budget: {formatCurrency(requirement.budgetMin)} - {formatCurrency(requirement.budgetMax)}
-                      </p>
-                      {requirement.preferredLocations.length > 0 && (
-                        <p className="text-sm text-gray-700 mt-2">
-                          Locations: {requirement.preferredLocations.join(', ')}
-                        </p>
-                      )}
-                    </Link>
-                  </div>
-                ))}
-                
-                {client?.requirements.length === 0 && (
-                  <p className="text-center text-gray-500 py-4">
-                    No requirements added yet
-                  </p>
-                )}
+                      <Link 
+                        href={`/clients/requirements/${requirement.id}`}
+                        className="block"
+                      >
+                        <div className="space-y-2">
+                          <h3 className="text-lg font-medium text-gray-900 hover:text-blue-600">
+                            {requirement.name}
+                          </h3>
+                          <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {requirement.type} - {requirement.propertyType}
+                          </div>
+                          <div className="text-sm text-gray-700">
+                            <p className="font-medium">Budget:</p>
+                            <p>{formatCurrency(requirement.budgetMin)} - {formatCurrency(requirement.budgetMax)}</p>
+                          </div>
+                          {requirement.preferredLocations.length > 0 && (
+                            <div className="text-sm text-gray-700">
+                              <p className="font-medium">Locations:</p>
+                              <p className="truncate">{requirement.preferredLocations.join(', ')}</p>
+                            </div>
+                          )}
+                        </div>
+                      </Link>
+                    </div>
+                  ))}
+                  
+                  {client?.requirements.length === 0 && (
+                    <div className="w-full text-center text-gray-500 py-4">
+                      No requirements added yet
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -572,21 +577,43 @@ export default function ClientPage() {
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Shared Properties
             </h2>
-            <div className="space-y-4">
-              {client?.sharedProperties.map((shared) => (
-                <div
-                  key={shared.id}
-                  className="border rounded-lg p-4 hover:bg-gray-50"
-                >
-                  {/* ... shared property content remains the same ... */}
+            <div className="relative">
+              <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                <div className="flex gap-4 pb-4">
+                  {client?.sharedProperties.map((shared) => (
+                    <div
+                      key={shared.id}
+                      className="flex-none w-80 border rounded-lg overflow-hidden hover:shadow-lg transition-shadow bg-white"
+                    >
+                      <Link 
+                        href={`/properties/${shared.property.id}`}
+                        className="block"
+                      >
+                        <div className="p-4">
+                          <h3 className="text-lg font-medium text-gray-900 hover:text-blue-600 truncate">
+                            {shared.property.title}
+                          </h3>
+                          <p className="text-sm text-gray-500 mt-1 truncate">
+                            {shared.property.address}
+                          </p>
+                          <p className="text-sm font-medium text-blue-600 mt-2">
+                            {formatCurrency(shared.property.price)}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-2">
+                            Shared on: {formatDate(shared.sharedDate)}
+                          </p>
+                        </div>
+                      </Link>
+                    </div>
+                  ))}
+                  
+                  {(!client?.sharedProperties || client.sharedProperties.length === 0) && (
+                    <div className="w-full text-center text-gray-500 py-4">
+                      No properties shared yet
+                    </div>
+                  )}
                 </div>
-              ))}
-              
-              {client?.sharedProperties.length === 0 && (
-                <p className="text-center text-gray-500 py-4">
-                  No properties shared yet
-                </p>
-              )}
+              </div>
             </div>
           </div>
         </div>
@@ -739,6 +766,335 @@ export default function ClientPage() {
           }}
         />
       )}
+
+      {/* Add Requirement Modal */}
+      <Modal
+        isOpen={showNewRequirementModal}
+        onClose={() => {
+          setShowNewRequirementModal(false);
+          setNewRequirement({
+            name: '',
+            type: 'PURCHASE',
+            propertyType: '',
+            budgetMin: '',
+            budgetMax: '',
+            bedrooms: '',
+            bathrooms: '',
+            preferredLocations: [''],
+            additionalRequirements: '',
+            rentalPreferences: {
+              leaseTerm: 'Long-term',
+              furnished: false,
+              petsAllowed: false,
+              maxRentalBudget: '',
+              preferredMoveInDate: '',
+            },
+            purchasePreferences: {
+              propertyAge: '',
+              preferredStyle: '',
+              parking: '',
+              lotSize: '',
+              basement: false,
+              garage: false,
+            }
+          });
+        }}
+        title="Add New Requirement"
+      >
+        <div className="space-y-4">
+          {/* Basic Information */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Name</label>
+            <input
+              type="text"
+              value={newRequirement.name}
+              onChange={(e) => setNewRequirement({ ...newRequirement, name: e.target.value })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              placeholder="e.g., Primary Residence Search"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Type</label>
+              <select
+                value={newRequirement.type}
+                onChange={(e) => setNewRequirement({ 
+                  ...newRequirement, 
+                  type: e.target.value as 'PURCHASE' | 'RENTAL'
+                })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              >
+                <option value="PURCHASE">Purchase</option>
+                <option value="RENTAL">Rental</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Property Type</label>
+              <input
+                type="text"
+                value={newRequirement.propertyType}
+                onChange={(e) => setNewRequirement({ ...newRequirement, propertyType: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                placeholder="e.g., Single Family Home"
+              />
+            </div>
+          </div>
+
+          {/* Budget Range */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Min Budget</label>
+              <input
+                type="number"
+                value={newRequirement.budgetMin}
+                onChange={(e) => setNewRequirement({ ...newRequirement, budgetMin: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Max Budget</label>
+              <input
+                type="number"
+                value={newRequirement.budgetMax}
+                onChange={(e) => setNewRequirement({ ...newRequirement, budgetMax: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          {/* Bedrooms and Bathrooms */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Bedrooms</label>
+              <input
+                type="number"
+                value={newRequirement.bedrooms}
+                onChange={(e) => setNewRequirement({ ...newRequirement, bedrooms: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Bathrooms</label>
+              <input
+                type="number"
+                value={newRequirement.bathrooms}
+                onChange={(e) => setNewRequirement({ ...newRequirement, bathrooms: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          {/* Preferred Locations */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Preferred Locations</label>
+            {newRequirement.preferredLocations.map((location, index) => (
+              <div key={index} className="flex gap-2 mt-2">
+                <input
+                  type="text"
+                  value={location}
+                  onChange={(e) => {
+                    const newLocations = [...newRequirement.preferredLocations];
+                    newLocations[index] = e.target.value;
+                    setNewRequirement({ ...newRequirement, preferredLocations: newLocations });
+                  }}
+                  className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  placeholder="Enter location"
+                />
+                <Button
+                  onClick={() => {
+                    const newLocations = newRequirement.preferredLocations.filter((_, i) => i !== index);
+                    setNewRequirement({ ...newRequirement, preferredLocations: newLocations });
+                  }}
+                  variant="danger"
+                  size="small"
+                  disabled={newRequirement.preferredLocations.length === 1}
+                >
+                  Remove
+                </Button>
+              </div>
+            ))}
+            <Button
+              onClick={() => {
+                setNewRequirement({
+                  ...newRequirement,
+                  preferredLocations: [...newRequirement.preferredLocations, '']
+                });
+              }}
+              variant="secondary"
+              size="small"
+              className="mt-2"
+            >
+              Add Location
+            </Button>
+          </div>
+
+          {/* Additional Requirements */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Additional Requirements</label>
+            <textarea
+              value={newRequirement.additionalRequirements}
+              onChange={(e) => setNewRequirement({ ...newRequirement, additionalRequirements: e.target.value })}
+              rows={3}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Type-specific preferences */}
+          {newRequirement.type === 'RENTAL' ? (
+            <div className="space-y-4">
+              <h3 className="font-medium text-gray-900">Rental Preferences</h3>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Lease Term</label>
+                <select
+                  value={newRequirement.rentalPreferences.leaseTerm}
+                  onChange={(e) => setNewRequirement({
+                    ...newRequirement,
+                    rentalPreferences: { ...newRequirement.rentalPreferences, leaseTerm: e.target.value }
+                  })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                >
+                  <option value="Long-term">Long-term</option>
+                  <option value="Short-term">Short-term</option>
+                </select>
+              </div>
+              
+              <div className="flex gap-4">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={newRequirement.rentalPreferences.furnished}
+                    onChange={(e) => setNewRequirement({
+                      ...newRequirement,
+                      rentalPreferences: { ...newRequirement.rentalPreferences, furnished: e.target.checked }
+                    })}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Furnished</span>
+                </label>
+                
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={newRequirement.rentalPreferences.petsAllowed}
+                    onChange={(e) => setNewRequirement({
+                      ...newRequirement,
+                      rentalPreferences: { ...newRequirement.rentalPreferences, petsAllowed: e.target.checked }
+                    })}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Pets Allowed</span>
+                </label>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <h3 className="font-medium text-gray-900">Purchase Preferences</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Property Age</label>
+                  <input
+                    type="text"
+                    value={newRequirement.purchasePreferences.propertyAge}
+                    onChange={(e) => setNewRequirement({
+                      ...newRequirement,
+                      purchasePreferences: { ...newRequirement.purchasePreferences, propertyAge: e.target.value }
+                    })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Preferred Style</label>
+                  <input
+                    type="text"
+                    value={newRequirement.purchasePreferences.preferredStyle}
+                    onChange={(e) => setNewRequirement({
+                      ...newRequirement,
+                      purchasePreferences: { ...newRequirement.purchasePreferences, preferredStyle: e.target.value }
+                    })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-4">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={newRequirement.purchasePreferences.basement}
+                    onChange={(e) => setNewRequirement({
+                      ...newRequirement,
+                      purchasePreferences: { ...newRequirement.purchasePreferences, basement: e.target.checked }
+                    })}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Basement</span>
+                </label>
+                
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={newRequirement.purchasePreferences.garage}
+                    onChange={(e) => setNewRequirement({
+                      ...newRequirement,
+                      purchasePreferences: { ...newRequirement.purchasePreferences, garage: e.target.checked }
+                    })}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Garage</span>
+                </label>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 mt-6">
+            <Button
+              onClick={() => {
+                setShowNewRequirementModal(false);
+                setNewRequirement({
+                  name: '',
+                  type: 'PURCHASE',
+                  propertyType: '',
+                  budgetMin: '',
+                  budgetMax: '',
+                  bedrooms: '',
+                  bathrooms: '',
+                  preferredLocations: [''],
+                  additionalRequirements: '',
+                  rentalPreferences: {
+                    leaseTerm: 'Long-term',
+                    furnished: false,
+                    petsAllowed: false,
+                    maxRentalBudget: '',
+                    preferredMoveInDate: '',
+                  },
+                  purchasePreferences: {
+                    propertyAge: '',
+                    preferredStyle: '',
+                    parking: '',
+                    lotSize: '',
+                    basement: false,
+                    garage: false,
+                  }
+                });
+              }}
+              variant="secondary"
+              disabled={isLoading('addRequirement')}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddRequirement}
+              variant="primary"
+              isLoading={isLoading('addRequirement')}
+              disabled={!newRequirement.name.trim()}
+            >
+              Add Requirement
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

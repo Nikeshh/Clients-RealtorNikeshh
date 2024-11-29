@@ -62,4 +62,45 @@ export const POST = withAuth(async (request: NextRequest) => {
       { status: 500 }
     );
   }
-}); 
+});
+
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const clientId = searchParams.get('clientId');
+
+    if (!clientId) {
+      return NextResponse.json({ error: 'Client ID is required' }, { status: 400 });
+    }
+
+    const sharedProperties = await prisma.sharedProperty.findMany({
+      where: {
+        clientId: clientId,
+      },
+      include: {
+        property: {
+          select: {
+            id: true,
+            title: true,
+            address: true,
+            price: true,
+            images: true,
+            status: true,
+            listingType: true,
+          },
+        },
+      },
+      orderBy: {
+        sharedDate: 'desc',
+      },
+    });
+
+    return NextResponse.json(sharedProperties);
+  } catch (error) {
+    console.error('Error fetching shared properties:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch shared properties' },
+      { status: 500 }
+    );
+  }
+} 
