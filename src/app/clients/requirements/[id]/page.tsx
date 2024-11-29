@@ -186,7 +186,9 @@ export default function RequirementPage() {
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500">Property Type</dt>
-                <dd className="mt-1 text-sm text-gray-900">{requirement.propertyType}</dd>
+                <dd className="mt-1 text-sm text-gray-900">
+                  {requirement.propertyType || 'Not specified'}
+                </dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500">Budget Range</dt>
@@ -394,12 +396,19 @@ export default function RequirementPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700">Property Type</label>
-            <input
-              type="text"
+            <select
               value={editedRequirement?.propertyType || ''}
               onChange={(e) => setEditedRequirement(prev => ({ ...prev!, propertyType: e.target.value }))}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-            />
+            >
+              <option value="">Select property type</option>
+              <option value="House">House</option>
+              <option value="Apartment">Apartment</option>
+              <option value="Condo">Condo</option>
+              <option value="Townhouse">Townhouse</option>
+              <option value="Land">Land</option>
+              <option value="Commercial">Commercial</option>
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
