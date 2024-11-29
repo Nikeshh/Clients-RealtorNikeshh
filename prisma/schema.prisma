@@ -22,6 +22,7 @@ model Client {
   requirements     ClientRequirement[]
   interactions     Interaction[]
   sharedProperties SharedProperty[]
+  checklist        ClientChecklist[]
 
   @@index([name])
   @@index([email])
@@ -209,4 +210,15 @@ model RequirementChecklist {
   updatedAt     DateTime @updatedAt
 
   requirement   ClientRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+}
+
+model ClientChecklist {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  clientId  String   @db.ObjectId
+  text      String
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 } 
