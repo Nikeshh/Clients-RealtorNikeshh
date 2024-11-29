@@ -172,173 +172,177 @@ export default function RequirementPage() {
         </div>
       </div>
 
-      {/* Requirement Details */}
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
-        <dl className="grid grid-cols-2 gap-4">
-          <div>
-            <dt className="text-sm font-medium text-gray-500">Type</dt>
-            <dd className="mt-1 text-sm text-gray-900">{requirement.type}</dd>
-          </div>
-          <div>
-            <dt className="text-sm font-medium text-gray-500">Property Type</dt>
-            <dd className="mt-1 text-sm text-gray-900">{requirement.propertyType}</dd>
-          </div>
-          <div>
-            <dt className="text-sm font-medium text-gray-500">Budget Range</dt>
-            <dd className="mt-1 text-sm text-gray-900">
-              {formatCurrency(requirement.budgetMin)} - {formatCurrency(requirement.budgetMax)}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-sm font-medium text-gray-500">Status</dt>
-            <dd className="mt-1 text-sm text-gray-900">{requirement.status}</dd>
-          </div>
-          {requirement.bedrooms && (
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Bedrooms</dt>
-              <dd className="mt-1 text-sm text-gray-900">{requirement.bedrooms}</dd>
-            </div>
-          )}
-          {requirement.bathrooms && (
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Bathrooms</dt>
-              <dd className="mt-1 text-sm text-gray-900">{requirement.bathrooms}</dd>
-            </div>
-          )}
-          <div className="col-span-2">
-            <dt className="text-sm font-medium text-gray-500">Preferred Locations</dt>
-            <dd className="mt-1 text-sm text-gray-900">
-              {requirement.preferredLocations.join(', ')}
-            </dd>
-          </div>
-          {requirement.additionalRequirements && (
-            <div className="col-span-2">
-              <dt className="text-sm font-medium text-gray-500">Additional Requirements</dt>
-              <dd className="mt-1 text-sm text-gray-900">{requirement.additionalRequirements}</dd>
-            </div>
-          )}
-        </dl>
-      </div>
-
-      {/* Type-specific Preferences */}
-      {requirement.type === 'RENTAL' && requirement.rentalPreferences && (
-        <div className="bg-white shadow rounded-lg p-6 mb-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Rental Preferences</h3>
-          <dl className="grid grid-cols-2 gap-4">
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Lease Term</dt>
-              <dd className="mt-1 text-sm text-gray-900">{requirement.rentalPreferences.leaseTerm}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Features</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {requirement.rentalPreferences.furnished && 'Furnished • '}
-                {requirement.rentalPreferences.petsAllowed && 'Pets Allowed'}
-              </dd>
-            </div>
-            {requirement.rentalPreferences.preferredMoveInDate && (
+      {/* Main Content - Two Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column - Requirement Details */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Basic Details */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Requirement Details</h2>
+            <dl className="grid grid-cols-2 gap-4">
               <div>
-                <dt className="text-sm font-medium text-gray-500">Preferred Move-in Date</dt>
+                <dt className="text-sm font-medium text-gray-500">Type</dt>
+                <dd className="mt-1 text-sm text-gray-900">{requirement.type}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Property Type</dt>
+                <dd className="mt-1 text-sm text-gray-900">{requirement.propertyType}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Budget Range</dt>
                 <dd className="mt-1 text-sm text-gray-900">
-                  {formatDate(requirement.rentalPreferences.preferredMoveInDate)}
+                  {formatCurrency(requirement.budgetMin)} - {formatCurrency(requirement.budgetMax)}
                 </dd>
               </div>
-            )}
-          </dl>
-        </div>
-      )}
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Status</dt>
+                <dd className="mt-1 text-sm text-gray-900">{requirement.status}</dd>
+              </div>
+              {requirement.bedrooms && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Bedrooms</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{requirement.bedrooms}</dd>
+                </div>
+              )}
+              {requirement.bathrooms && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Bathrooms</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{requirement.bathrooms}</dd>
+                </div>
+              )}
+              <div className="col-span-2">
+                <dt className="text-sm font-medium text-gray-500">Preferred Locations</dt>
+                <dd className="mt-1 text-sm text-gray-900">
+                  {requirement.preferredLocations.join(', ')}
+                </dd>
+              </div>
+              {requirement.additionalRequirements && (
+                <div className="col-span-2">
+                  <dt className="text-sm font-medium text-gray-500">Additional Requirements</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{requirement.additionalRequirements}</dd>
+                </div>
+              )}
+            </dl>
+          </div>
 
-      {requirement.type === 'PURCHASE' && requirement.purchasePreferences && (
-        <div className="bg-white shadow rounded-lg p-6 mb-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Purchase Preferences</h3>
-          <dl className="grid grid-cols-2 gap-4">
-            {requirement.purchasePreferences.propertyAge && (
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Property Age</dt>
-                <dd className="mt-1 text-sm text-gray-900">{requirement.purchasePreferences.propertyAge}</dd>
-              </div>
-            )}
-            {requirement.purchasePreferences.preferredStyle && (
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Preferred Style</dt>
-                <dd className="mt-1 text-sm text-gray-900">{requirement.purchasePreferences.preferredStyle}</dd>
-              </div>
-            )}
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Features</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {requirement.purchasePreferences.basement && 'Basement • '}
-                {requirement.purchasePreferences.garage && 'Garage'}
-              </dd>
+          {/* Type-specific Preferences */}
+          {requirement.type === 'RENTAL' && requirement.rentalPreferences && (
+            <div className="bg-white shadow rounded-lg p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Rental Preferences</h2>
+              <dl className="grid grid-cols-2 gap-4">
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Lease Term</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{requirement.rentalPreferences.leaseTerm}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Features</dt>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    {requirement.rentalPreferences.furnished && 'Furnished • '}
+                    {requirement.rentalPreferences.petsAllowed && 'Pets Allowed'}
+                  </dd>
+                </div>
+                {requirement.rentalPreferences.preferredMoveInDate && (
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Preferred Move-in Date</dt>
+                    <dd className="mt-1 text-sm text-gray-900">
+                      {formatDate(requirement.rentalPreferences.preferredMoveInDate)}
+                    </dd>
+                  </div>
+                )}
+              </dl>
             </div>
-            {requirement.purchasePreferences.lotSize && (
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Minimum Lot Size</dt>
-                <dd className="mt-1 text-sm text-gray-900">{requirement.purchasePreferences.lotSize} sqft</dd>
-              </div>
-            )}
-          </dl>
-        </div>
-      )}
-
-      {/* Interactions Section */}
-      <div className="bg-white shadow rounded-lg overflow-hidden mb-6">
-        <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
-          <h3 className="text-lg font-medium text-gray-900">Interactions</h3>
-          <Button
-            onClick={() => setShowAddInteractionModal(true)}
-            variant="primary"
-          >
-            Add Interaction
-          </Button>
-        </div>
-        <div className="px-4 py-5 sm:p-6 max-h-[500px] overflow-y-auto">
-          {requirement.interactions.length > 0 ? (
-            <div className="flow-root">
-              <ul className="-mb-8">
-                {requirement.interactions.map((interaction, idx) => (
-                  <li key={interaction.id}>
-                    <div className="relative pb-8">
-                      {idx !== requirement.interactions.length - 1 && (
-                        <span
-                          className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200"
-                          aria-hidden="true"
-                        />
-                      )}
-                      <div className="relative flex space-x-3">
-                        <div>
-                          <span className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center ring-8 ring-white">
-                            <span className="text-white text-sm">
-                              {interaction.type[0]}
-                            </span>
-                          </span>
-                        </div>
-                        <div className="flex min-w-0 flex-1 justify-between space-x-4 pt-1.5">
-                          <div>
-                            <p className="text-sm text-gray-600">
-                              {interaction.description}
-                            </p>
-                            {interaction.notes && (
-                              <p className="mt-1 text-sm text-gray-500">
-                                {interaction.notes}
-                              </p>
-                            )}
-                          </div>
-                          <div className="whitespace-nowrap text-right text-sm text-gray-500">
-                            {formatDate(interaction.date)}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <p className="text-center text-gray-500 py-4">
-              No interactions recorded yet
-            </p>
           )}
+
+          {requirement.type === 'PURCHASE' && requirement.purchasePreferences && (
+            <div className="bg-white shadow rounded-lg p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Purchase Preferences</h2>
+              <dl className="grid grid-cols-2 gap-4">
+                {requirement.purchasePreferences.propertyAge && (
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Property Age</dt>
+                    <dd className="mt-1 text-sm text-gray-900">{requirement.purchasePreferences.propertyAge}</dd>
+                  </div>
+                )}
+                {requirement.purchasePreferences.preferredStyle && (
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Preferred Style</dt>
+                    <dd className="mt-1 text-sm text-gray-900">{requirement.purchasePreferences.preferredStyle}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Features</dt>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    {requirement.purchasePreferences.basement && 'Basement • '}
+                    {requirement.purchasePreferences.garage && 'Garage'}
+                  </dd>
+                </div>
+                {requirement.purchasePreferences.lotSize && (
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Minimum Lot Size</dt>
+                    <dd className="mt-1 text-sm text-gray-900">{requirement.purchasePreferences.lotSize} sqft</dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+          )}
+
+          {/* Gathered Properties */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Gathered Properties</h2>
+              <Link href={`/clients/requirements/${requirement.id}/gather`}>
+                <Button variant="primary">Gather Properties</Button>
+              </Link>
+            </div>
+            {/* ... gathered properties content ... */}
+          </div>
+        </div>
+
+        {/* Right Column - Interactions */}
+        <div className="lg:col-span-1">
+          <div className="bg-white shadow rounded-lg p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Interactions</h2>
+              <Button
+                onClick={() => setShowAddInteractionModal(true)}
+                variant="primary"
+              >
+                Add Interaction
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              {requirement.interactions?.map((interaction) => (
+                <div 
+                  key={interaction.id} 
+                  className="border-l-4 border-blue-500 pl-4 py-2"
+                >
+                  <div className="flex justify-between items-start">
+                    <span className="text-sm font-medium text-gray-900">
+                      {interaction.type}
+                    </span>
+                    <span className="text-sm text-gray-500">
+                      {formatDate(interaction.date)}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {interaction.description}
+                  </p>
+                  {interaction.notes && (
+                    <p className="text-sm text-gray-500 mt-1 italic">
+                      {interaction.notes}
+                    </p>
+                  )}
+                </div>
+              ))}
+
+              {requirement.interactions?.length === 0 && (
+                <p className="text-center text-gray-500 py-4">
+                  No interactions yet
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

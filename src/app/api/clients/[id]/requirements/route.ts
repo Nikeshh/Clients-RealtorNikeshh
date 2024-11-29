@@ -8,14 +8,6 @@ export const POST = withAuth(async (request: NextRequest) => {
     const clientId = request.url.split('/clients/')[1].split('/requirements')[0];
     const data = await request.json();
 
-    // Validate required fields
-    if (!data.type || !data.propertyType) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
-    }
-
     // Create the requirement with type-specific preferences
     const requirement = await prisma.clientRequirement.create({
       data: {
@@ -23,35 +15,39 @@ export const POST = withAuth(async (request: NextRequest) => {
         name: data.name || "New Requirement",
         type: data.type,
         propertyType: data.propertyType,
-        budgetMin: data.budgetMin,
-        budgetMax: data.budgetMax,
-        bedrooms: data.bedrooms,
-        bathrooms: data.bathrooms,
-        preferredLocations: data.preferredLocations,
-        additionalRequirements: data.additionalRequirements,
-        status: data.status || "Active",
-        ...(data.type === 'RENTAL' && data.rentalPreferences ? {
+        budgetMin: parseFloat(data.budgetMin) || 0,
+        budgetMax: parseFloat(data.budgetMax) || 0,
+        bedrooms: data.bedrooms ? parseInt(data.bedrooms) : null,
+        bathrooms: data.bathrooms ? parseInt(data.bathrooms) : null,
+        preferredLocations: data.preferredLocations || [],
+        additionalRequirements: data.additionalRequirements || '',
+        status: "Active",
+        ...(data.type === 'RENTAL' ? {
           rentalPreferences: {
             create: {
-              leaseTerm: data.rentalPreferences.leaseTerm || 'Long-term',
-              furnished: data.rentalPreferences.furnished || false,
-              petsAllowed: data.rentalPreferences.petsAllowed || false,
-              maxRentalBudget: data.rentalPreferences.maxRentalBudget || data.budgetMax,
-              preferredMoveInDate: data.rentalPreferences.preferredMoveInDate 
+              leaseTerm: data.rentalPreferences?.leaseTerm || 'Long-term',
+              furnished: data.rentalPreferences?.furnished || false,
+              petsAllowed: data.rentalPreferences?.petsAllowed || false,
+              maxRentalBudget: parseFloat(data.budgetMax) || 0,
+              preferredMoveInDate: data.rentalPreferences?.preferredMoveInDate 
                 ? new Date(data.rentalPreferences.preferredMoveInDate) 
                 : null,
             }
           }
         } : {}),
-        ...(data.type === 'PURCHASE' && data.purchasePreferences ? {
+        ...(data.type === 'PURCHASE' ? {
           purchasePreferences: {
             create: {
-              propertyAge: data.purchasePreferences.propertyAge || null,
-              preferredStyle: data.purchasePreferences.preferredStyle || null,
-              parking: data.purchasePreferences.parking || null,
-              lotSize: data.purchasePreferences.lotSize || null,
-              basement: data.purchasePreferences.basement || false,
-              garage: data.purchasePreferences.garage || false,
+              propertyAge: data.purchasePreferences?.propertyAge || null,
+              preferredStyle: data.purchasePreferences?.preferredStyle || null,
+              parking: data.purchasePreferences?.parking 
+                ? parseInt(data.purchasePreferences.parking) 
+                : null,
+              lotSize: data.purchasePreferences?.lotSize 
+                ? parseFloat(data.purchasePreferences.lotSize) 
+                : null,
+              basement: data.purchasePreferences?.basement || false,
+              garage: data.purchasePreferences?.garage || false,
             }
           }
         } : {})
@@ -60,6 +56,16 @@ export const POST = withAuth(async (request: NextRequest) => {
         rentalPreferences: true,
         purchasePreferences: true,
       }
+    });
+
+    // Create an interaction record
+    await prisma.interaction.create({
+      data: {
+        clientId,
+        type: 'Requirement Added',
+        description: `Added new ${data.type.toLowerCase()} requirement: ${data.name}`,
+        date: new Date(),
+      },
     });
 
     return NextResponse.json(requirement);
