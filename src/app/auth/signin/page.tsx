@@ -5,18 +5,19 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { FaGithub, FaGoogle } from 'react-icons/fa';
 import { useState } from 'react';
 import { useToast } from '@/components/ui/toast-context';
+import { useLoadingStates } from '@/hooks/useLoadingStates';
 
 export default function SignIn() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
   const error = searchParams.get('error');
-  const [isLoading, setIsLoading] = useState(false);
   const { addToast } = useToast();
+  const { setLoading, isLoading } = useLoadingStates();
 
   const handleSignIn = async (provider: 'github' | 'google') => {
+    setLoading(`signIn-${provider}`, true);
     try {
-      setIsLoading(true);
       const result = await signIn(provider, {
         callbackUrl: '/dashboard',
         redirect: false,
@@ -33,7 +34,7 @@ export default function SignIn() {
       console.error('Sign in error:', error);
       addToast('Failed to sign in. Please try again.', 'error');
     } finally {
-      setIsLoading(false);
+      setLoading(`signIn-${provider}`, false);
     }
   };
 
@@ -57,20 +58,28 @@ export default function SignIn() {
         <div className="mt-8 space-y-4">
           <button
             onClick={() => handleSignIn('github')}
-            disabled={isLoading}
+            disabled={isLoading('signIn-github') || isLoading('signIn-google')}
             className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-gray-800 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <FaGithub className="w-5 h-5" />
-            {isLoading ? 'Signing in...' : 'Continue with GitHub'}
+            {isLoading('signIn-github') ? (
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            ) : (
+              <FaGithub className="w-5 h-5" />
+            )}
+            {isLoading('signIn-github') ? 'Signing in...' : 'Continue with GitHub'}
           </button>
 
           <button
             onClick={() => handleSignIn('google')}
-            disabled={isLoading}
+            disabled={isLoading('signIn-github') || isLoading('signIn-google')}
             className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <FaGoogle className="w-5 h-5" />
-            {isLoading ? 'Signing in...' : 'Continue with Google'}
+            {isLoading('signIn-google') ? (
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            ) : (
+              <FaGoogle className="w-5 h-5" />
+            )}
+            {isLoading('signIn-google') ? 'Signing in...' : 'Continue with Google'}
           </button>
         </div>
       </div>

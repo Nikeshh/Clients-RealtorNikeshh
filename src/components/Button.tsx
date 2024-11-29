@@ -50,10 +50,14 @@ const Button: React.FC<ButtonProps> = ({
       disabled={isLoading || disabled}
       {...props}
     >
-      {isLoading && (
-        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+      {isLoading ? (
+        <>
+          <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          <span>{typeof children === 'string' ? 'Loading...' : children}</span>
+        </>
+      ) : (
+        children
       )}
-      {children}
     </button>
   );
 };

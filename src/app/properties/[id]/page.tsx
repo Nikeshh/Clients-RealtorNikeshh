@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/toast-context';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Button from '@/components/Button';
+import { useLoadingStates } from '@/hooks/useLoadingStates';
+import { formatCurrency } from '@/lib/utils';
 
 interface Property {
   id: string;
@@ -48,50 +50,33 @@ export default function PropertyPage() {
   const params = useParams();
   const router = useRouter();
   const [property, setProperty] = useState<Property | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
   const [editedData, setEditedData] = useState<any>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const { addToast } = useToast();
+  const { setLoading, isLoading } = useLoadingStates();
 
   useEffect(() => {
     loadProperty();
   }, []);
 
-  useEffect(() => {
-    if (property && !editedData) {
-      setEditedData({
-        ...property,
-        features: [...property.features],
-        images: [...property.images],
-      });
-    }
-  }, [property]);
-
   const loadProperty = async () => {
+    setLoading('loadProperty', true);
     try {
       const response = await fetch(`/api/properties/${params.id}`);
       if (!response.ok) throw new Error('Failed to fetch property');
       const data = await response.json();
       setProperty(data);
+      setEditedData(data);
     } catch (error) {
       addToast('Failed to load property details', 'error');
       console.error('Error:', error);
     } finally {
-      setIsLoading(false);
+      setLoading('loadProperty', false);
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
   const handleStatusChange = async (newStatus: string) => {
+    setLoading('statusUpdate', true);
     try {
       const response = await fetch(`/api/properties/${params.id}`, {
         method: 'PATCH',
@@ -99,7 +84,6 @@ export default function PropertyPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...property,
           status: newStatus,
         }),
       });
@@ -112,10 +96,13 @@ export default function PropertyPage() {
     } catch (error) {
       console.error('Error:', error);
       addToast('Failed to update status', 'error');
+    } finally {
+      setLoading('statusUpdate', false);
     }
   };
 
   const handleSaveChanges = async () => {
+    setLoading('saveChanges', true);
     try {
       const response = await fetch(`/api/properties/${params.id}`, {
         method: 'PATCH',
@@ -134,6 +121,8 @@ export default function PropertyPage() {
     } catch (error) {
       console.error('Error:', error);
       addToast('Failed to update property', 'error');
+    } finally {
+      setLoading('saveChanges', false);
     }
   };
 
@@ -142,7 +131,7 @@ export default function PropertyPage() {
       return;
     }
 
-    setIsDeleting(true);
+    setLoading('deleteProperty', true);
     try {
       const response = await fetch(`/api/properties/${params.id}`, {
         method: 'DELETE',
@@ -156,7 +145,7 @@ export default function PropertyPage() {
       console.error('Error:', error);
       addToast('Failed to delete property', 'error');
     } finally {
-      setIsDeleting(false);
+      setLoading('deleteProperty', false);
     }
   };
 
@@ -206,7 +195,7 @@ export default function PropertyPage() {
     });
   };
 
-  if (isLoading) {
+  if (isLoading('loadProperty')) {
     return <LoadingSpinner size="large" />;
   }
 
@@ -227,7 +216,10 @@ export default function PropertyPage() {
               <select
                 value={property?.status}
                 onChange={(e) => handleStatusChange(e.target.value)}
-                className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                disabled={isLoading('statusUpdate')}
+                className={`rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 ${
+                  isLoading('statusUpdate') ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
               >
                 <option value="Available">Available</option>
                 <option value="Under Contract">Under Contract</option>
@@ -236,15 +228,16 @@ export default function PropertyPage() {
               <Button
                 onClick={() => setIsEditing(true)}
                 variant="primary"
+                disabled={isLoading('saveChanges')}
               >
                 Edit
               </Button>
               <Button
                 onClick={handleDelete}
                 variant="danger"
-                isLoading={isDeleting}
+                isLoading={isLoading('deleteProperty')}
               >
-                {isDeleting ? 'Deleting...' : 'Delete'}
+                Delete
               </Button>
             </>
           )}

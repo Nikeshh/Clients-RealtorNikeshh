@@ -5,6 +5,9 @@ import { useParams, useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/toast-context';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Modal from '@/components/ui/Modal';
+import Button from '@/components/Button';
+import { useLoadingStates } from '@/hooks/useLoadingStates';
+import { formatCurrency, formatDate } from '@/lib/utils';
 
 interface ClientRequirement {
   id: string;
@@ -86,12 +89,10 @@ interface NewRequirementForm {
 export default function ClientPage() {
   const params = useParams();
   const router = useRouter();
-  const [client, setClient] = useState<Client | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedData, setEditedData] = useState<any>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
   const { addToast } = useToast();
+  const [client, setClient] = useState<Client | null>(null);
+  const [editedData, setEditedData] = useState<any>(null);
+  const [isEditing, setIsEditing] = useState(false);
   const [showNewRequirementModal, setShowNewRequirementModal] = useState(false);
   const [newRequirement, setNewRequirement] = useState<NewRequirementForm>({
     name: '',
@@ -119,50 +120,39 @@ export default function ClientPage() {
       garage: false,
     }
   });
+  const { setLoading, isLoading } = useLoadingStates();
 
   useEffect(() => {
     loadClient();
   }, []);
 
-  useEffect(() => {
-    if (client && !editedData) {
-      setEditedData({
-        name: client.name,
-        email: client.email,
-        phone: client.phone,
-        status: client.status,
-        requirements: client.requirements.map(requirement => ({
-          ...requirement,
-          preferredLocations: [...requirement.preferredLocations],
-        })),
-      });
-    }
-  }, [client]);
-
   const loadClient = async () => {
+    setLoading('loadClient', true);
     try {
       const response = await fetch(`/api/clients/${params.id}`);
       if (!response.ok) throw new Error('Failed to fetch client');
       const data = await response.json();
       setClient(data);
+      setEditedData({
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        status: data.status,
+        requirements: data.requirements.map((requirement: any) => ({
+          ...requirement,
+          preferredLocations: [...requirement.preferredLocations],
+        })),
+      });
     } catch (error) {
       addToast('Failed to load client details', 'error');
       console.error('Error:', error);
     } finally {
-      setIsLoading(false);
+      setLoading('loadClient', false);
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
   const handleStatusChange = async (newStatus: string) => {
+    setLoading('statusUpdate', true);
     try {
       const response = await fetch(`/api/clients/${params.id}`, {
         method: 'PATCH',
@@ -170,7 +160,6 @@ export default function ClientPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...client,
           status: newStatus,
         }),
       });
@@ -183,10 +172,13 @@ export default function ClientPage() {
     } catch (error) {
       console.error('Error:', error);
       addToast('Failed to update status', 'error');
+    } finally {
+      setLoading('statusUpdate', false);
     }
   };
 
   const handleSaveChanges = async () => {
+    setLoading('saveChanges', true);
     try {
       const response = await fetch(`/api/clients/${params.id}`, {
         method: 'PATCH',
@@ -205,6 +197,8 @@ export default function ClientPage() {
     } catch (error) {
       console.error('Error:', error);
       addToast('Failed to update client', 'error');
+    } finally {
+      setLoading('saveChanges', false);
     }
   };
 
@@ -213,7 +207,7 @@ export default function ClientPage() {
       return;
     }
 
-    setIsDeleting(true);
+    setLoading('deleteClient', true);
     try {
       const response = await fetch(`/api/clients/${params.id}`, {
         method: 'DELETE',
@@ -227,51 +221,12 @@ export default function ClientPage() {
       console.error('Error:', error);
       addToast('Failed to delete client', 'error');
     } finally {
-      setIsDeleting(false);
+      setLoading('deleteClient', false);
     }
   };
 
-  const handleLocationChange = (requirementId: string, index: number, value: string) => {
-    setEditedData({
-      ...editedData,
-      requirements: editedData.requirements.map((req: ClientRequirement) => 
-        req.id === requirementId ? {
-          ...req,
-          preferredLocations: req.preferredLocations.map(
-            (loc: string, i: number) => (i === index ? value : loc)
-          ),
-        } : req
-      ),
-    });
-  };
-
-  const addLocation = (requirementId: string) => {
-    setEditedData({
-      ...editedData,
-      requirements: editedData.requirements.map((req: ClientRequirement) => 
-        req.id === requirementId ? {
-          ...req,
-          preferredLocations: [...req.preferredLocations, ''],
-        } : req
-      ),
-    });
-  };
-
-  const removeLocation = (requirementId: string, index: number) => {
-    setEditedData({
-      ...editedData,
-      requirements: editedData.requirements.map((req: ClientRequirement) => 
-        req.id === requirementId ? {
-          ...req,
-          preferredLocations: req.preferredLocations.filter(
-            (_: string, i: number) => i !== index
-          ),
-        } : req
-      ),
-    });
-  };
-
   const handleAddRequirement = async () => {
+    setLoading('addRequirement', true);
     try {
       const response = await fetch(`/api/clients/${params.id}/requirements`, {
         method: 'POST',
@@ -286,40 +241,60 @@ export default function ClientPage() {
       const updatedClient = await response.json();
       setClient(updatedClient);
       setShowNewRequirementModal(false);
-      setNewRequirement({
-        name: '',
-        type: 'PURCHASE',
-        propertyType: '',
-        budgetMin: '',
-        budgetMax: '',
-        bedrooms: '',
-        bathrooms: '',
-        preferredLocations: [''],
-        additionalRequirements: '',
-        rentalPreferences: {
-          leaseTerm: 'Long-term',
-          furnished: false,
-          petsAllowed: false,
-          maxRentalBudget: '',
-          preferredMoveInDate: '',
-        },
-        purchasePreferences: {
-          propertyAge: '',
-          preferredStyle: '',
-          parking: '',
-          lotSize: '',
-          basement: false,
-          garage: false,
-        }
-      });
       addToast('Requirement added successfully', 'success');
     } catch (error) {
       console.error('Error:', error);
       addToast('Failed to add requirement', 'error');
+    } finally {
+      setLoading('addRequirement', false);
     }
   };
 
-  if (isLoading) {
+  const handleLocationChange = (requirementId: string, index: number, value: string) => {
+    setEditedData({
+      ...editedData,
+      requirements: editedData.requirements.map((req: any) =>
+        req.id === requirementId
+          ? {
+              ...req,
+              preferredLocations: req.preferredLocations.map(
+                (loc: string, i: number) => (i === index ? value : loc)
+              ),
+            }
+          : req
+      ),
+    });
+  };
+
+  const addLocation = (requirementId: string) => {
+    setEditedData({
+      ...editedData,
+      requirements: editedData.requirements.map((req: any) =>
+        req.id === requirementId
+          ? {
+              ...req,
+              preferredLocations: [...req.preferredLocations, ''],
+            }
+          : req
+      ),
+    });
+  };
+
+  const removeLocation = (requirementId: string, index: number) => {
+    setEditedData({
+      ...editedData,
+      requirements: editedData.requirements.map((req: any) =>
+        req.id === requirementId
+          ? {
+              ...req,
+              preferredLocations: req.preferredLocations.filter((_: string, i: number) => i !== index),
+            }
+          : req
+      ),
+    });
+  };
+
+  if (isLoading('loadClient')) {
     return <LoadingSpinner size="large" />;
   }
 
@@ -340,12 +315,20 @@ export default function ClientPage() {
               <select
                 value={client?.status}
                 onChange={(e) => handleStatusChange(e.target.value)}
-                className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                disabled={isLoading('statusUpdate')}
+                className={`rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 ${
+                  isLoading('statusUpdate') ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
               >
                 <option value="Active">Active</option>
                 <option value="Inactive">Inactive</option>
                 <option value="Lead">Lead</option>
               </select>
+              {isLoading('statusUpdate') && (
+                <div className="ml-2 inline-block">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+                </div>
+              )}
               <button
                 onClick={() => setIsEditing(true)}
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
@@ -354,10 +337,10 @@ export default function ClientPage() {
               </button>
               <button
                 onClick={handleDelete}
-                disabled={isDeleting}
+                disabled={isLoading('deleteClient')}
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
               >
-                {isDeleting ? 'Deleting...' : 'Delete'}
+                {isLoading('deleteClient') ? 'Deleting...' : 'Delete'}
               </button>
             </>
           )}
@@ -588,7 +571,7 @@ export default function ClientPage() {
 
             {/* Requirements Grid */}
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              {client.requirements.map((requirement) => (
+              {client.requirements && client.requirements.map((requirement) => (
                 <div
                   key={requirement.id}
                   className="bg-white shadow rounded-lg p-6"

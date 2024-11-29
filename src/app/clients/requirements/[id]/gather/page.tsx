@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/toast-context';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Button from '@/components/Button';
+import { useLoadingStates } from '@/hooks/useLoadingStates';
+import { formatCurrency } from '@/lib/utils';
 
 interface Property {
   id: string;
@@ -60,14 +62,14 @@ export default function GatherPropertiesPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
   const [propertyNotes, setPropertyNotes] = useState<Record<string, string>>({});
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { setLoading, isLoading } = useLoadingStates();
 
   useEffect(() => {
     loadRequirementAndProperties();
   }, []);
 
   const loadRequirementAndProperties = async () => {
+    setLoading('loadData', true);
     try {
       // Load requirement details
       const reqResponse = await fetch(`/api/clients/requirements/${params.id}`);
@@ -75,12 +77,12 @@ export default function GatherPropertiesPage() {
       const reqData = await reqResponse.json();
       setRequirement(reqData);
 
-      // Load matching properties based on requirement type and criteria
+      // Load matching properties
       const propsResponse = await fetch('/api/properties');
       if (!propsResponse.ok) throw new Error('Failed to fetch properties');
       const propsData = await propsResponse.json();
 
-      // Filter properties based on requirement type and criteria
+      // Filter properties based on requirement criteria
       const filteredProperties = propsData.filter((property: Property) => {
         // Basic criteria matching
         const matchesType = property.type.toLowerCase() === reqData.propertyType.toLowerCase();
@@ -145,7 +147,7 @@ export default function GatherPropertiesPage() {
       console.error('Error:', error);
       addToast('Failed to load data', 'error');
     } finally {
-      setIsLoading(false);
+      setLoading('loadData', false);
     }
   };
 
@@ -155,7 +157,7 @@ export default function GatherPropertiesPage() {
       return;
     }
 
-    setIsSubmitting(true);
+    setLoading('submitGather', true);
     try {
       const response = await fetch(`/api/clients/requirements/${params.id}/gather`, {
         method: 'POST',
@@ -176,19 +178,11 @@ export default function GatherPropertiesPage() {
       console.error('Error:', error);
       addToast('Failed to gather properties', 'error');
     } finally {
-      setIsSubmitting(false);
+      setLoading('submitGather', false);
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  if (isLoading) {
+  if (isLoading('loadData')) {
     return <LoadingSpinner size="large" />;
   }
 
@@ -288,11 +282,11 @@ export default function GatherPropertiesPage() {
           <h2 className="text-lg font-semibold">Matching Properties</h2>
           <Button
             onClick={handleSubmit}
-            disabled={isSubmitting || selectedProperties.length === 0}
+            disabled={selectedProperties.length === 0 || isLoading('submitGather')}
             variant="primary"
-            isLoading={isSubmitting}
+            isLoading={isLoading('submitGather')}
           >
-            {isSubmitting ? 'Gathering...' : 'Gather Selected'}
+            {isLoading('submitGather') ? 'Gathering...' : 'Gather Selected'}
           </Button>
         </div>
 

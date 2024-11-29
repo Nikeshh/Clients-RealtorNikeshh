@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { clientApi } from '@/lib/api';
 import { useToast } from '@/components/ui/toast-context';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/Button';
+import { useLoadingStates } from '@/hooks/useLoadingStates';
 
 interface ClientRequirements {
   propertyType: string;
@@ -31,20 +31,18 @@ interface Client {
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const { addToast } = useToast();
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isStatusUpdating, setIsStatusUpdating] = useState<string | null>(null);
-  const [isPinning, setIsPinning] = useState<string | null>(null);
+  const { setLoading, isLoading } = useLoadingStates();
 
   useEffect(() => {
     loadClients();
   }, []);
 
   const loadClients = async () => {
+    setLoading('loadClients', true);
     try {
       const response = await fetch('/api/clients');
       if (!response.ok) throw new Error('Failed to fetch clients');
@@ -54,7 +52,7 @@ export default function ClientsPage() {
       addToast('Failed to load clients', 'error');
       console.error('Error:', error);
     } finally {
-      setIsLoading(false);
+      setLoading('loadClients', false);
     }
   };
 
@@ -85,7 +83,7 @@ export default function ClientsPage() {
   const confirmDelete = async () => {
     if (!clientToDelete) return;
 
-    setIsDeleting(true);
+    setLoading('deleteClient', true);
     try {
       const response = await fetch(`/api/clients/${clientToDelete.id}`, {
         method: 'DELETE',
@@ -99,13 +97,13 @@ export default function ClientsPage() {
       console.error('Error:', error);
       addToast('Failed to delete client', 'error');
     } finally {
-      setIsDeleting(false);
+      setLoading('deleteClient', false);
       setClientToDelete(null);
     }
   };
 
   const handleStatusChange = async (clientId: string, newStatus: string) => {
-    setIsStatusUpdating(clientId);
+    setLoading(`statusUpdate-${clientId}`, true);
     try {
       const response = await fetch(`/api/clients/${clientId}`, {
         method: 'PATCH',
@@ -119,7 +117,6 @@ export default function ClientsPage() {
 
       if (!response.ok) throw new Error('Failed to update status');
 
-      const updatedClient = await response.json();
       setClients(clients.map(client => 
         client.id === clientId ? { ...client, status: newStatus } : client
       ));
@@ -128,12 +125,12 @@ export default function ClientsPage() {
       console.error('Error:', error);
       addToast('Failed to update status', 'error');
     } finally {
-      setIsStatusUpdating(null);
+      setLoading(`statusUpdate-${clientId}`, false);
     }
   };
 
   const handlePinToggle = async (clientId: string, currentPinned: boolean) => {
-    setIsPinning(clientId);
+    setLoading(`pin-${clientId}`, true);
     try {
       const response = await fetch(`/api/clients/${clientId}`, {
         method: 'PATCH',
@@ -155,7 +152,7 @@ export default function ClientsPage() {
       console.error('Error:', error);
       addToast('Failed to update pin status', 'error');
     } finally {
-      setIsPinning(null);
+      setLoading(`pin-${clientId}`, false);
     }
   };
 
@@ -165,7 +162,7 @@ export default function ClientsPage() {
     return a.name.localeCompare(b.name);
   });
 
-  if (isLoading) {
+  if (isLoading('loadClients')) {
     return <LoadingSpinner size="large" />;
   }
 
@@ -224,14 +221,14 @@ export default function ClientsPage() {
             <Button
               onClick={() => setClientToDelete(null)}
               variant="secondary"
-              disabled={isDeleting}
+              disabled={isLoading('deleteClient')}
             >
               Cancel
             </Button>
             <Button
               onClick={confirmDelete}
               variant="danger"
-              isLoading={isDeleting}
+              isLoading={isLoading('deleteClient')}
             >
               Delete
             </Button>
@@ -268,12 +265,12 @@ export default function ClientsPage() {
                       <td className="w-10 px-3 py-4">
                         <button
                           onClick={() => handlePinToggle(client.id, client.pinned)}
-                          disabled={isPinning === client.id}
+                          disabled={isLoading(`pin-${client.id}`)}
                           className={`text-gray-400 hover:text-yellow-500 transition-colors ${
                             client.pinned ? 'text-yellow-500' : ''
                           }`}
                         >
-                          {isPinning === client.id ? (
+                          {isLoading(`pin-${client.id}`) ? (
                             <div className="animate-spin h-5 w-5 border-2 border-yellow-500 rounded-full border-t-transparent" />
                           ) : (
                             <svg 
@@ -303,20 +300,15 @@ export default function ClientsPage() {
                         <select
                           value={client.status}
                           onChange={(e) => handleStatusChange(client.id, e.target.value)}
-                          disabled={isStatusUpdating === client.id}
+                          disabled={isLoading(`statusUpdate-${client.id}`)}
                           className={`rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-                            isStatusUpdating === client.id ? 'opacity-50 cursor-not-allowed' : ''
+                            isLoading(`statusUpdate-${client.id}`) ? 'opacity-50 cursor-not-allowed' : ''
                           }`}
                         >
                           <option value="Active">Active</option>
                           <option value="Inactive">Inactive</option>
                           <option value="Lead">Lead</option>
                         </select>
-                        {isStatusUpdating === client.id && (
-                          <div className="mt-1">
-                            <div className="animate-spin h-4 w-4 border-2 border-blue-500 rounded-full border-t-transparent"></div>
-                          </div>
-                        )}
                       </td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-600">
                         {new Date(client.lastContact).toLocaleDateString()}

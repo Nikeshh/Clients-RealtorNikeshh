@@ -3,11 +3,14 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/toast-context';
+import Button from '@/components/Button';
+import { useLoadingStates } from '@/hooks/useLoadingStates';
+import { formatCurrency } from '@/lib/utils';
 
 export default function NewPropertyPage() {
   const router = useRouter();
   const { addToast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { setLoading, isLoading } = useLoadingStates();
   const [formData, setFormData] = useState({
     title: '',
     address: '',
@@ -38,7 +41,7 @@ export default function NewPropertyPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
+    setLoading('createProperty', true);
 
     try {
       const response = await fetch('/api/properties', {
@@ -64,7 +67,7 @@ export default function NewPropertyPage() {
       console.error('Error:', error);
       addToast('Failed to create property', 'error');
     } finally {
-      setIsSubmitting(false);
+      setLoading('createProperty', false);
     }
   };
 
@@ -191,14 +194,24 @@ export default function NewPropertyPage() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">Price</label>
-              <input
-                type="number"
-                required
-                min="0"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-              />
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <span className="text-gray-500 sm:text-sm">$</span>
+                </div>
+                <input
+                  type="number"
+                  required
+                  className="pl-7 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  value={formData.price}
+                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  placeholder="0"
+                />
+              </div>
+              {formData.price && (
+                <p className="mt-1 text-sm text-gray-500">
+                  {formatCurrency(parseFloat(formData.price))}
+                </p>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -414,20 +427,20 @@ export default function NewPropertyPage() {
         )}
 
         <div className="flex justify-end gap-4">
-          <button
-            type="button"
+          <Button
             onClick={() => router.back()}
-            className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-500"
+            variant="secondary"
+            disabled={isLoading('createProperty')}
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
-            disabled={isSubmitting}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+            variant="primary"
+            isLoading={isLoading('createProperty')}
           >
-            {isSubmitting ? 'Creating...' : 'Create Property'}
-          </button>
+            Create Property
+          </Button>
         </div>
       </form>
     </div>

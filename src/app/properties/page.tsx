@@ -7,6 +7,7 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import { useDebounce } from '@/hooks/useDebounce';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/Button';
+import { useLoadingStates } from '@/hooks/useLoadingStates';
 
 interface Property {
   id: string;
@@ -39,25 +40,18 @@ interface EmailRecipient {
 
 export default function PropertiesPage() {
   const [properties, setProperties] = useState<Property[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
   const [showEmailForm, setShowEmailForm] = useState(false);
-  const [emailFormData, setEmailFormData] = useState({
-    clientEmail: '',
-    clientName: '',
-  });
-  const { addToast } = useToast();
   const [recipients, setRecipients] = useState<EmailRecipient[]>([]);
   const [searchClient, setSearchClient] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const debouncedSearch = useDebounce(searchClient, 300);
   const [propertyToDelete, setPropertyToDelete] = useState<Property | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isStatusUpdating, setIsStatusUpdating] = useState<string | null>(null);
   const [filterListingType, setFilterListingType] = useState('all');
+  const { addToast } = useToast();
+  const debouncedSearch = useDebounce(searchClient, 300);
+  const { setLoading, isLoading } = useLoadingStates();
 
   useEffect(() => {
     loadProperties();
@@ -70,7 +64,7 @@ export default function PropertiesPage() {
         return;
       }
 
-      setIsSearching(true);
+      setLoading('searchClients', true);
       try {
         const response = await fetch(`/api/clients/search?q=${debouncedSearch}`);
         if (!response.ok) throw new Error('Failed to search clients');
@@ -80,7 +74,7 @@ export default function PropertiesPage() {
         console.error('Error searching clients:', error);
         addToast('Failed to search clients', 'error');
       } finally {
-        setIsSearching(false);
+        setLoading('searchClients', false);
       }
     };
 
@@ -88,6 +82,7 @@ export default function PropertiesPage() {
   }, [debouncedSearch]);
 
   const loadProperties = async () => {
+    setLoading('loadProperties', true);
     try {
       const response = await fetch('/api/properties');
       if (!response.ok) throw new Error('Failed to fetch properties');
@@ -97,7 +92,7 @@ export default function PropertiesPage() {
       addToast('Failed to load properties', 'error');
       console.error('Error:', error);
     } finally {
-      setIsLoading(false);
+      setLoading('loadProperties', false);
     }
   };
 
@@ -151,6 +146,7 @@ export default function PropertiesPage() {
   };
 
   const handleSendEmail = async () => {
+    setLoading('sendEmail', true);
     try {
       const selectedProps = properties.filter(p => selectedProperties.includes(p.id));
       
@@ -175,6 +171,8 @@ export default function PropertiesPage() {
     } catch (error) {
       addToast('Failed to send emails', 'error');
       console.error('Error:', error);
+    } finally {
+      setLoading('sendEmail', false);
     }
   };
 
@@ -185,7 +183,7 @@ export default function PropertiesPage() {
   const confirmDelete = async () => {
     if (!propertyToDelete) return;
 
-    setIsDeleting(true);
+    setLoading('deleteProperty', true);
     try {
       const response = await fetch(`/api/properties/${propertyToDelete.id}`, {
         method: 'DELETE',
@@ -199,13 +197,13 @@ export default function PropertiesPage() {
       console.error('Error:', error);
       addToast('Failed to delete property', 'error');
     } finally {
-      setIsDeleting(false);
+      setLoading('deleteProperty', false);
       setPropertyToDelete(null);
     }
   };
 
   const handleStatusChange = async (propertyId: string, newStatus: string) => {
-    setIsStatusUpdating(propertyId);
+    setLoading(`statusUpdate-${propertyId}`, true);
     try {
       const response = await fetch(`/api/properties/${propertyId}`, {
         method: 'PATCH',
@@ -227,11 +225,11 @@ export default function PropertiesPage() {
       console.error('Error:', error);
       addToast('Failed to update status', 'error');
     } finally {
-      setIsStatusUpdating(null);
+      setLoading(`statusUpdate-${propertyId}`, false);
     }
   };
 
-  if (isLoading) {
+  if (isLoading('loadProperties')) {
     return <LoadingSpinner size="large" />;
   }
 
@@ -349,7 +347,7 @@ export default function PropertiesPage() {
               </div>
             )}
 
-            {isSearching && (
+            {isLoading('searchClients') && (
               <div className="absolute right-2 top-2">
                 <div className="animate-spin h-5 w-5 border-2 border-blue-500 rounded-full border-t-transparent"></div>
               </div>
@@ -374,6 +372,7 @@ export default function PropertiesPage() {
               onClick={handleSendEmail}
               variant="primary"
               disabled={recipients.length === 0}
+              isLoading={isLoading('sendEmail')}
             >
               Send Email
             </Button>
@@ -393,16 +392,16 @@ export default function PropertiesPage() {
               <button
                 onClick={() => setPropertyToDelete(null)}
                 className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-500"
-                disabled={isDeleting}
+                disabled={isLoading('deleteProperty')}
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDelete}
-                disabled={isDeleting}
+                disabled={isLoading('deleteProperty')}
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
               >
-                {isDeleting ? 'Deleting...' : 'Delete'}
+                {isLoading('deleteProperty') ? 'Deleting...' : 'Delete'}
               </button>
             </div>
           </div>
@@ -428,9 +427,9 @@ export default function PropertiesPage() {
               <select
                 value={property.status}
                 onChange={(e) => handleStatusChange(property.id, e.target.value)}
-                disabled={isStatusUpdating === property.id}
-                className={`rounded-md border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white ${
-                  isStatusUpdating === property.id ? 'opacity-50 cursor-not-allowed' : ''
+                disabled={isLoading(`statusUpdate-${property.id}`)}
+                className={`rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
+                  isLoading(`statusUpdate-${property.id}`) ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
               >
                 <option value="Available">Available</option>

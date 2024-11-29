@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/Button';
+import { useLoadingStates } from '@/hooks/useLoadingStates';
 
 interface EditClientModalProps {
   isOpen: boolean;
@@ -20,27 +21,28 @@ export default function EditClientModal({
   isOpen,
   onClose,
   onSubmit,
-  client
+  client,
 }: EditClientModalProps) {
-  const [formData, setFormData] = useState(client);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    name: client.name,
+    email: client.email,
+    phone: client.phone,
+    status: client.status,
+  });
+  const { setLoading, isLoading } = useLoadingStates();
 
   const handleSubmit = async () => {
-    setIsSubmitting(true);
+    setLoading('editClient', true);
     try {
       await onSubmit(formData);
       onClose();
     } finally {
-      setIsSubmitting(false);
+      setLoading('editClient', false);
     }
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Edit Client"
-    >
+    <Modal isOpen={isOpen} onClose={onClose} title="Edit Client">
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700">Name</label>
@@ -89,13 +91,14 @@ export default function EditClientModal({
           <Button
             variant="secondary"
             onClick={onClose}
+            disabled={isLoading('editClient')}
           >
             Cancel
           </Button>
           <Button
             variant="primary"
             onClick={handleSubmit}
-            isLoading={isSubmitting}
+            isLoading={isLoading('editClient')}
           >
             Save Changes
           </Button>

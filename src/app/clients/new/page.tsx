@@ -3,11 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/toast-context';
+import Button from '@/components/Button';
+import { useLoadingStates } from '@/hooks/useLoadingStates';
 
 export default function NewClientPage() {
   const router = useRouter();
   const { addToast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { setLoading, isLoading } = useLoadingStates();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -44,6 +46,7 @@ export default function NewClientPage() {
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const validateClient = async (data: any) => {
+    setLoading('validateClient', true);
     try {
       const response = await fetch('/api/clients', {
         method: 'POST',
@@ -69,6 +72,8 @@ export default function NewClientPage() {
       console.error('Error validating client:', error);
       addToast('Failed to validate client', 'error');
       return false;
+    } finally {
+      setLoading('validateClient', false);
     }
   };
 
@@ -85,6 +90,7 @@ export default function NewClientPage() {
   };
 
   const createClient = async (force: boolean) => {
+    setLoading('createClient', true);
     try {
       const response = await fetch('/api/clients', {
         method: 'POST',
@@ -104,6 +110,8 @@ export default function NewClientPage() {
     } catch (error) {
       console.error('Error:', error);
       addToast('Failed to create client', 'error');
+    } finally {
+      setLoading('createClient', false);
     }
   };
 
@@ -513,20 +521,20 @@ export default function NewClientPage() {
         </div>
 
         <div className="flex justify-end gap-4">
-          <button
-            type="button"
+          <Button
             onClick={() => router.back()}
-            className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-500"
+            variant="secondary"
+            disabled={isLoading('createClient') || isLoading('validateClient')}
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
-            disabled={isSubmitting}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+            variant="primary"
+            isLoading={isLoading('createClient') || isLoading('validateClient')}
           >
-            {isSubmitting ? 'Creating...' : 'Create Client'}
-          </button>
+            Create Client
+          </Button>
         </div>
       </form>
 
@@ -550,21 +558,23 @@ export default function NewClientPage() {
               </div>
             </div>
             <div className="flex justify-end gap-3">
-              <button
+              <Button
                 onClick={() => setShowConfirmation(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-500"
+                variant="secondary"
+                disabled={isLoading('createClient')}
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => {
                   setShowConfirmation(false);
                   createClient(true);
                 }}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                variant="primary"
+                isLoading={isLoading('createClient')}
               >
                 Create Anyway
-              </button>
+              </Button>
             </div>
           </div>
         </div>

@@ -1,28 +1,65 @@
-import { requireAuth } from "@/lib/auth"
-import prisma from "@/lib/prisma"
+'use client';
 
-export default async function DashboardPage() {
-  const user = await requireAuth()
+import { useEffect, useState } from 'react';
+import { useToast } from '@/components/ui/toast-context';
+import LoadingSpinner from '@/components/LoadingSpinner';
+import { useLoadingStates } from '@/hooks/useLoadingStates';
+import { formatCurrency, formatDate } from '@/lib/utils';
 
-  // Fetch counts
-  const [clientCount, propertyCount, interactionCount] = await Promise.all([
-    prisma.client.count(),
-    prisma.property.count(),
-    prisma.interaction.count({
-      where: {
-        date: {
-          gte: new Date(new Date().setDate(new Date().getDate() - 30)) // Last 30 days
-        }
-      }
-    })
-  ])
+interface DashboardStats {
+  clientCount: number;
+  propertyCount: number;
+  interactionCount: number;
+  recentClients: Array<{
+    id: string;
+    name: string;
+    status: string;
+    lastContact: string;
+  }>;
+  recentProperties: Array<{
+    id: string;
+    title: string;
+    status: string;
+    price: number;
+  }>;
+}
+
+export default function DashboardPage() {
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const { addToast } = useToast();
+  const { setLoading, isLoading } = useLoadingStates();
+
+  useEffect(() => {
+    loadDashboardStats();
+  }, []);
+
+  const loadDashboardStats = async () => {
+    setLoading('loadStats', true);
+    try {
+      const response = await fetch('/api/dashboard/stats');
+      if (!response.ok) throw new Error('Failed to fetch dashboard stats');
+      const data = await response.json();
+      setStats(data);
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to load dashboard statistics', 'error');
+    } finally {
+      setLoading('loadStats', false);
+    }
+  };
+
+  if (isLoading('loadStats')) {
+    return <LoadingSpinner size="large" />;
+  }
+
+  if (!stats) {
+    return <div>Error loading dashboard</div>;
+  }
 
   return (
     <div className="py-6">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <h1 className="text-2xl font-semibold text-gray-900">
-          Welcome back, {user.name || 'User'}
-        </h1>
+        <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
         
         <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {/* Summary Cards */}
@@ -40,7 +77,7 @@ export default async function DashboardPage() {
                       Total Clients
                     </dt>
                     <dd className="text-lg font-medium text-gray-900">
-                      {clientCount}
+                      {stats.clientCount}
                     </dd>
                   </dl>
                 </div>
@@ -62,7 +99,7 @@ export default async function DashboardPage() {
                       Active Properties
                     </dt>
                     <dd className="text-lg font-medium text-gray-900">
-                      {propertyCount}
+                      {stats.propertyCount}
                     </dd>
                   </dl>
                 </div>
@@ -84,7 +121,7 @@ export default async function DashboardPage() {
                       Recent Interactions (30 days)
                     </dt>
                     <dd className="text-lg font-medium text-gray-900">
-                      {interactionCount}
+                      {stats.interactionCount}
                     </dd>
                   </dl>
                 </div>
@@ -92,7 +129,70 @@ export default async function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* Recent Activity */}
+        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {/* Recent Clients */}
+          <div className="bg-white shadow rounded-lg">
+            <div className="px-4 py-5 sm:p-6">
+              <h3 className="text-lg font-medium text-gray-900">Recent Clients</h3>
+              <div className="mt-4 flow-root">
+                <ul className="divide-y divide-gray-200">
+                  {stats.recentClients.map((client) => (
+                    <li key={client.id} className="py-4">
+                      <div className="flex items-center space-x-4">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {client.name}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            Last contact: {formatDate(client.lastContact)}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            {client.status}
+                          </span>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Properties */}
+          <div className="bg-white shadow rounded-lg">
+            <div className="px-4 py-5 sm:p-6">
+              <h3 className="text-lg font-medium text-gray-900">Recent Properties</h3>
+              <div className="mt-4 flow-root">
+                <ul className="divide-y divide-gray-200">
+                  {stats.recentProperties.map((property) => (
+                    <li key={property.id} className="py-4">
+                      <div className="flex items-center space-x-4">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {property.title}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {formatCurrency(property.price)}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {property.status}
+                          </span>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-  )
+  );
 } 

@@ -67,45 +67,52 @@ export const PATCH = withAuth(async (request: NextRequest) => {
       );
     }
 
-    // Handle pinned status update
-    if (typeof data.pinned !== 'undefined') {
-      const updatedClient = await prisma.client.update({
-        where: { id },
-        data: { pinned: data.pinned },
-      });
-      return NextResponse.json(updatedClient);
-    }
-
-    // Handle other updates
+    // Update the client with the new data
     const updatedClient = await prisma.client.update({
-      where: {
-        id: id,
-      },
+      where: { id },
       data: {
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
-        status: data.status,
-        pinned: data.pinned,
-        requirements: data.requirements ? {
-          update: {
-            where: { id: data.requirements.id },
-            data: {
-              propertyType: data.requirements.propertyType,
-              budgetMin: data.requirements.budgetMin ? parseFloat(data.requirements.budgetMin) : undefined,
-              budgetMax: data.requirements.budgetMax ? parseFloat(data.requirements.budgetMax) : undefined,
-              bedrooms: data.requirements.bedrooms ? parseInt(data.requirements.bedrooms) : null,
-              bathrooms: data.requirements.bathrooms ? parseInt(data.requirements.bathrooms) : null,
-              preferredLocations: data.requirements.preferredLocations,
-              additionalRequirements: data.requirements.additionalRequirements,
-            }
-          }
-        } : undefined
+        ...(data.status && { status: data.status }), // Only update status if provided
+        ...(data.name && { name: data.name }),
+        ...(data.email && { email: data.email }),
+        ...(data.phone && { phone: data.phone }),
+        ...(typeof data.pinned !== 'undefined' && { pinned: data.pinned }),
       },
       include: {
-        requirements: true,
-      }
+        requirements: {
+          include: {
+            rentalPreferences: true,
+            purchasePreferences: true,
+            gatheredProperties: {
+              include: {
+                property: true,
+              }
+            }
+          }
+        },
+        interactions: {
+          orderBy: {
+            date: 'desc',
+          },
+        },
+        sharedProperties: {
+          include: {
+            property: true,
+          },
+        },
+      },
     });
+
+    // Create an interaction for the status change if it was updated
+    if (data.status) {
+      await prisma.interaction.create({
+        data: {
+          clientId: id,
+          type: 'Status Update',
+          description: `Status updated to ${data.status}`,
+          date: new Date(),
+        },
+      });
+    }
 
     return NextResponse.json(updatedClient);
   } catch (error) {
