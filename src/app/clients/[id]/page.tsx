@@ -303,6 +303,12 @@ export default function ClientPage() {
     }
   };
 
+  const handleInteractionAdded = async () => {
+    await loadClient();
+    setShowAddInteractionModal(false);
+    addToast('Interaction added successfully', 'success');
+  };
+
   if (!initialLoadComplete || isLoading("loadClient")) {
     return <LoadingSpinner size="large" />;
   }
@@ -672,8 +678,8 @@ export default function ClientPage() {
         <AddInteractionModal
           isOpen={showAddInteractionModal}
           onClose={() => setShowAddInteractionModal(false)}
-          onSubmit={handleAddInteraction}
           clientId={params.id as string}
+          onSubmit={handleInteractionAdded}
         />
       )}
     </div>

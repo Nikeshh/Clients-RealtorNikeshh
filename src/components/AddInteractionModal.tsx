@@ -4,19 +4,20 @@ import { useState } from 'react';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/Button';
 import { useLoadingStates } from '@/hooks/useLoadingStates';
+import { useToast } from '@/components/ui/toast-context';
 
 interface AddInteractionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: any) => Promise<void>;
   clientId: string;
+  onSubmit?: () => void;
 }
 
 export default function AddInteractionModal({
   isOpen,
   onClose,
-  onSubmit,
   clientId,
+  onSubmit,
 }: AddInteractionModalProps) {
   const [formData, setFormData] = useState({
     type: 'Call',
@@ -24,21 +25,39 @@ export default function AddInteractionModal({
     notes: '',
   });
   const { setLoading, isLoading } = useLoadingStates();
+  const { addToast } = useToast();
 
   const handleSubmit = async () => {
     setLoading('addInteraction', true);
     try {
-      await onSubmit({
-        ...formData,
-        clientId,
-        date: new Date(),
+      const response = await fetch(`/api/clients/${clientId}/interactions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+          date: new Date(),
+        }),
       });
+
+      if (!response.ok) {
+        throw new Error('Failed to add interaction');
+      }
+
+      addToast('Interaction added successfully', 'success');
+      onClose();
+      onSubmit?.();
+      
+      // Reset form
       setFormData({
         type: 'Call',
         description: '',
         notes: '',
       });
-      onClose();
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to add interaction', 'error');
     } finally {
       setLoading('addInteraction', false);
     }
