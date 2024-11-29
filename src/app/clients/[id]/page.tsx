@@ -279,90 +279,6 @@ export default function ClientPage() {
     }
   };
 
-  const handleStatusChange = async (newStatus: string) => {
-    setLoading('statusUpdate', true);
-    try {
-      const response = await fetch(`/api/clients/${params.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (!response.ok) throw new Error('Failed to update status');
-
-      const updatedClient = await response.json();
-      setClient(updatedClient);
-      addToast('Status updated successfully', 'success');
-    } catch (error) {
-      console.error('Error:', error);
-      addToast('Failed to update status', 'error');
-    } finally {
-      setLoading('statusUpdate', false);
-    }
-  };
-
-  const handleEditRequirement = async (requirement: ClientRequirement) => {
-    setLoading('editRequirement', true);
-    try {
-      const response = await fetch(`/api/clients/requirements/${requirement.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requirement),
-      });
-
-      if (!response.ok) throw new Error('Failed to update requirement');
-
-      const updatedRequirement = await response.json();
-      addToast('Requirement updated successfully', 'success');
-      
-      // Redirect to the individual requirement page
-      router.push(`/clients/requirements/${requirement.id}`);
-    } catch (error) {
-      console.error('Error:', error);
-      addToast('Failed to update requirement', 'error');
-    } finally {
-      setLoading('editRequirement', false);
-      setShowEditRequirementModal(false);
-      setEditingRequirement(null);
-    }
-  };
-
-  const handleInteractionAdded = async () => {
-    await loadClient();
-    setShowAddInteractionModal(false);
-    addToast('Interaction added successfully', 'success');
-  };
-
-  const handleDeleteRequirement = async (requirement: ClientRequirement) => {
-    setRequirementToDelete(requirement);
-  };
-
-  const confirmDeleteRequirement = async () => {
-    if (!requirementToDelete) return;
-
-    setLoading('deleteRequirement', true);
-    try {
-      const response = await fetch(`/api/clients/requirements/${requirementToDelete.id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) throw new Error('Failed to delete requirement');
-
-      await loadClient(); // Refresh client data
-      addToast('Requirement deleted successfully', 'success');
-    } catch (error) {
-      console.error('Error:', error);
-      addToast('Failed to delete requirement', 'error');
-    } finally {
-      setLoading('deleteRequirement', false);
-      setRequirementToDelete(null);
-    }
-  };
-
   const handleAddChecklistItem = async () => {
     if (!newChecklistItem.trim()) return;
 
@@ -1091,6 +1007,105 @@ export default function ClientPage() {
               disabled={!newRequirement.name.trim()}
             >
               Add Requirement
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Client Modal */}
+      <Modal
+        isOpen={isEditing}
+        onClose={() => {
+          setIsEditing(false);
+          setEditedClientData({
+            name: client?.name || "",
+            email: client?.email || "",
+            phone: client?.phone || "",
+            status: client?.status || "",
+            notes: client?.notes || "",
+          });
+        }}
+        title="Edit Client"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Name</label>
+            <input
+              type="text"
+              value={editedClientData.name}
+              onChange={(e) => setEditedClientData({ ...editedClientData, name: e.target.value })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Email</label>
+            <input
+              type="email"
+              value={editedClientData.email}
+              onChange={(e) => setEditedClientData({ ...editedClientData, email: e.target.value })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Phone</label>
+            <input
+              type="tel"
+              value={editedClientData.phone}
+              onChange={(e) => setEditedClientData({ ...editedClientData, phone: e.target.value })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Status</label>
+            <select
+              value={editedClientData.status}
+              onChange={(e) => setEditedClientData({ ...editedClientData, status: e.target.value })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            >
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+              <option value="Lead">Lead</option>
+              <option value="Past Client">Past Client</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Notes</label>
+            <textarea
+              value={editedClientData.notes}
+              onChange={(e) => setEditedClientData({ ...editedClientData, notes: e.target.value })}
+              rows={4}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 mt-6">
+            <Button
+              onClick={() => {
+                setIsEditing(false);
+                setEditedClientData({
+                  name: client?.name || "",
+                  email: client?.email || "",
+                  phone: client?.phone || "",
+                  status: client?.status || "",
+                  notes: client?.notes || "",
+                });
+              }}
+              variant="secondary"
+              disabled={isLoading('saveChanges')}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveClientChanges}
+              variant="primary"
+              isLoading={isLoading('saveChanges')}
+              disabled={!editedClientData.name.trim()}
+            >
+              Save Changes
             </Button>
           </div>
         </div>
