@@ -4,10 +4,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useToast } from '@/components/ui/toast-context';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { useDebounce } from '@/hooks/useDebounce';
-import Modal from '@/components/ui/Modal';
 import Button from '@/components/Button';
 import { useLoadingStates } from '@/hooks/useLoadingStates';
+import { formatCurrency } from '@/lib/utils';
 
 interface Property {
   id: string;
@@ -15,71 +14,61 @@ interface Property {
   address: string;
   price: number;
   type: string;
-  listingType: string;
-  bedrooms?: number;
-  bathrooms?: number;
+  listingType: 'SALE' | 'RENTAL';
+  bedrooms?: number | null;
+  bathrooms?: number | null;
   area: number;
   status: string;
+  description?: string;
+  features: string[];
+  images: string[];
+  source: string;
   location: string;
-  furnished?: boolean;
-  petsAllowed?: boolean;
-  leaseTerm?: string;
-  lotSize?: number;
-  basement?: boolean;
-  garage?: boolean;
-  parkingSpaces?: number;
-  propertyStyle?: string;
-  yearBuilt?: number;
-}
-
-interface EmailRecipient {
-  id: string;
-  name: string;
-  email: string;
+  yearBuilt?: number | null;
+  
+  // Rental specific fields
+  furnished?: boolean | null;
+  petsAllowed?: boolean | null;
+  leaseTerm?: string | null;
+  
+  // Purchase specific fields
+  lotSize?: number | null;
+  basement?: boolean | null;
+  garage?: boolean | null;
+  parkingSpaces?: number | null;
+  propertyStyle?: string | null;
+  createdAt: string;
 }
 
 export default function PropertiesPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
-  const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
-  const [showEmailForm, setShowEmailForm] = useState(false);
-  const [recipients, setRecipients] = useState<EmailRecipient[]>([]);
-  const [searchClient, setSearchClient] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [propertyToDelete, setPropertyToDelete] = useState<Property | null>(null);
   const [filterListingType, setFilterListingType] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [sortBy, setSortBy] = useState('newest');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const { addToast } = useToast();
-  const debouncedSearch = useDebounce(searchClient, 300);
   const { setLoading, isLoading } = useLoadingStates();
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    priceMin: '',
+    priceMax: '',
+    bedroomsMin: '',
+    bathroomsMin: '',
+    areaMin: '',
+    areaMax: '',
+    location: '',
+    yearBuilt: '',
+    furnished: false,
+    petsAllowed: false,
+    hasBasement: false,
+    hasGarage: false,
+  });
 
   useEffect(() => {
     loadProperties();
   }, []);
-
-  useEffect(() => {
-    const searchClients = async () => {
-      if (debouncedSearch.length < 2) {
-        setSearchResults([]);
-        return;
-      }
-
-      setLoading('searchClients', true);
-      try {
-        const response = await fetch(`/api/clients/search?q=${debouncedSearch}`);
-        if (!response.ok) throw new Error('Failed to search clients');
-        const data = await response.json();
-        setSearchResults(data);
-      } catch (error) {
-        console.error('Error searching clients:', error);
-        addToast('Failed to search clients', 'error');
-      } finally {
-        setLoading('searchClients', false);
-      }
-    };
-
-    searchClients();
-  }, [debouncedSearch]);
 
   const loadProperties = async () => {
     setLoading('loadProperties', true);
@@ -89,8 +78,8 @@ export default function PropertiesPage() {
       const data = await response.json();
       setProperties(data);
     } catch (error) {
-      addToast('Failed to load properties', 'error');
       console.error('Error:', error);
+      addToast('Failed to load properties', 'error');
     } finally {
       setLoading('loadProperties', false);
     }
@@ -110,124 +99,71 @@ export default function PropertiesPage() {
       filterListingType === 'all' ||
       property.listingType === filterListingType;
 
-    return matchesSearch && matchesType && matchesListingType;
+    const matchesStatus =
+      filterStatus === 'all' ||
+      property.status === filterStatus;
+
+    const matchesPrice = 
+      (!filters.priceMin || property.price >= parseFloat(filters.priceMin)) &&
+      (!filters.priceMax || property.price <= parseFloat(filters.priceMax));
+
+    const matchesBedrooms =
+      !filters.bedroomsMin || (property.bedrooms || 0) >= parseInt(filters.bedroomsMin);
+
+    const matchesBathrooms =
+      !filters.bathroomsMin || (property.bathrooms || 0) >= parseInt(filters.bathroomsMin);
+
+    const matchesArea =
+      (!filters.areaMin || property.area >= parseFloat(filters.areaMin)) &&
+      (!filters.areaMax || property.area <= parseFloat(filters.areaMax));
+
+    const matchesLocation =
+      !filters.location ||
+      property.location.toLowerCase().includes(filters.location.toLowerCase());
+
+    const matchesYearBuilt =
+      !filters.yearBuilt ||
+      (property.yearBuilt && property.yearBuilt >= parseInt(filters.yearBuilt));
+
+    const matchesAmenities =
+      (!filters.furnished || property.furnished === filters.furnished) &&
+      (!filters.petsAllowed || property.petsAllowed === filters.petsAllowed) &&
+      (!filters.hasBasement || property.basement === filters.hasBasement) &&
+      (!filters.hasGarage || property.garage === filters.hasGarage);
+
+    return (
+      matchesSearch &&
+      matchesType &&
+      matchesListingType &&
+      matchesStatus &&
+      matchesPrice &&
+      matchesBedrooms &&
+      matchesBathrooms &&
+      matchesArea &&
+      matchesLocation &&
+      matchesYearBuilt &&
+      matchesAmenities
+    );
   });
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-    }).format(price);
-  };
-
-  const handlePropertySelect = (propertyId: string) => {
-    setSelectedProperties(prev => 
-      prev.includes(propertyId) 
-        ? prev.filter(id => id !== propertyId)
-        : [...prev, propertyId]
-    );
-  };
-
-  const addRecipient = (client: any) => {
-    if (!recipients.find(r => r.id === client.id)) {
-      setRecipients([...recipients, {
-        id: client.id,
-        name: client.name,
-        email: client.email
-      }]);
+  const sortedProperties = [...filteredProperties].sort((a, b) => {
+    switch (sortBy) {
+      case 'price-asc':
+        return a.price - b.price;
+      case 'price-desc':
+        return b.price - a.price;
+      case 'area-asc':
+        return a.area - b.area;
+      case 'area-desc':
+        return b.area - a.area;
+      case 'newest':
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      case 'oldest':
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      default:
+        return 0;
     }
-    setSearchClient('');
-    setSearchResults([]);
-  };
-
-  const removeRecipient = (id: string) => {
-    setRecipients(recipients.filter(r => r.id !== id));
-  };
-
-  const handleSendEmail = async () => {
-    setLoading('sendEmail', true);
-    try {
-      const selectedProps = properties.filter(p => selectedProperties.includes(p.id));
-      
-      await Promise.all(recipients.map(recipient => 
-        fetch('/api/email', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            clientEmail: recipient.email,
-            clientName: recipient.name,
-            properties: selectedProps,
-          }),
-        })
-      ));
-
-      addToast('Emails sent successfully!', 'success');
-      setShowEmailForm(false);
-      setSelectedProperties([]);
-      setRecipients([]);
-    } catch (error) {
-      addToast('Failed to send emails', 'error');
-      console.error('Error:', error);
-    } finally {
-      setLoading('sendEmail', false);
-    }
-  };
-
-  const handleDelete = async (property: Property) => {
-    setPropertyToDelete(property);
-  };
-
-  const confirmDelete = async () => {
-    if (!propertyToDelete) return;
-
-    setLoading('deleteProperty', true);
-    try {
-      const response = await fetch(`/api/properties/${propertyToDelete.id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) throw new Error('Failed to delete property');
-
-      addToast('Property deleted successfully', 'success');
-      setProperties(properties.filter(p => p.id !== propertyToDelete.id));
-    } catch (error) {
-      console.error('Error:', error);
-      addToast('Failed to delete property', 'error');
-    } finally {
-      setLoading('deleteProperty', false);
-      setPropertyToDelete(null);
-    }
-  };
-
-  const handleStatusChange = async (propertyId: string, newStatus: string) => {
-    setLoading(`statusUpdate-${propertyId}`, true);
-    try {
-      const response = await fetch(`/api/properties/${propertyId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          status: newStatus,
-        }),
-      });
-
-      if (!response.ok) throw new Error('Failed to update status');
-
-      setProperties(properties.map(property => 
-        property.id === propertyId ? { ...property, status: newStatus } : property
-      ));
-      addToast('Status updated successfully', 'success');
-    } catch (error) {
-      console.error('Error:', error);
-      addToast('Failed to update status', 'error');
-    } finally {
-      setLoading(`statusUpdate-${propertyId}`, false);
-    }
-  };
+  });
 
   if (isLoading('loadProperties')) {
     return <LoadingSpinner size="large" />;
@@ -249,274 +185,338 @@ export default function PropertiesPage() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
-        <div>
-          <input
-            type="text"
-            placeholder="Search properties..."
-            className="block w-full rounded-lg border border-blue-200 px-4 py-2.5 text-gray-700 focus:border-blue-400 focus:ring-blue-400 transition-colors"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <div>
-          <select
-            className="block w-full rounded-lg border border-blue-200 px-4 py-2.5 text-gray-700 focus:border-blue-400 focus:ring-blue-400 transition-colors"
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-          >
-            <option value="all">All Types</option>
-            <option value="house">House</option>
-            <option value="apartment">Apartment</option>
-            <option value="condo">Condo</option>
-            <option value="land">Land</option>
-          </select>
-        </div>
-        <div>
-          <select
-            className="block w-full rounded-lg border border-blue-200 px-4 py-2.5 text-gray-700 focus:border-blue-400 focus:ring-blue-400 transition-colors"
-            value={filterListingType}
-            onChange={(e) => setFilterListingType(e.target.value)}
-          >
-            <option value="all">All Listings</option>
-            <option value="SALE">For Sale</option>
-            <option value="RENTAL">For Rent</option>
-          </select>
-        </div>
-      </div>
-
-      {selectedProperties.length > 0 && (
-        <div className="mb-6">
-          <button
-            onClick={() => setShowEmailForm(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md"
-          >
-            Send Properties ({selectedProperties.length})
-          </button>
-        </div>
-      )}
-
-      <Modal
-        isOpen={showEmailForm}
-        onClose={() => setShowEmailForm(false)}
-        title="Send Properties"
-      >
-        <div className="space-y-4">
-          {/* Recipients List */}
-          <div className="flex flex-wrap gap-2 mb-2">
-            {recipients.map(recipient => (
-              <div 
-                key={recipient.id}
-                className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm flex items-center gap-1"
-              >
-                <span>{recipient.name}</span>
-                <button
-                  onClick={() => removeRecipient(recipient.id)}
-                  className="text-blue-600 hover:text-blue-800"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-
-          {/* Client Search */}
-          <div className="relative">
+      {/* Basic Filters */}
+      <div className="bg-white shadow rounded-lg p-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>
             <input
               type="text"
-              placeholder="Search clients..."
-              className="w-full p-2 border rounded-md"
-              value={searchClient}
-              onChange={(e) => setSearchClient(e.target.value)}
+              placeholder="Search properties..."
+              className="block w-full rounded-lg border border-gray-300 px-4 py-2.5"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
-            
-            {/* Search Results Dropdown */}
-            {searchResults.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
-                {searchResults.map(client => (
-                  <button
-                    key={client.id}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100"
-                    onClick={() => addRecipient(client)}
-                  >
-                    <div className="font-medium">{client.name}</div>
-                    <div className="text-sm text-gray-600">{client.email}</div>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {isLoading('searchClients') && (
-              <div className="absolute right-2 top-2">
-                <div className="animate-spin h-5 w-5 border-2 border-blue-500 rounded-full border-t-transparent"></div>
-              </div>
-            )}
           </div>
 
-          {/* Selected Properties Summary */}
-          <div className="mt-4 p-2 bg-gray-50 rounded-md">
-            <div className="text-sm font-medium text-gray-700">
-              Selected Properties: {selectedProperties.length}
-            </div>
+          <div>
+            <select
+              className="block w-full rounded-lg border border-gray-300 px-4 py-2.5"
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+            >
+              <option value="all">All Types</option>
+              <option value="house">House</option>
+              <option value="apartment">Apartment</option>
+              <option value="condo">Condo</option>
+              <option value="land">Land</option>
+            </select>
           </div>
 
-          <div className="pt-4 flex justify-end gap-3">
-            <Button
-              onClick={() => setShowEmailForm(false)}
-              variant="secondary"
+          <div>
+            <select
+              className="block w-full rounded-lg border border-gray-300 px-4 py-2.5"
+              value={filterListingType}
+              onChange={(e) => setFilterListingType(e.target.value)}
             >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSendEmail}
-              variant="primary"
-              disabled={recipients.length === 0}
-              isLoading={isLoading('sendEmail')}
+              <option value="all">All Listings</option>
+              <option value="SALE">For Sale</option>
+              <option value="RENTAL">For Rent</option>
+            </select>
+          </div>
+
+          <div>
+            <select
+              className="block w-full rounded-lg border border-gray-300 px-4 py-2.5"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
             >
-              Send Email
-            </Button>
+              <option value="all">All Status</option>
+              <option value="Available">Available</option>
+              <option value="Under Contract">Under Contract</option>
+              <option value="Sold">Sold</option>
+            </select>
           </div>
         </div>
-      </Modal>
 
-      {/* Delete Confirmation Modal */}
-      {propertyToDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100]">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Delete Property</h3>
-            <p className="text-gray-500 mb-4">
-              Are you sure you want to delete {propertyToDelete.title}? This action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setPropertyToDelete(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-500"
-                disabled={isLoading('deleteProperty')}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                disabled={isLoading('deleteProperty')}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
-              >
-                {isLoading('deleteProperty') ? 'Deleting...' : 'Delete'}
-              </button>
+        {/* Advanced Filters Toggle */}
+        <div className="mt-4">
+          <button
+            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+            className="flex items-center text-sm text-gray-600 hover:text-gray-900"
+          >
+            <span>{showAdvancedFilters ? 'Hide' : 'Show'} Advanced Filters</span>
+            <svg
+              className={`ml-2 h-5 w-5 transform transition-transform ${
+                showAdvancedFilters ? 'rotate-180' : ''
+              }`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Advanced Filters */}
+        {showAdvancedFilters && (
+          <div className="mt-4 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Price Range</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    placeholder="Min"
+                    className="block w-full rounded-lg border border-gray-300 px-4 py-2"
+                    value={filters.priceMin}
+                    onChange={(e) => setFilters({ ...filters, priceMin: e.target.value })}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Max"
+                    className="block w-full rounded-lg border border-gray-300 px-4 py-2"
+                    value={filters.priceMax}
+                    onChange={(e) => setFilters({ ...filters, priceMax: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bedrooms & Bathrooms</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    placeholder="Min Beds"
+                    className="block w-full rounded-lg border border-gray-300 px-4 py-2"
+                    value={filters.bedroomsMin}
+                    onChange={(e) => setFilters({ ...filters, bedroomsMin: e.target.value })}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Min Baths"
+                    className="block w-full rounded-lg border border-gray-300 px-4 py-2"
+                    value={filters.bathroomsMin}
+                    onChange={(e) => setFilters({ ...filters, bathroomsMin: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Area (sqft)</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    placeholder="Min"
+                    className="block w-full rounded-lg border border-gray-300 px-4 py-2"
+                    value={filters.areaMin}
+                    onChange={(e) => setFilters({ ...filters, areaMin: e.target.value })}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Max"
+                    className="block w-full rounded-lg border border-gray-300 px-4 py-2"
+                    value={filters.areaMax}
+                    onChange={(e) => setFilters({ ...filters, areaMax: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Year Built</label>
+                <input
+                  type="number"
+                  placeholder="Minimum year"
+                  className="block w-full rounded-lg border border-gray-300 px-4 py-2"
+                  value={filters.yearBuilt}
+                  onChange={(e) => setFilters({ ...filters, yearBuilt: e.target.value })}
+                />
+              </div>
+            </div>
+
+            {/* Amenities Checkboxes */}
+            <div className="flex flex-wrap gap-4">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={filters.furnished}
+                  onChange={(e) => setFilters({ ...filters, furnished: e.target.checked })}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">Furnished</span>
+              </label>
+
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={filters.petsAllowed}
+                  onChange={(e) => setFilters({ ...filters, petsAllowed: e.target.checked })}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">Pets Allowed</span>
+              </label>
+
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={filters.hasBasement}
+                  onChange={(e) => setFilters({ ...filters, hasBasement: e.target.checked })}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">Basement</span>
+              </label>
+
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={filters.hasGarage}
+                  onChange={(e) => setFilters({ ...filters, hasGarage: e.target.checked })}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">Garage</span>
+              </label>
             </div>
           </div>
+        )}
+
+        {/* View Mode Toggle and Sort */}
+        <div className="mt-4 flex justify-between items-center">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-lg ${
+                viewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'text-gray-600'
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 rounded-lg ${
+                viewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-gray-600'
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <select
+              className="rounded-lg border border-gray-300 px-4 py-2"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+            >
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="price-asc">Price: Low to High</option>
+              <option value="price-desc">Price: High to Low</option>
+              <option value="area-asc">Area: Small to Large</option>
+              <option value="area-desc">Area: Large to Small</option>
+            </select>
+            <div className="text-sm text-gray-500">
+              {sortedProperties.length} properties found
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Properties Display */}
+      {viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {sortedProperties.map((property) => (
+            <Link
+              key={property.id}
+              href={`/properties/${property.id}`}
+              className="block bg-white shadow rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
+            >
+              {property.images[0] && (
+                <div className="aspect-w-16 aspect-h-9">
+                  <img
+                    src={property.images[0]}
+                    alt={property.title}
+                    className="object-cover w-full h-48"
+                  />
+                </div>
+              )}
+              <div className="p-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">{property.title}</h3>
+                    <p className="text-sm text-gray-500">{property.address}</p>
+                  </div>
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    {property.status}
+                  </span>
+                </div>
+                <p className="mt-2 text-lg font-bold text-blue-600">
+                  {formatCurrency(property.price)}
+                  {property.listingType === 'RENTAL' && <span className="text-sm font-normal">/month</span>}
+                </p>
+                <div className="mt-2 flex items-center gap-4 text-sm text-gray-500">
+                  {property.bedrooms && <span>{property.bedrooms} beds</span>}
+                  {property.bathrooms && <span>{property.bathrooms} baths</span>}
+                  <span>{property.area} sqft</span>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {sortedProperties.map((property) => (
+            <Link
+              key={property.id}
+              href={`/properties/${property.id}`}
+              className="block bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition-shadow"
+            >
+              <div className="flex">
+                {property.images[0] && (
+                  <div className="flex-shrink-0 w-48">
+                    <img
+                      src={property.images[0]}
+                      alt={property.title}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                )}
+                <div className="flex-1 p-6">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">{property.title}</h3>
+                      <p className="text-sm text-gray-500">{property.address}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-blue-600">
+                        {formatCurrency(property.price)}
+                        {property.listingType === 'RENTAL' && <span className="text-sm font-normal">/month</span>}
+                      </p>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {property.status}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex items-center gap-4 text-sm text-gray-500">
+                    {property.bedrooms && <span>{property.bedrooms} beds</span>}
+                    {property.bathrooms && <span>{property.bathrooms} baths</span>}
+                    <span>{property.area} sqft</span>
+                  </div>
+                  {property.description && (
+                    <p className="mt-2 text-sm text-gray-600 line-clamp-2">{property.description}</p>
+                  )}
+                </div>
+              </div>
+            </Link>
+          ))}
         </div>
       )}
 
-      {/* Properties Grid */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {filteredProperties.map((property) => (
-          <div key={property.id} className="relative bg-white rounded-lg shadow overflow-hidden">
-            {/* Checkbox Container */}
-            <div className="absolute top-4 left-4 z-10">
-              <input
-                type="checkbox"
-                checked={selectedProperties.includes(property.id)}
-                onChange={() => handlePropertySelect(property.id)}
-                className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-            </div>
-
-            {/* Status and Delete Options */}
-            <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-              <select
-                value={property.status}
-                onChange={(e) => handleStatusChange(property.id, e.target.value)}
-                disabled={isLoading(`statusUpdate-${property.id}`)}
-                className={`rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-                  isLoading(`statusUpdate-${property.id}`) ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-              >
-                <option value="Available">Available</option>
-                <option value="Under Contract">Under Contract</option>
-                <option value="Sold">Sold</option>
-              </select>
-              <button
-                onClick={() => handleDelete(property)}
-                className="text-red-600 hover:text-red-800 transition-colors bg-white rounded-md p-1"
-              >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Property Content */}
-            <div className="p-6 pt-12">
-              <Link href={`/properties/${property.id}`}>
-                <h3 className="text-lg font-semibold text-blue-900 mb-2">{property.title}</h3>
-                <p className="text-gray-600 text-sm mb-4">{property.address}</p>
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-bold text-blue-600">
-                    {formatPrice(property.price)}
-                    {property.listingType === 'RENTAL' && <span className="text-sm font-normal">/month</span>}
-                  </span>
-                  <span className="text-sm font-medium px-2 py-1 rounded-full bg-blue-100 text-blue-800">
-                    {property.listingType === 'SALE' ? 'For Sale' : 'For Rent'}
-                  </span>
-                </div>
-                <div className="mt-4 flex items-center text-sm text-gray-500 gap-4">
-                  {property.bedrooms && (
-                    <span>{property.bedrooms} beds</span>
-                  )}
-                  {property.bathrooms && (
-                    <span>{property.bathrooms} baths</span>
-                  )}
-                  <span>{property.area} sqft</span>
-                </div>
-                {/* Type-specific details */}
-                {property.listingType === 'RENTAL' && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {property.furnished && (
-                      <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">
-                        Furnished
-                      </span>
-                    )}
-                    {property.petsAllowed && (
-                      <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">
-                        Pets Allowed
-                      </span>
-                    )}
-                    {property.leaseTerm && (
-                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
-                        {property.leaseTerm}
-                      </span>
-                    )}
-                  </div>
-                )}
-                {property.listingType === 'SALE' && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {property.yearBuilt && (
-                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
-                        Built {property.yearBuilt}
-                      </span>
-                    )}
-                    {property.garage && (
-                      <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">
-                        Garage
-                      </span>
-                    )}
-                    {property.basement && (
-                      <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">
-                        Basement
-                      </span>
-                    )}
-                  </div>
-                )}
-              </Link>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {filteredProperties.length === 0 && (
+      {sortedProperties.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-gray-500">No properties found. Add your first property to get started.</p>
+          <p className="text-gray-500">No properties found matching your criteria.</p>
         </div>
       )}
     </div>
