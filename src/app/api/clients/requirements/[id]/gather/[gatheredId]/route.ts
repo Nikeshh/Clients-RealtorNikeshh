@@ -8,46 +8,20 @@ export const PATCH = withAuth(async (request: NextRequest) => {
     const pathParts = request.url.split('/requirements/')[1].split('/gather/');
     const requirementId = pathParts[0];
     const gatheredId = pathParts[1];
-    const { status, notes } = await request.json();
+    const { status } = await request.json();
 
-    // Find the gathered property first
-    const existingGatheredProperty = await prisma.gatheredProperty.findFirst({
+    const updatedGatheredProperty = await prisma.gatheredProperty.update({
       where: {
-        requirementId,
         id: gatheredId,
-      },
-      include: {
-        requirement: {
-          include: {
-            client: true,
-          }
-        }
-      }
-    });
-
-    if (!existingGatheredProperty) {
-      return NextResponse.json(
-        { error: 'Gathered property not found' },
-        { status: 404 }
-      );
-    }
-
-    // Update the gathered property
-    const gatheredProperty = await prisma.gatheredProperty.update({
-      where: {
-        id: existingGatheredProperty.id,
       },
       data: {
         status,
-        notes,
       },
       include: {
         property: true,
         requirement: {
           include: {
             client: true,
-            rentalPreferences: true,
-            purchasePreferences: true,
           },
         },
       },
@@ -56,71 +30,67 @@ export const PATCH = withAuth(async (request: NextRequest) => {
     // Create an interaction record
     await prisma.interaction.create({
       data: {
-        clientId: gatheredProperty.requirement.client.id,
-        type: 'Property Status Updated',
-        description: `Updated status to ${status} for ${gatheredProperty.requirement.type.toLowerCase()} property: ${gatheredProperty.property.title}`,
+        clientId: updatedGatheredProperty.requirement.client.id,
+        requirementId: updatedGatheredProperty.requirementId,
+        type: 'Property Status Update',
+        description: `Updated status to ${status} for property: ${updatedGatheredProperty.property.title}`,
         date: new Date(),
       },
     });
 
-    return NextResponse.json(gatheredProperty);
+    return NextResponse.json(updatedGatheredProperty);
   } catch (error) {
     console.error('Error updating gathered property:', error);
     return NextResponse.json(
-      { error: 'Failed to update gathered property' },
+      { error: 'Failed to update gathered property', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
 });
 
-// DELETE /api/clients/requirements/[id]/gather/[gatheredId] - Remove a gathered property
+// DELETE /api/clients/requirements/[id]/gather/[gatheredId] - Delete gathered property
 export const DELETE = withAuth(async (request: NextRequest) => {
   try {
     const pathParts = request.url.split('/requirements/')[1].split('/gather/');
     const requirementId = pathParts[0];
     const gatheredId = pathParts[1];
 
-    console.log('Deleting gathered property:', { requirementId, gatheredId });
-
-    // Find the gathered property first
-    const existingGatheredProperty = await prisma.gatheredProperty.findUnique({
+    // Find the gathered property first to get details for the interaction
+    const gatheredProperty = await prisma.gatheredProperty.findUnique({
       where: {
         id: gatheredId,
       },
       include: {
+        property: true,
         requirement: {
           include: {
             client: true,
-          }
+          },
         },
-        property: true,
-      }
+      },
     });
 
-    if (!existingGatheredProperty) {
-      console.log('Not found with:', { requirementId, gatheredId });
+    if (!gatheredProperty) {
       return NextResponse.json(
         { error: 'Gathered property not found' },
         { status: 404 }
       );
     }
 
-    console.log('Found gathered property:', existingGatheredProperty);
-
     // Delete the gathered property
     await prisma.gatheredProperty.delete({
       where: {
-        id: gatheredId
-      }
+        id: gatheredId,
+      },
     });
 
     // Create an interaction record
     await prisma.interaction.create({
       data: {
-        clientId: existingGatheredProperty.requirement.client.id,
-        requirementId,
+        clientId: gatheredProperty.requirement.client.id,
+        requirementId: gatheredProperty.requirementId,
         type: 'Property Removed',
-        description: `Removed property: ${existingGatheredProperty.property.title}`,
+        description: `Removed property: ${gatheredProperty.property.title}`,
         date: new Date(),
       },
     });

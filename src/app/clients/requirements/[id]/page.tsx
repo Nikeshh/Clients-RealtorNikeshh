@@ -146,10 +146,10 @@ export default function RequirementPage() {
     loadRequirement();
   };
 
-  const handleGatheredPropertyStatusChange = async (propertyId: string, status: string) => {
-    setLoading(`updateStatus-${propertyId}`, true);
+  const handleGatheredPropertyStatusChange = async (gatheredProperty: any, status: string) => {
+    setLoading(`updateStatus-${gatheredProperty.id}`, true);
     try {
-      const response = await fetch(`/api/clients/requirements/${params.id}/gather/${propertyId}`, {
+      const response = await fetch(`/api/clients/requirements/${params.id}/gather/${gatheredProperty.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -165,7 +165,7 @@ export default function RequirementPage() {
       console.error('Error:', error);
       addToast('Failed to update status', 'error');
     } finally {
-      setLoading(`updateStatus-${propertyId}`, false);
+      setLoading(`updateStatus-${gatheredProperty.id}`, false);
     }
   };
 
@@ -381,7 +381,7 @@ export default function RequirementPage() {
                       <div className="flex items-center gap-2">
                         <select
                           value={gathered.status}
-                          onChange={(e) => handleGatheredPropertyStatusChange(gathered.property.id, e.target.value)}
+                          onChange={(e) => handleGatheredPropertyStatusChange(gathered, e.target.value)}
                           className="text-sm rounded-md border-gray-300"
                         >
                           <option value="Pending">Pending</option>
