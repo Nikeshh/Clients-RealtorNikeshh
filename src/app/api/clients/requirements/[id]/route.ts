@@ -5,7 +5,6 @@ import prisma from '@/lib/prisma';
 // PATCH /api/clients/requirements/[id] - Update a requirement
 export const PATCH = withAuth(async (request: NextRequest) => {
   try {
-    // Extract requirementId from URL using regex
     const matches = request.url.match(/\/requirements\/([^\/]+)/);
     const requirementId = matches ? matches[1] : null;
 
@@ -35,24 +34,19 @@ export const PATCH = withAuth(async (request: NextRequest) => {
       );
     }
 
-    // Prepare the update data
-    const updateData = {
-      name: data.name,
-      type: data.type,
-      propertyType: data.propertyType,
-      budgetMin: parseFloat(data.budgetMin),
-      budgetMax: parseFloat(data.budgetMax),
-      bedrooms: data.bedrooms ? parseInt(data.bedrooms) : null,
-      bathrooms: data.bathrooms ? parseInt(data.bathrooms) : null,
-      preferredLocations: data.preferredLocations || [],
-      additionalRequirements: data.additionalRequirements || null,
-    };
-
     // Update the requirement with type-specific preferences
     const updatedRequirement = await prisma.clientRequirement.update({
       where: { id: requirementId },
       data: {
-        ...updateData,
+        name: data.name,
+        type: data.type,
+        propertyType: data.propertyType,
+        budgetMin: parseFloat(data.budgetMin),
+        budgetMax: parseFloat(data.budgetMax),
+        bedrooms: data.bedrooms ? parseInt(data.bedrooms) : null,
+        bathrooms: data.bathrooms ? parseInt(data.bathrooms) : null,
+        preferredLocations: data.preferredLocations || [],
+        additionalRequirements: data.additionalRequirements || null,
         ...(data.type === 'RENTAL' ? {
           rentalPreferences: {
             upsert: {
@@ -114,6 +108,7 @@ export const PATCH = withAuth(async (request: NextRequest) => {
         })
       },
       include: {
+        client: true,
         rentalPreferences: true,
         purchasePreferences: true,
         gatheredProperties: {
@@ -134,35 +129,7 @@ export const PATCH = withAuth(async (request: NextRequest) => {
       },
     });
 
-    // Get updated client data
-    const updatedClient = await prisma.client.findUnique({
-      where: { id: existingRequirement.client.id },
-      include: {
-        requirements: {
-          include: {
-            rentalPreferences: true,
-            purchasePreferences: true,
-            gatheredProperties: {
-              include: {
-                property: true,
-              }
-            }
-          }
-        },
-        interactions: {
-          orderBy: {
-            date: 'desc',
-          },
-        },
-        sharedProperties: {
-          include: {
-            property: true,
-          },
-        },
-      },
-    });
-
-    return NextResponse.json(updatedClient);
+    return NextResponse.json(updatedRequirement);
   } catch (error) {
     console.error('Error updating requirement:', error);
     return NextResponse.json(
@@ -195,7 +162,12 @@ export const GET = withAuth(async (request: NextRequest) => {
           include: {
             property: true,
           }
-        }
+        },
+        interactions: {  // Include interactions
+          orderBy: {
+            date: 'desc',
+          },
+        },
       },
     });
 
@@ -216,7 +188,7 @@ export const GET = withAuth(async (request: NextRequest) => {
   }
 });
 
-// Add DELETE handler
+// DELETE handler
 export const DELETE = withAuth(async (request: NextRequest) => {
   try {
     const matches = request.url.match(/\/requirements\/([^\/]+)/);

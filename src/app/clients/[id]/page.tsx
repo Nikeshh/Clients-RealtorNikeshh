@@ -528,9 +528,12 @@ export default function ClientPage() {
                   className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors"
                 >
                   <div className="flex justify-between items-start mb-2">
-                    <h4 className="text-lg font-medium text-gray-900">
+                    <Link 
+                      href={`/clients/requirements/${requirement.id}`}
+                      className="text-lg font-medium text-gray-900 hover:text-blue-600"
+                    >
                       {requirement.name}
-                    </h4>
+                    </Link>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => {
@@ -560,24 +563,6 @@ export default function ClientPage() {
                       Locations: {requirement.preferredLocations.join(', ')}
                     </p>
                   )}
-                  <div className="mt-4 flex justify-between items-center">
-                    <Link
-                      href={`/clients/requirements/${requirement.id}/gather`}
-                      className="text-blue-600 hover:text-blue-800 text-sm"
-                    >
-                      Gather Properties →
-                    </Link>
-                    <Button
-                      variant="secondary"
-                      size="small"
-                      onClick={() => {
-                        setShowAddInteractionModal(true);
-                        setSelectedRequirement(requirement);
-                      }}
-                    >
-                      Add Interaction
-                    </Button>
-                  </div>
                 </div>
               ))}
             </div>

@@ -48,6 +48,7 @@ model ClientRequirement {
 
   client               Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
   gatheredProperties   GatheredProperty[]
+  interactions         Interaction[]
 }
 
 model GatheredProperty {
@@ -117,14 +118,16 @@ model SharedProperty {
 }
 
 model Interaction {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  clientId    String   @db.ObjectId
-  type        String
-  date        DateTime @default(now())
-  description String
-  notes       String?
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  clientId      String   @db.ObjectId
+  requirementId String?  @db.ObjectId
+  type          String
+  date          DateTime @default(now())
+  description   String
+  notes         String?
 
-  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  requirement   ClientRequirement? @relation(fields: [requirementId], references: [id], onDelete: Cascade)
 }
 
 model Account {

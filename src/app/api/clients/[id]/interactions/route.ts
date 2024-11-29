@@ -7,63 +7,54 @@ export const POST = withAuth(async (request: NextRequest) => {
     const clientId = request.url.split('/clients/')[1].split('/interactions')[0];
     const data = await request.json();
 
-    // Create the interaction
     const interaction = await prisma.interaction.create({
       data: {
         clientId,
+        requirementId: data.requirementId || null,
         type: data.type,
         description: data.description,
         notes: data.notes,
-        date: new Date(),
+        date: new Date(data.date),
       },
-    });
-
-    // Get updated client data
-    const updatedClient = await prisma.client.findUnique({
-      where: { id: clientId },
       include: {
-        requirements: {
-          include: {
-            rentalPreferences: true,
-            purchasePreferences: true,
-            gatheredProperties: {
-              include: {
-                property: true,
-              }
-            }
-          }
-        },
-        interactions: {
-          orderBy: {
-            date: 'desc',
-          },
-        },
-        sharedProperties: {
-          include: {
-            property: true,
-          },
-        },
+        requirement: true,
       },
     });
 
-    if (!updatedClient) {
-      return NextResponse.json(
-        { error: 'Client not found after update' },
-        { status: 404 }
-      );
-    }
-
-    // Update last contact date
-    await prisma.client.update({
-      where: { id: clientId },
-      data: { lastContact: new Date() },
-    });
-
-    return NextResponse.json(updatedClient);
+    return NextResponse.json(interaction);
   } catch (error) {
     console.error('Error creating interaction:', error);
     return NextResponse.json(
-      { error: 'Failed to create interaction', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Failed to create interaction' },
+      { status: 500 }
+    );
+  }
+});
+
+export const GET = withAuth(async (request: NextRequest) => {
+  try {
+    const clientId = request.url.split('/clients/')[1].split('/interactions')[0];
+    const { searchParams } = new URL(request.url);
+    const requirementId = searchParams.get('requirementId');
+
+    const interactions = await prisma.interaction.findMany({
+      where: {
+        clientId,
+        ...(requirementId && { requirementId }),
+      },
+      orderBy: {
+        date: 'desc',
+      },
+      include: {
+        requirement: true,
+      },
+    });
+
+    return NextResponse.json(interactions);
+  } catch (error) {
+    console.error('Error fetching interactions:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch interactions' },
       { status: 500 }
     );
   }
