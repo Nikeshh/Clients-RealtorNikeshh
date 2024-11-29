@@ -25,4 +25,5 @@ export type Property = PropertyBase & {
   id: string;
   createdAt: Date;
   updatedAt: Date;
+  link?: string;
 }; 

@@ -37,6 +37,7 @@ export default function NewPropertyPage() {
     garage: false,
     parkingSpaces: '',
     propertyStyle: '',
+    link: '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -184,6 +185,20 @@ export default function NewPropertyPage() {
                 <option value="Under Contract">Under Contract</option>
                 <option value="Sold">Sold</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Property Link</label>
+              <input
+                type="url"
+                value={formData.link}
+                onChange={(e) => setFormData({ ...formData, link: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                placeholder="https://www.realtor.ca/property/..."
+              />
+              <p className="mt-1 text-sm text-gray-500">
+                Original listing URL (e.g., Realtor.ca, Zillow, etc.)
+              </p>
             </div>
           </div>
         </div>
