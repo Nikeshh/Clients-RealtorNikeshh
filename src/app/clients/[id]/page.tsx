@@ -624,7 +624,7 @@ export default function ClientPage() {
         </div>
       </div>
 
-      {/* Add Edit Requirement Modal */}
+      {/* Edit Requirement Modal */}
       {showEditRequirementModal && editingRequirement && (
         <Modal
           isOpen={showEditRequirementModal}
@@ -648,7 +648,281 @@ export default function ClientPage() {
               />
             </div>
 
-            {/* Add other requirement fields here */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Type</label>
+              <select
+                value={editingRequirement.type}
+                onChange={(e) => setEditingRequirement({
+                  ...editingRequirement,
+                  type: e.target.value as 'PURCHASE' | 'RENTAL'
+                })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              >
+                <option value="PURCHASE">Purchase</option>
+                <option value="RENTAL">Rental</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Property Type</label>
+              <select
+                value={editingRequirement.propertyType}
+                onChange={(e) => setEditingRequirement({
+                  ...editingRequirement,
+                  propertyType: e.target.value
+                })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              >
+                <option value="House">House</option>
+                <option value="Apartment">Apartment</option>
+                <option value="Condo">Condo</option>
+                <option value="Land">Land</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Min Budget</label>
+                <input
+                  type="number"
+                  value={editingRequirement.budgetMin}
+                  onChange={(e) => setEditingRequirement({
+                    ...editingRequirement,
+                    budgetMin: parseFloat(e.target.value)
+                  })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Max Budget</label>
+                <input
+                  type="number"
+                  value={editingRequirement.budgetMax}
+                  onChange={(e) => setEditingRequirement({
+                    ...editingRequirement,
+                    budgetMax: parseFloat(e.target.value)
+                  })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Bedrooms</label>
+                <input
+                  type="number"
+                  value={editingRequirement.bedrooms || ''}
+                  onChange={(e) => setEditingRequirement({
+                    ...editingRequirement,
+                    bedrooms: e.target.value ? parseInt(e.target.value) : null
+                  })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Bathrooms</label>
+                <input
+                  type="number"
+                  value={editingRequirement.bathrooms || ''}
+                  onChange={(e) => setEditingRequirement({
+                    ...editingRequirement,
+                    bathrooms: e.target.value ? parseInt(e.target.value) : null
+                  })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Preferred Locations</label>
+              <div className="space-y-2">
+                {editingRequirement.preferredLocations.map((location, index) => (
+                  <div key={index} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={location}
+                      onChange={(e) => {
+                        const newLocations = [...editingRequirement.preferredLocations];
+                        newLocations[index] = e.target.value;
+                        setEditingRequirement({
+                          ...editingRequirement,
+                          preferredLocations: newLocations
+                        });
+                      }}
+                      className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newLocations = editingRequirement.preferredLocations.filter((_, i) => i !== index);
+                        setEditingRequirement({
+                          ...editingRequirement,
+                          preferredLocations: newLocations
+                        });
+                      }}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setEditingRequirement({
+                    ...editingRequirement,
+                    preferredLocations: [...editingRequirement.preferredLocations, '']
+                  })}
+                  className="text-sm text-indigo-600 hover:text-indigo-800"
+                >
+                  Add Location
+                </button>
+              </div>
+            </div>
+
+            {/* Type-specific preferences */}
+            {editingRequirement.type === 'RENTAL' && (
+              <div className="space-y-4 border-t pt-4">
+                <h3 className="font-medium text-gray-900">Rental Preferences</h3>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Lease Term</label>
+                  <select
+                    value={editingRequirement.rentalPreferences?.leaseTerm || 'Long-term'}
+                    onChange={(e) => setEditingRequirement({
+                      ...editingRequirement,
+                      rentalPreferences: {
+                        ...editingRequirement.rentalPreferences!,
+                        leaseTerm: e.target.value
+                      }
+                    })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  >
+                    <option value="Short-term">Short-term</option>
+                    <option value="Long-term">Long-term</option>
+                  </select>
+                </div>
+                <div className="flex gap-4">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={editingRequirement.rentalPreferences?.furnished}
+                      onChange={(e) => setEditingRequirement({
+                        ...editingRequirement,
+                        rentalPreferences: {
+                          ...editingRequirement.rentalPreferences!,
+                          furnished: e.target.checked
+                        }
+                      })}
+                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">Furnished</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={editingRequirement.rentalPreferences?.petsAllowed}
+                      onChange={(e) => setEditingRequirement({
+                        ...editingRequirement,
+                        rentalPreferences: {
+                          ...editingRequirement.rentalPreferences!,
+                          petsAllowed: e.target.checked
+                        }
+                      })}
+                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">Pets Allowed</span>
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {editingRequirement.type === 'PURCHASE' && (
+              <div className="space-y-4 border-t pt-4">
+                <h3 className="font-medium text-gray-900">Purchase Preferences</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Property Age</label>
+                    <select
+                      value={editingRequirement.purchasePreferences?.propertyAge || ''}
+                      onChange={(e) => setEditingRequirement({
+                        ...editingRequirement,
+                        purchasePreferences: {
+                          ...editingRequirement.purchasePreferences!,
+                          propertyAge: e.target.value
+                        }
+                      })}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    >
+                      <option value="">Any</option>
+                      <option value="New">New Construction</option>
+                      <option value="0-5">0-5 years</option>
+                      <option value="5-10">5-10 years</option>
+                      <option value="10+">10+ years</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Property Style</label>
+                    <input
+                      type="text"
+                      value={editingRequirement.purchasePreferences?.preferredStyle || ''}
+                      onChange={(e) => setEditingRequirement({
+                        ...editingRequirement,
+                        purchasePreferences: {
+                          ...editingRequirement.purchasePreferences!,
+                          preferredStyle: e.target.value
+                        }
+                      })}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={editingRequirement.purchasePreferences?.basement}
+                      onChange={(e) => setEditingRequirement({
+                        ...editingRequirement,
+                        purchasePreferences: {
+                          ...editingRequirement.purchasePreferences!,
+                          basement: e.target.checked
+                        }
+                      })}
+                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">Basement</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={editingRequirement.purchasePreferences?.garage}
+                      onChange={(e) => setEditingRequirement({
+                        ...editingRequirement,
+                        purchasePreferences: {
+                          ...editingRequirement.purchasePreferences!,
+                          garage: e.target.checked
+                        }
+                      })}
+                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">Garage</span>
+                  </label>
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Additional Requirements</label>
+              <textarea
+                value={editingRequirement.additionalRequirements || ''}
+                onChange={(e) => setEditingRequirement({
+                  ...editingRequirement,
+                  additionalRequirements: e.target.value
+                })}
+                rows={3}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              />
+            </div>
 
             <div className="flex justify-end gap-3">
               <Button
