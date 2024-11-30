@@ -157,7 +157,7 @@ export default function StageTemplates({ onSelect, onClose }: Props) {
           variant="primary"
           disabled={!selectedTemplate}
         >
-          Add Base Stage
+          Add Client Stage
         </Button>
       </div>
     </div>

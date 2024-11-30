@@ -329,7 +329,7 @@ export default function ClientStages({
         <Modal
           isOpen={showAddStageModal}
           onClose={() => setShowAddStageModal(false)}
-          title="Add Base Stage"
+          title="Add Client Stage"
         >
           <StageTemplates
             onSelect={handleAddStage}
