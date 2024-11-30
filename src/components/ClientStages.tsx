@@ -4,9 +4,16 @@ import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/toast-context';
 import { useLoadingStates } from '@/hooks/useLoadingStates';
 import Button from '@/components/Button';
-import { Plus, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, ListChecks, ClipboardList, Building2 } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import StageTemplates from './StageTemplates';
+import ProcessTemplates from './ProcessTemplates';
+import RequirementForm from './RequirementForm';
+import ChecklistForm from './ChecklistForm';
+import ProcessList from './ProcessList';
+import RequirementList from './RequirementList';
+import ChecklistList from './ChecklistList';
+import SharedPropertiesList from './SharedPropertiesList';
 
 interface Stage {
   id: string;
@@ -28,11 +35,33 @@ interface Stage {
       status: string;
     }>;
   }>;
-  requirements: any[];
-  checklist: any[];
-  documents: any[];
-  sharedProperties: any[];
-  interactions: any[];
+  requirements: Array<{
+    id: string;
+    name: string;
+    type: string;
+    propertyType: string;
+    budgetMin: number;
+    budgetMax: number;
+    bedrooms?: number;
+    bathrooms?: number;
+    preferredLocations: string[];
+    status: string;
+  }>;
+  checklist: Array<{
+    id: string;
+    text: string;
+    completed: boolean;
+  }>;
+  sharedProperties: Array<{
+    id: string;
+    property: {
+      id: string;
+      title: string;
+      address: string;
+      price: number;
+      images?: string[];
+    };
+  }>;
 }
 
 interface Props {
@@ -42,7 +71,11 @@ interface Props {
 export default function ClientStages({ clientId }: Props) {
   const [stages, setStages] = useState<Stage[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showAddProcessModal, setShowAddProcessModal] = useState(false);
+  const [showAddRequirementModal, setShowAddRequirementModal] = useState(false);
+  const [showAddChecklistModal, setShowAddChecklistModal] = useState(false);
   const [expandedStages, setExpandedStages] = useState<string[]>([]);
+  const [selectedStageId, setSelectedStageId] = useState<string>('');
   const { addToast } = useToast();
   const { setLoading, isLoading } = useLoadingStates();
 
@@ -69,57 +102,51 @@ export default function ClientStages({ clientId }: Props) {
     }
   };
 
-  const handleAddStage = async (templates: any[]) => {
+  const handleAddStage = async (template: any) => {
     setLoading('addStage', true);
     try {
-      // Create stages sequentially to maintain order
-      for (const template of templates) {
-        const response = await fetch(`/api/clients/${clientId}/stages`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            title: template.title,
-            description: template.description,
-            processes: template.processes
-          }),
-        });
+      const response = await fetch(`/api/clients/${clientId}/stages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(template),
+      });
 
-        if (!response.ok) throw new Error('Failed to create stage');
-      }
+      if (!response.ok) throw new Error('Failed to create stage');
 
-      addToast('Stages created successfully', 'success');
+      addToast('Stage created successfully', 'success');
       loadStages();
       setShowAddModal(false);
     } catch (error) {
       console.error('Error:', error);
-      addToast('Failed to create stages', 'error');
+      addToast('Failed to create stage', 'error');
     } finally {
       setLoading('addStage', false);
     }
   };
 
-  const handleStageStatusChange = async (stageId: string, newStatus: Stage['status']) => {
-    setLoading(`updateStage-${stageId}`, true);
+  const handleAddProcess = async (stageId: string, template: any) => {
+    setLoading('addProcess', true);
     try {
-      const response = await fetch(`/api/clients/${clientId}/stages/${stageId}`, {
-        method: 'PATCH',
+      const response = await fetch(`/api/clients/${clientId}/stages/${stageId}/processes`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify(template),
       });
 
-      if (!response.ok) throw new Error('Failed to update stage status');
+      if (!response.ok) throw new Error('Failed to create process');
 
-      addToast('Stage status updated successfully', 'success');
+      addToast('Process created successfully', 'success');
       loadStages();
+      setShowAddProcessModal(false);
     } catch (error) {
       console.error('Error:', error);
-      addToast('Failed to update stage status', 'error');
+      addToast('Failed to create process', 'error');
     } finally {
-      setLoading(`updateStage-${stageId}`, false);
+      setLoading('addProcess', false);
     }
   };
 
@@ -131,25 +158,6 @@ export default function ClientStages({ clientId }: Props) {
     );
   };
 
-  const getStatusColor = (status: Stage['status']) => {
-    switch (status) {
-      case 'COMPLETED':
-        return 'bg-green-100 text-green-800';
-      case 'CANCELLED':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-blue-100 text-blue-800';
-    }
-  };
-
-  if (isLoading('loadStages')) {
-    return <div className="animate-pulse space-y-4">
-      {[1, 2, 3].map(i => (
-        <div key={i} className="h-24 bg-gray-100 rounded-lg"></div>
-      ))}
-    </div>;
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -158,28 +166,28 @@ export default function ClientStages({ clientId }: Props) {
           onClick={() => setShowAddModal(true)}
           variant="primary"
         >
-          <Plus className="h-5 w-5 mr-2" />
+          <Plus className="h-4 w-4 mr-2" />
           Add Stage
         </Button>
       </div>
 
       <div className="space-y-4">
         {stages.map((stage) => (
-          <div key={stage.id} className="bg-white shadow rounded-lg overflow-hidden">
+          <div key={stage.id} className="bg-white rounded-lg shadow">
+            {/* Stage Header */}
             <div 
-              className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50"
+              className="p-4 flex items-center justify-between cursor-pointer"
               onClick={() => toggleStageExpansion(stage.id)}
             >
               <div className="flex items-center gap-4">
-                <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(stage.status)}`}>
+                <h3 className="text-lg font-medium text-gray-900">{stage.title}</h3>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  stage.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                  stage.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                  'bg-blue-100 text-blue-800'
+                }`}>
                   {stage.status}
                 </span>
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900">{stage.title}</h3>
-                  {stage.description && (
-                    <p className="text-sm text-gray-500">{stage.description}</p>
-                  )}
-                </div>
               </div>
               {expandedStages.includes(stage.id) ? (
                 <ChevronUp className="h-5 w-5 text-gray-400" />
@@ -188,117 +196,80 @@ export default function ClientStages({ clientId }: Props) {
               )}
             </div>
 
+            {/* Stage Content */}
             {expandedStages.includes(stage.id) && (
-              <div className="border-t border-gray-200 p-4">
-                <div className="space-y-6">
-                  {/* Stage Actions */}
-                  <div className="flex justify-end gap-2">
-                    {stage.status === 'ACTIVE' && (
-                      <>
-                        <Button
-                          onClick={() => handleStageStatusChange(stage.id, 'COMPLETED')}
-                          variant="success"
-                          size="small"
-                        >
-                          Complete Stage
-                        </Button>
-                        <Button
-                          onClick={() => handleStageStatusChange(stage.id, 'CANCELLED')}
-                          variant="danger"
-                          size="small"
-                        >
-                          Cancel Stage
-                        </Button>
-                      </>
-                    )}
-                  </div>
+              <div className="p-4 border-t">
+                {/* Action Buttons */}
+                <div className="flex gap-2 mb-6">
+                  <Button
+                    onClick={() => {
+                      setSelectedStageId(stage.id);
+                      setShowAddProcessModal(true);
+                    }}
+                    variant="secondary"
+                    size="small"
+                  >
+                    Add Process
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setSelectedStageId(stage.id);
+                      setShowAddRequirementModal(true);
+                    }}
+                    variant="secondary"
+                    size="small"
+                  >
+                    Add Requirement
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setSelectedStageId(stage.id);
+                      setShowAddChecklistModal(true);
+                    }}
+                    variant="secondary"
+                    size="small"
+                  >
+                    Add Checklist Item
+                  </Button>
+                </div>
 
-                  {/* Stage Content Sections */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Processes Section */}
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-900 mb-4">Processes</h4>
-                      {stage.processes.length > 0 ? (
-                        <div className="space-y-4">
-                          {stage.processes.map((process) => (
-                            <div key={process.id} className="border rounded-lg p-3">
-                              <h5 className="font-medium">{process.title}</h5>
-                              {process.description && (
-                                <p className="text-sm text-gray-500 mt-1">{process.description}</p>
-                              )}
-                              {process.tasks.length > 0 && (
-                                <div className="mt-2 flex flex-wrap gap-2">
-                                  {process.tasks.map((task) => (
-                                    <span
-                                      key={task.id}
-                                      className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
-                                    >
-                                      {task.type}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-gray-500">No processes added yet</p>
-                      )}
-                    </div>
+                {/* Content Sections */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Processes Section */}
+                  <ProcessList 
+                    processes={stage.processes}
+                    stageId={stage.id}
+                    onUpdate={loadStages}
+                  />
 
-                    {/* Requirements Section */}
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-900 mb-4">Requirements</h4>
-                      {stage.requirements.length > 0 ? (
-                        <div className="space-y-4">
-                          {stage.requirements.map((requirement) => (
-                            <div key={requirement.id} className="border rounded-lg p-3">
-                              <h5 className="font-medium">{requirement.title}</h5>
-                              <p className="text-sm text-gray-500 mt-1">{requirement.description}</p>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-gray-500">No requirements added yet</p>
-                      )}
-                    </div>
-                  </div>
+                  {/* Requirements Section */}
+                  <RequirementList
+                    requirements={stage.requirements}
+                    stageId={stage.id}
+                    onUpdate={loadStages}
+                  />
 
                   {/* Checklist Section */}
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-900 mb-4">Checklist</h4>
-                    {stage.checklist.length > 0 ? (
-                      <div className="space-y-2">
-                        {stage.checklist.map((item) => (
-                          <div key={item.id} className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={item.completed}
-                              onChange={() => {/* Handle checklist item toggle */}}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            />
-                            <span className="text-sm text-gray-700">{item.text}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-500">No checklist items added yet</p>
-                    )}
-                  </div>
+                  <ChecklistList
+                    checklist={stage.checklist}
+                    stageId={stage.id}
+                    onUpdate={loadStages}
+                  />
+
+                  {/* Shared Properties Section */}
+                  <SharedPropertiesList
+                    properties={stage.sharedProperties}
+                    stageId={stage.id}
+                    onUpdate={loadStages}
+                  />
                 </div>
               </div>
             )}
           </div>
         ))}
-
-        {stages.length === 0 && (
-          <div className="text-center py-6 bg-gray-50 rounded-lg">
-            <p className="text-gray-500">No stages found</p>
-          </div>
-        )}
       </div>
 
-      {/* Add Stage Modal */}
+      {/* Modals */}
       <Modal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
@@ -306,8 +277,50 @@ export default function ClientStages({ clientId }: Props) {
       >
         <StageTemplates
           isOpen={showAddModal}
-          onClose={() => setShowAddModal(false)}
           onSelect={handleAddStage}
+          onClose={() => setShowAddModal(false)}
+        />
+      </Modal>
+
+      <Modal
+        isOpen={showAddProcessModal}
+        onClose={() => setShowAddProcessModal(false)}
+        title="Add Process"
+      >
+        <ProcessTemplates
+          isOpen={showAddProcessModal}
+          onSelect={(template) => handleAddProcess(selectedStageId, template)}
+          onClose={() => setShowAddProcessModal(false)}
+        />
+      </Modal>
+
+      <Modal
+        isOpen={showAddRequirementModal}
+        onClose={() => setShowAddRequirementModal(false)}
+        title="Add Requirement"
+      >
+        <RequirementForm
+          stageId={selectedStageId}
+          onSubmit={() => {
+            loadStages();
+            setShowAddRequirementModal(false);
+          }}
+          onCancel={() => setShowAddRequirementModal(false)}
+        />
+      </Modal>
+
+      <Modal
+        isOpen={showAddChecklistModal}
+        onClose={() => setShowAddChecklistModal(false)}
+        title="Add Checklist Item"
+      >
+        <ChecklistForm
+          stageId={selectedStageId}
+          onSubmit={() => {
+            loadStages();
+            setShowAddChecklistModal(false);
+          }}
+          onCancel={() => setShowAddChecklistModal(false)}
         />
       </Modal>
     </div>

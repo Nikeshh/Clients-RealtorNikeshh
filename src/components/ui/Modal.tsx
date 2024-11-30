@@ -1,23 +1,40 @@
-interface ModalProps {
+'use client';
+
+import React from 'react';
+import { Dialog } from '@headlessui/react';
+import { X } from 'lucide-react';
+
+interface Props {
   isOpen: boolean;
   onClose: () => void;
+  title: string;
   children: React.ReactNode;
-  title?: string;
 }
 
-export default function Modal({ isOpen, onClose, children, title }: ModalProps) {
-  if (!isOpen) return null;
-
+export default function Modal({ isOpen, onClose, title, children }: Props) {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100]">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md flex flex-col max-h-[calc(100vh-2rem)]">
-        {title && (
-          <div className="px-6 py-4 border-b flex-shrink-0">
-            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+    <Dialog open={isOpen} onClose={onClose} className="relative z-50">
+      <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+      
+      <div className="fixed inset-0 flex items-center justify-center p-4">
+        <Dialog.Panel className="mx-auto max-w-xl w-full bg-white rounded-lg shadow-lg">
+          <div className="flex items-center justify-between p-4 border-b">
+            <Dialog.Title className="text-lg font-semibold text-gray-900">
+              {title}
+            </Dialog.Title>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-500"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
-        )}
-        <div className="px-6 py-4 overflow-y-auto flex-grow">{children}</div>
+          
+          <div className="p-6">
+            {children}
+          </div>
+        </Dialog.Panel>
       </div>
-    </div>
+    </Dialog>
   );
 } 

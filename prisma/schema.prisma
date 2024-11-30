@@ -93,16 +93,18 @@ model ClientRequirement {
   preferredLocations   String[]
   additionalRequirements String?
   status               String   @default("Active")
-  rentalPreferences    RentalPreferences?
-  purchasePreferences  PurchasePreferences?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
   stage               Stage    @relation(fields: [stageId], references: [id], onDelete: Cascade)
   gatheredProperties   GatheredProperty[]
   interactions         Interaction[]
-  checklist            RequirementChecklist[]
   commissions          Commission[]
+  
+  // Add these relation fields
+  rentalPreferences    RentalPreferences?
+  purchasePreferences  PurchasePreferences?
+  checklist           RequirementChecklist?
 }
 
 model GatheredProperty {
@@ -258,24 +260,23 @@ model PurchasePreferences {
 
 model RequirementChecklist {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  requirementId String   @db.ObjectId
-  text          String
+  requirementId String   @db.ObjectId @unique
   completed     Boolean  @default(false)
+  notes         String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-
   requirement   ClientRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
 }
 
 model ClientChecklist {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  clientId  String   @db.ObjectId
-  text      String
-  completed Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  clientId    String   @db.ObjectId
+  text        String
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 }
 
 // prisma/schema.prisma

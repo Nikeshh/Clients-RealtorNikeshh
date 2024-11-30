@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useCallback } from 'react';
 
 export function useLoadingStates() {
@@ -14,9 +16,5 @@ export function useLoadingStates() {
     return loadingStates[key] || false;
   }, [loadingStates]);
 
-  return {
-    setLoading,
-    isLoading,
-    loadingStates
-  };
+  return { setLoading, isLoading };
 } 

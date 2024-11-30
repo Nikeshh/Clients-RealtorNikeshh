@@ -1,16 +1,18 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import React, { createContext, useContext, useState, useCallback } from 'react'
+
+type ToastType = 'success' | 'error' | 'info' | 'warning'
 
 interface Toast {
-  id: number
+  id: string
   message: string
-  type: 'success' | 'error'
+  type: ToastType
 }
 
 interface ToastContextType {
-  addToast: (message: string, type: 'success' | 'error') => void
-  removeToast: (id: number) => void
+  addToast: (message: string, type: ToastType) => void
+  removeToast: (id: string) => void
   toasts: Toast[]
 }
 
@@ -19,38 +21,33 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined)
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
 
-  const addToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
-    const id = Date.now()
+  const addToast = useCallback((message: string, type: ToastType) => {
+    const id = Math.random().toString(36).substr(2, 9)
     setToasts((prev) => [...prev, { id, message, type }])
 
-    // Automatically remove toast after 3 seconds
+    // Auto remove after 5 seconds
     setTimeout(() => {
       setToasts((prev) => prev.filter((toast) => toast.id !== id))
-    }, 3000)
+    }, 5000)
   }, [])
 
-  const removeToast = useCallback((id: number) => {
+  const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id))
   }, [])
 
-  // Create a stable context value
-  const contextValue = {
-    addToast,
-    removeToast,
-    toasts,
-  }
-
   return (
-    <ToastContext.Provider value={contextValue}>
+    <ToastContext.Provider value={{ addToast, removeToast, toasts }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+      <div className="fixed bottom-4 right-4 z-50 space-y-2">
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`rounded-lg px-4 py-3 text-white shadow-lg cursor-pointer transition-all duration-300 ${
-              toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+            className={`p-4 rounded-lg shadow-lg text-white ${
+              toast.type === 'success' ? 'bg-green-500' :
+              toast.type === 'error' ? 'bg-red-500' :
+              toast.type === 'warning' ? 'bg-yellow-500' :
+              'bg-blue-500'
             }`}
-            onClick={() => removeToast(toast.id)}
           >
             {toast.message}
           </div>
@@ -62,7 +59,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
 export function useToast() {
   const context = useContext(ToastContext)
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useToast must be used within a ToastProvider')
   }
   return context
