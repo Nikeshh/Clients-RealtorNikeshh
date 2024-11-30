@@ -12,7 +12,7 @@ import AddInteractionModal from '@/components/AddInteractionModal';
 import Modal from "@/components/ui/Modal";
 import DocumentUpload from '@/components/DocumentUpload';
 import { DocumentIcon, ArrowDownTrayIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { Activity, CheckSquare } from 'lucide-react';
+import { Activity, CheckSquare, ChevronDown } from 'lucide-react';
 import ClientStages from '@/components/ClientStages';
 import StartProcessModal from "@/components/StartProcessModal";
 import AddChecklistItemForm from '@/components/AddChecklistItemForm';
@@ -101,6 +101,12 @@ interface Client {
     url: string;
     uploadedAt: string;
   }>;
+  stages: Array<{
+    id: string;
+    title: string;
+    status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+    // ... other stage fields ...
+  }>;
 }
 
 interface NewRequirementForm {
@@ -144,6 +150,9 @@ export default function ClientPage() {
   const [showChecklistModal, setShowChecklistModal] = useState(false);
   const [showInteractionsModal, setShowInteractionsModal] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [showStatusMenu, setShowStatusMenu] = useState<string | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingClient, setEditingClient] = useState<any>(null);
 
   useEffect(() => {
     loadClient();
@@ -208,8 +217,6 @@ export default function ClientPage() {
   };
 
   const handleEditClient = async () => {
-    if (!editedData) return;
-    
     setLoading('editClient', true);
     try {
       const response = await fetch(`/api/clients/${params.id}`, {
@@ -217,19 +224,44 @@ export default function ClientPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(editedData),
+        body: JSON.stringify(editingClient),
       });
 
       if (!response.ok) throw new Error('Failed to update client');
-
+      
       addToast('Client updated successfully', 'success');
       loadClient();
-      setIsEditing(false);
+      setShowEditModal(false);
+      setEditingClient(null);
     } catch (error) {
       console.error('Error:', error);
       addToast('Failed to update client', 'error');
     } finally {
       setLoading('editClient', false);
+    }
+  };
+
+  const handleStageStatusChange = async (stageId: string, status: string) => {
+    setLoading(`updateStageStatus-${stageId}`, true);
+    try {
+      const response = await fetch(`/api/clients/${params.id}/stages/${stageId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update stage status');
+      
+      addToast('Stage status updated successfully', 'success');
+      loadClient();
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to update stage status', 'error');
+    } finally {
+      setLoading(`updateStageStatus-${stageId}`, false);
+      setShowStatusMenu(null);
     }
   };
 
@@ -289,8 +321,11 @@ export default function ClientPage() {
             Add Stage
           </Button>
           <Button
-            onClick={() => setIsEditing(true)}
-            variant="primary"
+            onClick={() => {
+              setEditingClient(client);
+              setShowEditModal(true);
+            }}
+            variant="secondary"
           >
             Edit Client
           </Button>
@@ -317,10 +352,13 @@ export default function ClientPage() {
       </div>
 
       {/* Edit Client Modal */}
-      {isEditing && editedData && (
+      {showEditModal && editingClient && (
         <Modal
-          isOpen={isEditing}
-          onClose={() => setIsEditing(false)}
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingClient(null);
+          }}
           title="Edit Client"
         >
           <div className="space-y-4">
@@ -328,41 +366,61 @@ export default function ClientPage() {
               <label className="block text-sm font-medium text-gray-700">Name</label>
               <input
                 type="text"
-                value={editedData?.name || ''}
-                onChange={(e) => setEditedData({ ...editedData, name: e.target.value })}
+                value={editingClient.name}
+                onChange={(e) => setEditingClient({ ...editingClient, name: e.target.value })}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700">Email</label>
               <input
                 type="email"
-                value={editedData?.email || ''}
-                onChange={(e) => setEditedData({ ...editedData, email: e.target.value })}
+                value={editingClient.email}
+                onChange={(e) => setEditingClient({ ...editingClient, email: e.target.value })}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700">Phone</label>
               <input
                 type="tel"
-                value={editedData?.phone || ''}
-                onChange={(e) => setEditedData({ ...editedData, phone: e.target.value })}
+                value={editingClient.phone}
+                onChange={(e) => setEditingClient({ ...editingClient, phone: e.target.value })}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Status</label>
+              <select
+                value={editingClient.status}
+                onChange={(e) => setEditingClient({ ...editingClient, status: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+                <option value="On Hold">On Hold</option>
+              </select>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700">Notes</label>
               <textarea
-                value={editedData?.notes || ''}
-                onChange={(e) => setEditedData({ ...editedData, notes: e.target.value })}
-                rows={4}
+                value={editingClient.notes || ''}
+                onChange={(e) => setEditingClient({ ...editingClient, notes: e.target.value })}
+                rows={3}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
+
             <div className="flex justify-end gap-3">
               <Button
-                onClick={() => setIsEditing(false)}
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingClient(null);
+                }}
                 variant="secondary"
                 disabled={isLoading('editClient')}
               >

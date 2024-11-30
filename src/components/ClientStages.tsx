@@ -11,6 +11,7 @@ import {
   ListChecks,
   ClipboardList,
   Building2,
+  Pencil,
 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import StageTemplates from "./StageTemplates";
@@ -90,6 +91,9 @@ export default function ClientStages({
   const [selectedStageId, setSelectedStageId] = useState<string>("");
   const { addToast } = useToast();
   const { setLoading, isLoading } = useLoadingStates();
+  const [showStatusMenu, setShowStatusMenu] = useState<string | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingStage, setEditingStage] = useState<Stage | null>(null);
 
   useEffect(() => {
     loadStages();
@@ -179,36 +183,119 @@ export default function ClientStages({
     );
   };
 
+  const handleStageStatusChange = async (stageId: string, status: string) => {
+    setLoading(`updateStageStatus-${stageId}`, true);
+    try {
+      const response = await fetch(`/api/clients/${clientId}/stages/${stageId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update stage status');
+      
+      addToast('Stage status updated successfully', 'success');
+      loadStages();
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to update stage status', 'error');
+    } finally {
+      setLoading(`updateStageStatus-${stageId}`, false);
+      setShowStatusMenu(null);
+    }
+  };
+
+  const handleEditStage = async (stageId: string, data: any) => {
+    setLoading(`editStage-${stageId}`, true);
+    try {
+      const response = await fetch(`/api/clients/${clientId}/stages/${stageId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) throw new Error('Failed to update stage');
+      
+      addToast('Stage updated successfully', 'success');
+      loadStages();
+      setShowEditModal(false);
+      setEditingStage(null);
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to update stage', 'error');
+    } finally {
+      setLoading(`editStage-${stageId}`, false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="space-y-4">
         {stages.map((stage) => (
-          <div key={stage.id} className="bg-white rounded-lg shadow">
-            <div
-              className="p-4 flex items-center justify-between cursor-pointer"
-              onClick={() => toggleStageExpansion(stage.id)}
-            >
-              <div className="flex items-center gap-3">
-                <h2 className="text-lg font-semibold">{stage.title}</h2>
-                <span
-                  className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    stage.status === "COMPLETED"
-                      ? "bg-green-100 text-green-800"
-                      : stage.status === "CANCELLED"
-                      ? "bg-red-100 text-red-800"
-                      : "bg-blue-100 text-blue-800"
-                  }`}
+          <div key={stage.id} className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-4">
+                <h3 className="text-lg font-semibold">{stage.title}</h3>
+                <button
+                  onClick={() => {
+                    setEditingStage(stage);
+                    setShowEditModal(true);
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
                 >
-                  {stage.status}
-                </span>
+                  <Pencil className="h-4 w-4" />
+                </button>
+                <div className="relative">
+                  <button
+                    onClick={() => setShowStatusMenu(showStatusMenu === stage.id ? null : stage.id)}
+                    className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                      stage.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                      stage.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                      'bg-blue-100 text-blue-800'
+                    }`}
+                  >
+                    {stage.status}
+                    <ChevronDown className="ml-1 h-4 w-4" />
+                  </button>
+                  
+                  {showStatusMenu === stage.id && (
+                    <div className="absolute right-0 mt-1 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                      <div className="py-1" role="menu">
+                        {['ACTIVE', 'COMPLETED', 'CANCELLED'].map((status) => (
+                          <button
+                            key={status}
+                            onClick={() => handleStageStatusChange(stage.id, status)}
+                            className={`block w-full text-left px-4 py-2 text-sm ${
+                              status === stage.status ? 'bg-gray-100' : 'hover:bg-gray-50'
+                            }`}
+                            role="menuitem"
+                            disabled={isLoading(`updateStageStatus-${stage.id}`)}
+                          >
+                            {status}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-              {expandedStages.includes(stage.id) ? (
-                <ChevronUp className="h-5 w-5 text-gray-400" />
-              ) : (
-                <ChevronDown className="h-5 w-5 text-gray-400" />
-              )}
+              
+              <button
+                onClick={() => toggleStageExpansion(stage.id)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                {expandedStages.includes(stage.id) ? (
+                  <ChevronUp className="h-5 w-5" />
+                ) : (
+                  <ChevronDown className="h-5 w-5" />
+                )}
+              </button>
             </div>
-
+            
             {expandedStages.includes(stage.id) && (
               <div className="p-4 border-t">
                 <div className="flex gap-2 mb-6">
@@ -326,6 +413,72 @@ export default function ClientStages({
             }}
             onCancel={() => setShowAddChecklistModal(false)}
           />
+        </Modal>
+      )}
+
+      {showEditModal && editingStage && (
+        <Modal
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingStage(null);
+          }}
+          title="Edit Stage"
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Title</label>
+              <input
+                type="text"
+                value={editingStage.title}
+                onChange={(e) => setEditingStage({ ...editingStage, title: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Description</label>
+              <textarea
+                value={editingStage.description || ''}
+                onChange={(e) => setEditingStage({ ...editingStage, description: e.target.value })}
+                rows={3}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Status</label>
+              <select
+                value={editingStage.status}
+                onChange={(e) => setEditingStage({ ...editingStage, status: e.target.value as "ACTIVE" | "COMPLETED" | "CANCELLED" })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              >
+                <option value="ACTIVE">Active</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="CANCELLED">Cancelled</option>
+              </select>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingStage(null);
+                }}
+                variant="secondary"
+                disabled={isLoading(`editStage-${editingStage.id}`)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => handleEditStage(editingStage.id, editingStage)}
+                variant="primary"
+                isLoading={isLoading(`editStage-${editingStage.id}`)}
+              >
+                Save Changes
+              </Button>
+            </div>
+          </div>
         </Modal>
       )}
     </div>
