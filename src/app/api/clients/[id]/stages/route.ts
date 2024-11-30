@@ -52,7 +52,18 @@ export const GET = withAuth(async (request: NextRequest) => {
 export const POST = withAuth(async (request: NextRequest) => {
   try {
     const id = request.url.split('/clients/')[1].split('/stages')[0];
-    const { title, description, status } = await request.json();
+    const templates = await request.json();
+    
+    // Handle both single template and array of templates
+    const template = Array.isArray(templates) ? templates[0] : templates;
+
+    // Validate required fields
+    if (!template || !template.title) {
+      return NextResponse.json(
+        { error: 'Title is required' },
+        { status: 400 }
+      );
+    }
 
     // Get current highest order
     const lastStage = await prisma.stage.findFirst({
@@ -62,27 +73,53 @@ export const POST = withAuth(async (request: NextRequest) => {
 
     const order = lastStage ? lastStage.order + 1 : 0;
 
-    // Create the stage
-    const stage = await prisma.stage.create({
-      data: {
-        clientId: id,
-        title,
-        description,
-        status: status || 'ACTIVE',
-        order,
-        startDate: new Date(),
-      }
-    });
+    // Create the stage and processes in a transaction
+    const stage = await prisma.$transaction(async (tx) => {
+      // Create the stage
+      const newStage = await tx.stage.create({
+        data: {
+          clientId: id,
+          title: template.title,
+          description: template.description || '',
+          status: 'ACTIVE',
+          order,
+          startDate: new Date(),
+          processes: template.processes ? {
+            create: template.processes.map((process: any) => ({
+              title: process.title,
+              description: process.description || '',
+              type: process.type,
+              status: 'PENDING',
+              tasks: process.automatedTasks ? {
+                create: process.automatedTasks.map((task: any) => ({
+                  type: task.type,
+                  status: 'PENDING'
+                }))
+              } : undefined
+            }))
+          } : undefined
+        },
+        include: {
+          processes: {
+            include: {
+              tasks: true
+            }
+          }
+        }
+      });
 
-    // Create an interaction record
-    await prisma.interaction.create({
-      data: {
-        clientId: id,
-        stageId: stage.id,
-        type: 'Stage',
-        description: `Stage "${title}" created`,
-        date: new Date(),
-      }
+      // Create an interaction record
+      await tx.interaction.create({
+        data: {
+          clientId: id,
+          stageId: newStage.id,
+          type: 'Stage',
+          description: `Stage "${template.title}" created`,
+          date: new Date(),
+        }
+      });
+
+      return newStage;
     });
 
     return NextResponse.json(stage);
