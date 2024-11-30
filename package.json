@@ -26,6 +26,8 @@
     "next": "15.0.3",
     "next-auth": "^5.0.0-beta.25",
     "nodemailer": "^6.9.16",
+    "pdf-lib": "^1.17.1",
+    "pdf-parse": "^1.1.1",
     "puppeteer": "^23.9.0",
     "react": "19.0.0-rc-66855b96-20241106",
     "react-dom": "19.0.0-rc-66855b96-20241106",
@@ -33,12 +35,14 @@
     "tailwind-merge": "^2.5.5",
     "tailwind-scrollbar": "^3.1.0",
     "tailwindcss-animate": "^1.0.7",
-    "uuid": "^11.0.3"
+    "uuid": "^11.0.3",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/next-auth": "^3.13.0",
     "@types/node": "^20.17.8",
     "@types/nodemailer": "^6.4.17",
+    "@types/pdf-parse": "^1.1.4",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "eslint": "^8",

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import UserMenu from './UserMenu'
 import { 
   Home,
@@ -17,6 +18,7 @@ import { useState } from 'react'
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const pathname = usePathname()
 
   const navigationItems = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
@@ -36,6 +38,23 @@ export default function Navbar() {
     }
   ]
 
+  const isActive = (href: string) => {
+    // Handle root paths
+    if (href === '/dashboard' && pathname === '/dashboard') return true;
+    if (href === '/clients' && pathname.startsWith('/clients')) return true;
+    if (href === '/properties' && pathname.startsWith('/properties')) return true;
+    if (href === '/tools' && pathname.startsWith('/tools')) return true;
+    
+    // Special handling for finances section
+    if (href === '/finances') {
+      return pathname === '/finances' || pathname.startsWith('/finances/');
+    }
+    
+    return false;
+  };
+
+  const isChildActive = (href: string) => pathname === href;
+
   return (
     <nav className="bg-white shadow fixed top-0 left-0 right-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -49,7 +68,11 @@ export default function Navbar() {
               <div key={item.name} className="relative group px-2">
                 <Link
                   href={item.href}
-                  className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 rounded-md group-hover:bg-gray-50"
+                  className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                    ${isActive(item.href)
+                      ? 'text-blue-600 bg-blue-50'
+                      : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                    }`}
                 >
                   <item.icon className="h-5 w-5 mr-2" />
                   <span>{item.name}</span>
@@ -66,7 +89,11 @@ export default function Navbar() {
                       <Link
                         key={child.name}
                         href={child.href}
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        className={`flex items-center px-4 py-2 text-sm
+                          ${isChildActive(child.href)
+                            ? 'text-blue-600 bg-blue-50'
+                            : 'text-gray-700 hover:bg-gray-50'
+                          }`}
                       >
                         <child.icon className="h-4 w-4 mr-2" />
                         <span>{child.name}</span>
@@ -82,6 +109,7 @@ export default function Navbar() {
             <UserMenu />
           </div>
 
+          {/* Mobile menu button */}
           <div className="sm:hidden">
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -105,13 +133,18 @@ export default function Navbar() {
           </div>
         </div>
 
+        {/* Mobile Navigation Menu */}
         <div className={`${isMenuOpen ? 'block' : 'hidden'} sm:hidden`}>
           <div className="pt-2 pb-3 space-y-1">
             {navigationItems.map((item) => (
               <div key={item.name}>
                 <Link
                   href={item.href}
-                  className="flex items-center px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md"
+                  className={`flex items-center px-3 py-2 text-base font-medium rounded-md
+                    ${isActive(item.href)
+                      ? 'text-blue-600 bg-blue-50'
+                      : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                    }`}
                 >
                   <item.icon className="h-5 w-5 mr-2" />
                   <span>{item.name}</span>
@@ -122,7 +155,11 @@ export default function Navbar() {
                       <Link
                         key={child.name}
                         href={child.href}
-                        className="flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md"
+                        className={`flex items-center px-3 py-2 text-sm font-medium rounded-md
+                          ${isChildActive(child.href)
+                            ? 'text-blue-600 bg-blue-50'
+                            : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                          }`}
                       >
                         <child.icon className="h-4 w-4 mr-2" />
                         <span>{child.name}</span>

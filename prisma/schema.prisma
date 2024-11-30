@@ -24,6 +24,9 @@ model Client {
   sharedProperties SharedProperty[]
   checklist        ClientChecklist[]
 
+  commissions   Commission[]
+  transactions  Transaction[]
+
   @@index([name])
   @@index([email])
   @@index([pinned])
@@ -51,6 +54,7 @@ model ClientRequirement {
   gatheredProperties   GatheredProperty[]
   interactions         Interaction[]
   checklist            RequirementChecklist[]
+  commissions   Commission[]
 }
 
 model GatheredProperty {
@@ -101,6 +105,9 @@ model Property {
 
   sharedWith         SharedProperty[]
   gatheredProperties GatheredProperty[]
+
+  commissions   Commission[]
+  transactions  Transaction[]
 
   @@index([type])
   @@index([listingType])
@@ -221,4 +228,72 @@ model ClientChecklist {
   updatedAt DateTime @updatedAt
 
   client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-} 
+}
+
+// prisma/schema.prisma
+// ... keep existing models ...
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum CommissionStatus {
+  PENDING
+  RECEIVED
+  OVERDUE
+}
+
+model Transaction {
+  id          String         @id @default(auto()) @map("_id") @db.ObjectId
+  date        DateTime
+  type        TransactionType
+  amount      Float
+  description String
+  category    String
+  notes       String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  
+  // Relations
+  clientId    String?        @db.ObjectId
+  client      Client?        @relation(fields: [clientId], references: [id])
+  propertyId  String?        @db.ObjectId
+  property    Property?      @relation(fields: [propertyId], references: [id])
+  commissionId String?       @db.ObjectId
+  commission  Commission?    @relation(fields: [commissionId], references: [id])
+}
+
+model Commission {
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
+  amount        Float
+  percentage    Float
+  status        CommissionStatus
+  dueDate       DateTime
+  receivedDate  DateTime?
+  notes         String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relations
+  propertyId    String          @db.ObjectId
+  property      Property        @relation(fields: [propertyId], references: [id])
+  clientId      String          @db.ObjectId
+  client        Client          @relation(fields: [clientId], references: [id])
+  requirementId String?         @db.ObjectId
+  requirement   ClientRequirement? @relation(fields: [requirementId], references: [id])
+  transactions  Transaction[]
+}
+
+model FinancialGoal {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  title         String
+  targetAmount  Float
+  currentAmount Float     @default(0)
+  startDate     DateTime
+  endDate       DateTime
+  achieved      Boolean   @default(false)
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
