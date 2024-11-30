@@ -113,15 +113,21 @@ export default function PropertyPage() {
       const response = await fetch('/api/clients');
       if (!response.ok) throw new Error('Failed to fetch clients');
       const data = await response.json();
-      setSearchResults(data);
+      
+      // Filter out clients that don't have stages
+      const clientsWithStages = data.filter((client: any) => 
+        client.stages && client.stages.length > 0
+      );
+      
+      setSearchResults(clientsWithStages);
     } catch (error) {
-      console.error('Error loading clients:', error);
+      console.error('Error:', error);
       addToast('Failed to load clients', 'error');
     }
   };
 
   const handleShare = async () => {
-    if (selectedClients.length === 0) {
+    if (!selectedClients.length) {
       addToast('Please select at least one client', 'error');
       return;
     }
@@ -134,19 +140,18 @@ export default function PropertyPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          propertyId: property?.id,
-          clientIds: selectedClients,
+          propertyId: params.id,
+          stageIds: selectedClients,
         }),
       });
 
       if (!response.ok) throw new Error('Failed to share property');
 
       addToast('Property shared successfully', 'success');
-      loadProperty(); // Reload to update shared with list
       setShowShareModal(false);
+      setSelectedClients([]);
       setClientSearchTerm('');
       setSearchResults([]);
-      setSelectedClients([]);
     } catch (error) {
       console.error('Error:', error);
       addToast('Failed to share property', 'error');
@@ -471,16 +476,22 @@ export default function PropertyPage() {
           <div className="bg-white shadow rounded-lg p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Shared With</h2>
             <div className="space-y-4">
-              {property.sharedWith?.length > 0 ? (
-                property.sharedWith.map((share) => (
-                  <div key={share.id} className="flex justify-between items-center border-b pb-4 last:border-b-0 last:pb-0">
-                    <div>
-                      <p className="font-medium">{share.client.name}</p>
-                      <p className="text-sm text-gray-500">{share.client.email}</p>
+              {property?.sharedWith?.length > 0 ? (
+                property.sharedWith.map((shared) => (
+                  <div key={shared.id} className="flex items-center justify-between py-2">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-900">
+                          {shared.stage?.client?.name || 'Unnamed Client'}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {shared.stage?.client?.email || 'No email'}
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-sm text-gray-500">
-                      {new Date(share.sharedDate).toLocaleDateString()}
-                    </p>
+                    <span className="text-xs text-gray-500">
+                      Shared {new Date(shared.sharedDate).toLocaleDateString()}
+                    </span>
                   </div>
                 ))
               ) : (
@@ -547,27 +558,40 @@ export default function PropertyPage() {
 
           {/* Client List */}
           <div className="border rounded-md max-h-60 overflow-y-auto">
-            {isSearchFocused && searchResults.map((client) => (
-              <label
-                key={`client-${client.id}`}
-                className="flex items-center gap-2 p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
-              >
-                <Checkbox
-                  checked={selectedClients.includes(client.id)}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setSelectedClients([...selectedClients, client.id]);
-                    } else {
-                      setSelectedClients(selectedClients.filter(id => id !== client.id));
-                    }
-                  }}
-                />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900">{client.name}</p>
-                  <p className="text-sm text-gray-500">{client.email}</p>
-                </div>
-              </label>
-            ))}
+            {isSearchFocused && searchResults.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white shadow-lg rounded-md border">
+                {searchResults.map((client: any) => (
+                  <div key={client.id} className="border-b last:border-b-0">
+                    <div className="p-3 bg-gray-50">
+                      <p className="font-medium text-gray-900">{client.name || 'Unnamed Client'}</p>
+                      <p className="text-sm text-gray-500">{client.email || 'No email'}</p>
+                    </div>
+                    <div className="p-2 space-y-2">
+                      {client.stages?.map((stage: any) => (
+                        <label
+                          key={stage.id}
+                          className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedClients.includes(stage.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedClients([...selectedClients, stage.id]);
+                              } else {
+                                setSelectedClients(selectedClients.filter(id => id !== stage.id));
+                              }
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700">{stage.title || 'Untitled Stage'}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
             {isSearchFocused && searchResults.length === 0 && (
               <p className="text-center py-4 text-gray-500">
                 No clients found matching your search

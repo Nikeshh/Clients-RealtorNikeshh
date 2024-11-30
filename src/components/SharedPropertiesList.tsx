@@ -30,28 +30,6 @@ export default function SharedPropertiesList({ properties, clientId, stageId, on
   const { addToast } = useToast();
   const { setLoading, isLoading } = useLoadingStates();
 
-  const removeSharedProperty = async (propertyId: string) => {
-    setLoading(`removeProperty-${propertyId}`, true);
-    try {
-      const response = await fetch(`/api/clients/${clientId}/stages/${stageId}/shared-properties/${propertyId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) throw new Error('Failed to remove shared property');
-
-      addToast('Property removed successfully', 'success');
-      onUpdate();
-    } catch (error) {
-      console.error('Error:', error);
-      addToast('Failed to remove property', 'error');
-    } finally {
-      setLoading(`removeProperty-${propertyId}`, false);
-    }
-  };
-
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">Shared Properties</h3>
@@ -94,13 +72,6 @@ export default function SharedPropertiesList({ properties, clientId, stageId, on
                   >
                     <ExternalLink className="h-4 w-4" />
                   </Link>
-                  <button
-                    onClick={() => removeSharedProperty(shared.id)}
-                    className="text-gray-400 hover:text-gray-500"
-                    disabled={isLoading(`removeProperty-${shared.id}`)}
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
                 </div>
               </div>
             </div>
