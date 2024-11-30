@@ -1,110 +1,55 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/api-middleware';
 import prisma from '@/lib/prisma';
-import type { Property } from '@prisma/client';
 
-type SearchFilters = {
-  type?: string;
-  priceRange?: {
-    min?: number;
-    max?: number;
-  };
-  bedrooms?: number;
-  bathrooms?: number;
-  minArea?: number;
-  status?: string;
-  location?: string;
-};
-
-// GET /api/properties/search - Search properties with filters
-export async function GET(request: Request) {
+export const GET = withAuth(async (request: NextRequest) => {
   try {
     const { searchParams } = new URL(request.url);
-    
-    // Build search filters
-    const filters: SearchFilters = {};
-    
-    // Property type filter
-    if (searchParams.has('type')) {
-      filters.type = searchParams.get('type') as string;
-    }
+    const search = searchParams.get('search') || '';
+    const type = searchParams.get('type') || undefined;
+    const minPrice = parseFloat(searchParams.get('minPrice') || '0');
+    const maxPrice = parseFloat(searchParams.get('maxPrice') || '999999999');
+    const bedrooms = searchParams.get('bedrooms') ? parseInt(searchParams.get('bedrooms')!) : undefined;
+    const bathrooms = searchParams.get('bathrooms') ? parseInt(searchParams.get('bathrooms')!) : undefined;
 
-    // Price range filter
-    const minPrice = searchParams.get('minPrice');
-    const maxPrice = searchParams.get('maxPrice');
-    if (minPrice || maxPrice) {
-      filters.priceRange = {
-        ...(minPrice && { min: Number(minPrice) }),
-        ...(maxPrice && { max: Number(maxPrice) })
-      };
-    }
-
-    // Room filters
-    const bedrooms = searchParams.get('bedrooms');
-    if (bedrooms) {
-      filters.bedrooms = Number(bedrooms);
-    }
-
-    const bathrooms = searchParams.get('bathrooms');
-    if (bathrooms) {
-      filters.bathrooms = Number(bathrooms);
-    }
-
-    // Area filter
-    const minArea = searchParams.get('minArea');
-    if (minArea) {
-      filters.minArea = Number(minArea);
-    }
-
-    // Status filter
-    if (searchParams.has('status')) {
-      filters.status = searchParams.get('status') as string;
-    }
-
-    // Location filter
-    if (searchParams.has('location')) {
-      filters.location = searchParams.get('location') as string;
-    }
-
-    // Build Prisma where clause
-    const where: any = {
-      ...(filters.type && { type: filters.type }),
-      ...(filters.priceRange && {
-        price: {
-          ...(filters.priceRange.min && { gte: filters.priceRange.min }),
-          ...(filters.priceRange.max && { lte: filters.priceRange.max })
-        }
-      }),
-      ...(filters.bedrooms && { bedrooms: filters.bedrooms }),
-      ...(filters.bathrooms && { bathrooms: filters.bathrooms }),
-      ...(filters.minArea && { area: { gte: filters.minArea } }),
-      ...(filters.status && { status: filters.status }),
-      ...(filters.location && {
-        OR: [
-          { address: { contains: filters.location, mode: 'insensitive' } },
-          { location: { contains: filters.location, mode: 'insensitive' } }
-        ]
-      })
-    };
-
-    // Execute search query
     const properties = await prisma.property.findMany({
-      where,
-      orderBy: {
-        createdAt: 'desc'
+      where: {
+        OR: [
+          { title: { contains: search, mode: 'insensitive' } },
+          { address: { contains: search, mode: 'insensitive' } },
+        ],
+        AND: [
+          { type: type },
+          { price: { gte: minPrice } },
+          { price: { lte: maxPrice } },
+          ...(bedrooms ? [{ bedrooms }] : []),
+          ...(bathrooms ? [{ bathrooms }] : []),
+        ],
+        status: 'ACTIVE',
       },
-      take: 20
+      select: {
+        id: true,
+        title: true,
+        address: true,
+        price: true,
+        images: true,
+        type: true,
+        bedrooms: true,
+        bathrooms: true,
+        status: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: 50,
     });
 
-    return NextResponse.json({
-      properties,
-      filters,
-      total: properties.length
-    });
+    return NextResponse.json(properties);
   } catch (error) {
     console.error('Error searching properties:', error);
     return NextResponse.json(
-      { error: 'Error searching properties' },
+      { error: 'Failed to search properties' },
       { status: 500 }
     );
   }
-} 
+}); 

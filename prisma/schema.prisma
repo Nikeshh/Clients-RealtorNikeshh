@@ -283,9 +283,6 @@ model ClientChecklist {
   client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 }
 
-// prisma/schema.prisma
-// ... keep existing models ...
-
 enum TransactionType {
   INCOME
   EXPENSE
