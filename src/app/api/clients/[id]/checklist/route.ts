@@ -5,12 +5,12 @@ import prisma from '@/lib/prisma';
 // POST /api/clients/[id]/checklist - Add a checklist item
 export const POST = withAuth(async (request: NextRequest) => {
   try {
-    const clientId = request.url.split('/clients/')[1].split('/checklist')[0];
+    const id = request.url.split('/clients/')[1].split('/checklist')[0];
     const { text } = await request.json();
 
     const checklistItem = await prisma.clientChecklist.create({
       data: {
-        clientId,
+        clientId: id,
         text,
         completed: false,
       },

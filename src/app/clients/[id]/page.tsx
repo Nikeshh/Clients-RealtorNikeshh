@@ -12,9 +12,11 @@ import AddInteractionModal from '@/components/AddInteractionModal';
 import Modal from "@/components/ui/Modal";
 import DocumentUpload from '@/components/DocumentUpload';
 import { DocumentIcon, ArrowDownTrayIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { Activity } from 'lucide-react';
+import { Activity, CheckSquare } from 'lucide-react';
 import ClientStages from '@/components/ClientStages';
 import StartProcessModal from "@/components/StartProcessModal";
+import AddChecklistItemForm from '@/components/AddChecklistItemForm';
+import React from 'react';
 
 interface ClientRequirement {
   id: string;
@@ -137,6 +139,10 @@ export default function ClientPage() {
   const [editedData, setEditedData] = useState<Partial<Client> | null>(null);
   const { addToast } = useToast();
   const { setLoading, isLoading } = useLoadingStates();
+  const [showAddChecklistModal, setShowAddChecklistModal] = useState(false);
+  const [showAddInteractionModal, setShowAddInteractionModal] = useState(false);
+  const [showChecklistModal, setShowChecklistModal] = useState(false);
+  const [showInteractionsModal, setShowInteractionsModal] = useState(false);
 
   useEffect(() => {
     loadClient();
@@ -158,7 +164,7 @@ export default function ClientPage() {
     }
   };
 
-  const handleChecklistToggle = async (itemId: string) => {
+  const handleChecklistToggle = async (itemId: string, completed: boolean) => {
     setLoading(`toggleChecklist-${itemId}`, true);
     try {
       const response = await fetch(`/api/clients/${params.id}/checklist/${itemId}`, {
@@ -166,15 +172,13 @@ export default function ClientPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          completed: !client?.checklist.find(item => item.id === itemId)?.completed
-        }),
+        body: JSON.stringify({ completed }),
       });
 
       if (!response.ok) throw new Error('Failed to update checklist item');
 
       loadClient();
-      addToast('Checklist updated successfully', 'success');
+      addToast('Checklist item updated', 'success');
     } catch (error) {
       console.error('Error:', error);
       addToast('Failed to update checklist item', 'error');
@@ -193,7 +197,7 @@ export default function ClientPage() {
       if (!response.ok) throw new Error('Failed to delete checklist item');
 
       loadClient();
-      addToast('Checklist item deleted successfully', 'success');
+      addToast('Checklist item deleted', 'success');
     } catch (error) {
       console.error('Error:', error);
       addToast('Failed to delete checklist item', 'error');
@@ -264,6 +268,20 @@ export default function ClientPage() {
         </div>
         <div className="flex gap-3">
           <Button
+            onClick={() => setShowChecklistModal(true)}
+            variant="secondary"
+          >
+            <CheckSquare className="h-4 w-4 mr-2" />
+            Checklist
+          </Button>
+          <Button
+            onClick={() => setShowInteractionsModal(true)}
+            variant="secondary"
+          >
+            <Activity className="h-4 w-4 mr-2" />
+            Interactions
+          </Button>
+          <Button
             onClick={() => setShowAddStageModal(true)}
             variant="secondary"
           >
@@ -295,67 +313,6 @@ export default function ClientPage() {
           showAddStageModal={showAddStageModal}
           setShowAddStageModal={setShowAddStageModal}
         />
-
-        {/* Client Checklist */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Client Checklist</h2>
-            <div className="space-y-4">
-              {client?.checklist?.map((item) => (
-                <div key={item.id} className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={item.completed}
-                      onChange={() => handleChecklistToggle(item.id)}
-                      className="h-4 w-4 text-blue-600 rounded border-gray-300"
-                    />
-                    <span className="ml-3 text-gray-700">{item.text}</span>
-                  </div>
-                  <button
-                    onClick={() => handleDeleteChecklist(item.id)}
-                    className="text-gray-400 hover:text-gray-500"
-                  >
-                    <TrashIcon className="h-5 w-5" />
-                  </button>
-                </div>
-              ))}
-              {client?.checklist?.length === 0 && (
-                <p className="text-gray-500 text-center">No checklist items</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Client Interactions */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Interactions</h2>
-            <div className="space-y-4">
-              {client?.interactions?.map((interaction) => (
-                <div key={interaction.id} className="flex items-start gap-4">
-                  <div className="flex-shrink-0">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <Activity className="h-5 w-5 text-blue-600" />
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{interaction.description}</p>
-                    <p className="text-xs text-gray-500">
-                      {new Date(interaction.date).toLocaleDateString()}
-                    </p>
-                    {interaction.notes && (
-                      <p className="mt-1 text-sm text-gray-600">{interaction.notes}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {client?.interactions?.length === 0 && (
-                <p className="text-gray-500 text-center">No recent interactions</p>
-              )}
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Edit Client Modal */}
@@ -421,6 +378,133 @@ export default function ClientPage() {
           </div>
         </Modal>
       )}
+
+      {/* Add Checklist Item Modal */}
+      {showAddChecklistModal && (
+        <Modal
+          isOpen={showAddChecklistModal}
+          onClose={() => setShowAddChecklistModal(false)}
+          title="Add Checklist Item"
+        >
+          <AddChecklistItemForm
+            clientId={params.id as string}
+            onSubmit={() => {
+              setShowAddChecklistModal(false);
+              loadClient();
+            }}
+            onCancel={() => setShowAddChecklistModal(false)}
+          />
+        </Modal>
+      )}
+
+      {/* Add Interaction Modal */}
+      {showAddInteractionModal && (
+        <Modal
+          isOpen={showAddInteractionModal}
+          onClose={() => setShowAddInteractionModal(false)}
+          title="Add Interaction"
+        >
+          <AddInteractionModal
+            clientId={params.id as string}
+            onSubmit={() => {
+              setShowAddInteractionModal(false);
+              loadClient();
+            }}
+            onCancel={() => setShowAddInteractionModal(false)}
+          />
+        </Modal>
+      )}
+
+      {/* Checklist Modal */}
+      <Modal
+        isOpen={showChecklistModal}
+        onClose={() => setShowChecklistModal(false)}
+        title="Client Checklist"
+      >
+        <div className="space-y-6">
+          {/* Add Item Button */}
+          <Button
+            onClick={() => setShowAddChecklistModal(true)}
+            variant="secondary"
+            className="w-full"
+          >
+            Add Checklist Item
+          </Button>
+
+          {/* Checklist Items */}
+          <div className="space-y-4">
+            {client?.checklist?.map((item) => (
+              <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={item.completed}
+                    onChange={async () => {
+                      await handleChecklistToggle(item.id, !item.completed);
+                    }}
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className={item.completed ? 'line-through text-gray-500' : 'text-gray-900'}>
+                    {item.text}
+                  </span>
+                </div>
+                <button
+                  onClick={() => handleDeleteChecklist(item.id)}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  <TrashIcon className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+            {client?.checklist?.length === 0 && (
+              <p className="text-gray-500 text-center py-4">No checklist items</p>
+            )}
+          </div>
+        </div>
+      </Modal>
+
+      {/* Interactions Modal */}
+      <Modal
+        isOpen={showInteractionsModal}
+        onClose={() => setShowInteractionsModal(false)}
+        title="Recent Interactions"
+      >
+        <div className="space-y-6">
+          {/* Add Item Button */}
+          <Button
+            onClick={() => setShowAddInteractionModal(true)}
+            variant="secondary"
+            className="w-full"
+          >
+            Add Interaction
+          </Button>
+
+          {/* Interactions List */}
+          <div className="space-y-4">
+            {client?.interactions?.map((interaction) => (
+              <div key={interaction.id} className="p-4 bg-gray-50 rounded-lg">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-medium text-gray-900">{interaction.description}</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {new Date(interaction.date).toLocaleDateString()}
+                    </p>
+                    {interaction.notes && (
+                      <p className="text-sm text-gray-600 mt-2">{interaction.notes}</p>
+                    )}
+                  </div>
+                  <span className="text-xs font-medium text-gray-500">
+                    {interaction.type}
+                  </span>
+                </div>
+              </div>
+            ))}
+            {client?.interactions?.length === 0 && (
+              <p className="text-gray-500 text-center py-4">No recent interactions</p>
+            )}
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

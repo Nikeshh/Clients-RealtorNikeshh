@@ -1,36 +1,29 @@
 'use client';
 
 import { useState } from 'react';
-import Modal from '@/components/ui/Modal';
-import Button from '@/components/Button';
-import { useLoadingStates } from '@/hooks/useLoadingStates';
 import { useToast } from '@/components/ui/toast-context';
+import { useLoadingStates } from '@/hooks/useLoadingStates';
+import Button from '@/components/Button';
 
-interface AddInteractionModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+interface Props {
   clientId: string;
-  requirementId?: string;
-  onSubmit?: () => void;
+  onSubmit: () => void;
+  onCancel: () => void;
 }
 
-export default function AddInteractionModal({
-  isOpen,
-  onClose,
-  clientId,
-  requirementId,
-  onSubmit,
-}: AddInteractionModalProps) {
+export default function AddInteractionModal({ clientId, onSubmit, onCancel }: Props) {
   const [formData, setFormData] = useState({
-    type: 'Call',
+    type: 'CALL',
     description: '',
     notes: '',
   });
-  const { setLoading, isLoading } = useLoadingStates();
-  const { addToast } = useToast();
 
-  const handleSubmit = async () => {
-    if (!formData.description.trim()) {
+  const { addToast } = useToast();
+  const { setLoading, isLoading } = useLoadingStates();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.description) {
       addToast('Please enter a description', 'error');
       return;
     }
@@ -42,28 +35,13 @@ export default function AddInteractionModal({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...formData,
-          date: new Date(),
-          requirementId,
-          notes: formData.notes.trim() || undefined,
-        }),
+        body: JSON.stringify(formData),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to add interaction');
-      }
+      if (!response.ok) throw new Error('Failed to add interaction');
 
       addToast('Interaction added successfully', 'success');
-      onClose();
-      onSubmit?.();
-      
-      // Reset form
-      setFormData({
-        type: 'Call',
-        description: '',
-        notes: '',
-      });
+      onSubmit();
     } catch (error) {
       console.error('Error:', error);
       addToast('Failed to add interaction', 'error');
@@ -73,62 +51,65 @@ export default function AddInteractionModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Add Interaction">
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Type</label>
-          <select
-            value={formData.type}
-            onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-          >
-            <option value="Call">Call</option>
-            <option value="Email">Email</option>
-            <option value="Meeting">Meeting</option>
-            <option value="Property Viewing">Property Viewing</option>
-            <option value="Requirement Discussion">Requirement Discussion</option>
-            <option value="Other">Other</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Description</label>
-          <input
-            type="text"
-            required
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Notes</label>
-          <textarea
-            value={formData.notes}
-            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-            rows={3}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-          />
-        </div>
-
-        <div className="flex justify-end gap-3">
-          <Button
-            variant="secondary"
-            onClick={onClose}
-            disabled={isLoading('addInteraction')}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            onClick={handleSubmit}
-            isLoading={isLoading('addInteraction')}
-          >
-            Add Interaction
-          </Button>
-        </div>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700">
+          Type
+        </label>
+        <select
+          value={formData.type}
+          onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+        >
+          <option value="CALL">Call</option>
+          <option value="EMAIL">Email</option>
+          <option value="MEETING">Meeting</option>
+          <option value="NOTE">Note</option>
+        </select>
       </div>
-    </Modal>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700">
+          Description
+        </label>
+        <input
+          type="text"
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          placeholder="Enter interaction description..."
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700">
+          Notes (Optional)
+        </label>
+        <textarea
+          value={formData.notes}
+          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+          rows={3}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          placeholder="Enter any additional notes..."
+        />
+      </div>
+
+      <div className="flex justify-end gap-3">
+        <Button
+          onClick={onCancel}
+          variant="secondary"
+          disabled={isLoading('addInteraction')}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          variant="primary"
+          isLoading={isLoading('addInteraction')}
+        >
+          Add Interaction
+        </Button>
+      </div>
+    </form>
   );
 } 
