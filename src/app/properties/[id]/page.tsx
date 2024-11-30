@@ -11,6 +11,7 @@ import Modal from '@/components/ui/Modal';
 import Link from 'next/link';
 import { Upload } from 'lucide-react';
 import { Checkbox } from "@/components/ui/checkbox";
+import { ChevronDown } from 'lucide-react';
 
 interface SharedProperty {
   id: string;
@@ -78,6 +79,7 @@ export default function PropertyPage() {
   const [editedProperty, setEditedProperty] = useState<Property | null>(null);
   const [selectedClients, setSelectedClients] = useState<string[]>([]);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [showStatusMenu, setShowStatusMenu] = useState(false);
 
   useEffect(() => {
     loadProperty();
@@ -186,26 +188,28 @@ export default function PropertyPage() {
   };
 
   const handleStatusChange = async (newStatus: string) => {
-    setLoading('statusUpdate', true);
+    setLoading('updateStatus', true);
     try {
       const response = await fetch(`/api/properties/${params.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({
+          status: newStatus
+        }),
       });
 
       if (!response.ok) throw new Error('Failed to update status');
 
-      const updatedProperty = await response.json();
-      setProperty(updatedProperty);
+      loadProperty(); // Reload the property data
       addToast('Status updated successfully', 'success');
+      setShowStatusMenu(false);
     } catch (error) {
       console.error('Error:', error);
       addToast('Failed to update status', 'error');
     } finally {
-      setLoading('statusUpdate', false);
+      setLoading('updateStatus', false);
     }
   };
 
@@ -288,15 +292,41 @@ export default function PropertyPage() {
           <p className="text-gray-500">{property.address}</p>
         </div>
         <div className="flex items-center gap-4">
-          <select
-            value={property.status}
-            onChange={(e) => handleStatusChange(e.target.value)}
-            className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          >
-            <option value="Available">Available</option>
-            <option value="Under Contract">Under Contract</option>
-            <option value="Sold">Sold</option>
-          </select>
+          <div className="relative">
+            <button
+              onClick={() => setShowStatusMenu(!showStatusMenu)}
+              className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                property?.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
+                property?.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                property?.status === 'SOLD' ? 'bg-blue-100 text-blue-800' :
+                property?.status === 'RENTED' ? 'bg-purple-100 text-purple-800' :
+                'bg-gray-100 text-gray-800'
+              }`}
+            >
+              {property?.status}
+              <ChevronDown className="ml-1 h-4 w-4" />
+            </button>
+
+            {showStatusMenu && (
+              <div className="absolute right-0 mt-1 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                <div className="py-1" role="menu">
+                  {['ACTIVE', 'PENDING', 'SOLD', 'RENTED', 'INACTIVE'].map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => handleStatusChange(status)}
+                      className={`block w-full text-left px-4 py-2 text-sm ${
+                        status === property?.status ? 'bg-gray-100' : 'hover:bg-gray-50'
+                      }`}
+                      role="menuitem"
+                      disabled={isLoading('updateStatus')}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
           <Button
             onClick={() => setShowShareModal(true)}
             variant="secondary"

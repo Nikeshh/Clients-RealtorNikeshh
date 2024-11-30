@@ -58,6 +58,7 @@ export const GET = withAuth(async (request: NextRequest) => {
 // PATCH /api/properties/[id] - Update a property
 export const PATCH = withAuth(async (request: NextRequest) => {
   try {
+    // Get the property ID from the URL
     const pathname = new URL(request.url).pathname;
     const id = pathname.match(/\/api\/properties\/([^\/]+)/)?.[1];
 
@@ -68,44 +69,31 @@ export const PATCH = withAuth(async (request: NextRequest) => {
       );
     }
 
+    // Parse the request body
     const data = await request.json();
 
-    const property = await prisma.property.update({
+    // Validate the property exists
+    const existingProperty = await prisma.property.findUnique({
+      where: { id }
+    });
+
+    if (!existingProperty) {
+      return NextResponse.json(
+        { error: 'Property not found' },
+        { status: 404 }
+      );
+    }
+
+    // Update the property
+    const updatedProperty = await prisma.property.update({
       where: { id },
       data: {
-        title: data.title,
-        address: data.address,
-        price: parseFloat(data.price),
-        type: data.type,
-        listingType: data.listingType,
-        bedrooms: data.bedrooms ? parseInt(data.bedrooms) : null,
-        bathrooms: data.bathrooms ? parseInt(data.bathrooms) : null,
-        area: parseFloat(data.area),
-        status: data.status,
-        description: data.description,
-        features: data.features || [],
-        images: data.images || [],
-        location: data.location,
-        yearBuilt: data.yearBuilt ? parseInt(data.yearBuilt) : null,
-        
-        // Rental specific fields
-        furnished: data.furnished || false,
-        petsAllowed: data.petsAllowed || false,
-        leaseTerm: data.leaseTerm || null,
-        
-        // Purchase specific fields
-        lotSize: data.lotSize ? parseFloat(data.lotSize) : null,
-        basement: data.basement || false,
-        garage: data.garage || false,
-        parkingSpaces: data.parkingSpaces ? parseInt(data.parkingSpaces) : null,
-        propertyStyle: data.propertyStyle || null,
-        
-        // Optional link field
-        ...(data.link ? { link: data.link } : {})
+        // If only updating status, use that, otherwise use all provided fields
+        ...(data.status ? { status: data.status } : data),
       }
     });
 
-    return NextResponse.json(property);
+    return NextResponse.json(updatedProperty);
   } catch (error) {
     console.error('Error updating property:', error);
     return NextResponse.json(
