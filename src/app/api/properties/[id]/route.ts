@@ -5,7 +5,10 @@ import prisma from '@/lib/prisma';
 // GET /api/properties/[id] - Get a single property
 export const GET = withAuth(async (request: NextRequest) => {
   try {
-    const id = request.url.split('/').pop();
+    // Extract ID using URL pattern matching
+    const pathname = new URL(request.url).pathname;
+    const matches = pathname.match(/\/api\/properties\/([^\/]+)/);
+    const id = matches ? matches[1] : null;
 
     if (!id) {
       return NextResponse.json(
@@ -15,16 +18,24 @@ export const GET = withAuth(async (request: NextRequest) => {
     }
 
     const property = await prisma.property.findUnique({
-      where: {
-        id: id,
-      },
+      where: { id },
       include: {
         sharedWith: {
           include: {
-            client: true,
-          },
-        },
-      },
+            stage: {
+              include: {
+                client: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     });
 
     if (!property) {
@@ -47,8 +58,8 @@ export const GET = withAuth(async (request: NextRequest) => {
 // PATCH /api/properties/[id] - Update a property
 export const PATCH = withAuth(async (request: NextRequest) => {
   try {
-    const id = request.url.split('/').pop();
-    const data = await request.json();
+    const pathname = new URL(request.url).pathname;
+    const id = pathname.match(/\/api\/properties\/([^\/]+)/)?.[1];
 
     if (!id) {
       return NextResponse.json(
@@ -57,25 +68,41 @@ export const PATCH = withAuth(async (request: NextRequest) => {
       );
     }
 
+    const data = await request.json();
+
     const property = await prisma.property.update({
-      where: {
-        id: id,
-      },
+      where: { id },
       data: {
         title: data.title,
         address: data.address,
-        price: data.price ? parseFloat(data.price) : undefined,
+        price: parseFloat(data.price),
         type: data.type,
+        listingType: data.listingType,
         bedrooms: data.bedrooms ? parseInt(data.bedrooms) : null,
         bathrooms: data.bathrooms ? parseInt(data.bathrooms) : null,
-        area: data.area ? parseFloat(data.area) : undefined,
+        area: parseFloat(data.area),
         status: data.status,
         description: data.description,
-        features: data.features,
-        images: data.images,
-        source: data.source,
+        features: data.features || [],
+        images: data.images || [],
         location: data.location,
-      },
+        yearBuilt: data.yearBuilt ? parseInt(data.yearBuilt) : null,
+        
+        // Rental specific fields
+        furnished: data.furnished || false,
+        petsAllowed: data.petsAllowed || false,
+        leaseTerm: data.leaseTerm || null,
+        
+        // Purchase specific fields
+        lotSize: data.lotSize ? parseFloat(data.lotSize) : null,
+        basement: data.basement || false,
+        garage: data.garage || false,
+        parkingSpaces: data.parkingSpaces ? parseInt(data.parkingSpaces) : null,
+        propertyStyle: data.propertyStyle || null,
+        
+        // Optional link field
+        ...(data.link ? { link: data.link } : {})
+      }
     });
 
     return NextResponse.json(property);
@@ -91,7 +118,8 @@ export const PATCH = withAuth(async (request: NextRequest) => {
 // DELETE /api/properties/[id] - Delete a property
 export const DELETE = withAuth(async (request: NextRequest) => {
   try {
-    const id = request.url.split('/').pop();
+    const pathname = new URL(request.url).pathname;
+    const id = pathname.match(/\/api\/properties\/([^\/]+)/)?.[1];
 
     if (!id) {
       return NextResponse.json(
@@ -101,9 +129,7 @@ export const DELETE = withAuth(async (request: NextRequest) => {
     }
 
     await prisma.property.delete({
-      where: {
-        id: id,
-      },
+      where: { id }
     });
 
     return NextResponse.json({ success: true });

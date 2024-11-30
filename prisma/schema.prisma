@@ -138,6 +138,7 @@ model Property {
   source      String
   location    String
   yearBuilt   Int?     // For property age matching
+  link        String?  // Add this line
   
   // Rental specific fields
   furnished   Boolean? // For rental properties
