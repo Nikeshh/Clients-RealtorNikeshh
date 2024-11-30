@@ -21,18 +21,19 @@ interface Process {
 
 interface Props {
   processes: Process[];
+  clientId: string;
   stageId: string;
   onUpdate: () => void;
 }
 
-export default function ProcessList({ processes, stageId, onUpdate }: Props) {
+export default function ProcessList({ processes, clientId, stageId, onUpdate }: Props) {
   const { addToast } = useToast();
   const { setLoading, isLoading } = useLoadingStates();
 
   const updateProcessStatus = async (processId: string, status: string) => {
     setLoading(`updateProcess-${processId}`, true);
     try {
-      const response = await fetch(`/api/clients/${stageId}/processes/${processId}`, {
+      const response = await fetch(`/api/clients/${clientId}/stages/${stageId}/processes/${processId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

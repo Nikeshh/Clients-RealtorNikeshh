@@ -14,18 +14,19 @@ interface ChecklistItem {
 
 interface Props {
   checklist: ChecklistItem[];
+  clientId: string;
   stageId: string;
   onUpdate: () => void;
 }
 
-export default function ChecklistList({ checklist, stageId, onUpdate }: Props) {
+export default function ChecklistList({ checklist, clientId, stageId, onUpdate }: Props) {
   const { addToast } = useToast();
   const { setLoading, isLoading } = useLoadingStates();
 
   const toggleChecklistItem = async (itemId: string, completed: boolean) => {
     setLoading(`updateChecklist-${itemId}`, true);
     try {
-      const response = await fetch(`/api/clients/${stageId}/checklist/${itemId}`, {
+      const response = await fetch(`/api/clients/${clientId}/stages/${stageId}/checklist/${itemId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

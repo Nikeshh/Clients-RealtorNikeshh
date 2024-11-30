@@ -247,24 +247,28 @@ export default function ClientStages({
                 <div className="grid grid-cols-1 gap-6">
                   <ProcessList
                     processes={stage.processes}
+                    clientId={clientId}
                     stageId={stage.id}
                     onUpdate={loadStages}
                   />
 
                   <RequirementList
                     requirements={stage.requirements}
+                    clientId={clientId}
                     stageId={stage.id}
                     onUpdate={loadStages}
                   />
 
                   <ChecklistList
                     checklist={stage.checklist}
+                    clientId={clientId}
                     stageId={stage.id}
                     onUpdate={loadStages}
                   />
 
                   <SharedPropertiesList
                     properties={stage.sharedProperties}
+                    clientId={clientId}
                     stageId={stage.id}
                     onUpdate={loadStages}
                   />

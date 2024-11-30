@@ -21,18 +21,19 @@ interface SharedProperty {
 
 interface Props {
   properties: SharedProperty[];
+  clientId: string;
   stageId: string;
   onUpdate: () => void;
 }
 
-export default function SharedPropertiesList({ properties, stageId, onUpdate }: Props) {
+export default function SharedPropertiesList({ properties, clientId, stageId, onUpdate }: Props) {
   const { addToast } = useToast();
   const { setLoading, isLoading } = useLoadingStates();
 
   const removeSharedProperty = async (propertyId: string) => {
     setLoading(`removeProperty-${propertyId}`, true);
     try {
-      const response = await fetch(`/api/clients/${stageId}/shared-properties/${propertyId}`, {
+      const response = await fetch(`/api/clients/${clientId}/stages/${stageId}/shared-properties/${propertyId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

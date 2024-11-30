@@ -22,18 +22,19 @@ interface Requirement {
 
 interface Props {
   requirements: Requirement[];
+  clientId: string;
   stageId: string;
   onUpdate: () => void;
 }
 
-export default function RequirementList({ requirements, stageId, onUpdate }: Props) {
+export default function RequirementList({ requirements, clientId, stageId, onUpdate }: Props) {
   const { addToast } = useToast();
   const { setLoading, isLoading } = useLoadingStates();
 
   const updateRequirementStatus = async (requirementId: string, status: string) => {
     setLoading(`updateRequirement-${requirementId}`, true);
     try {
-      const response = await fetch(`/api/clients/${stageId}/requirements/${requirementId}`, {
+      const response = await fetch(`/api/clients/${clientId}/stages/${stageId}/requirements/${requirementId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

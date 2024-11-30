@@ -408,7 +408,6 @@ export default function ClientPage() {
             clientId={params.id as string}
             onSubmit={() => {
               setShowAddInteractionModal(false);
-              setShowInteractionsModal(false);
               loadClient();
             }}
             onCancel={() => setShowAddInteractionModal(false)}

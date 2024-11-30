@@ -136,16 +136,44 @@ export const POST = withAuth(async (request: NextRequest) => {
 export const PATCH = withAuth(async (request: NextRequest) => {
   try {
     const id = request.url.split('/clients/')[1].split('/stages')[0];
-    const { stageId, title, description, status } = await request.json();
+    const { stageId, title, description, status, checklist } = await request.json();
 
-    const stage = await prisma.stage.update({
-      where: { id: stageId },
-      data: {
-        title,
-        description,
-        status,
-        endDate: status === 'COMPLETED' ? new Date() : null,
+    // Start a transaction to handle both stage update and checklist items
+    const stage = await prisma.$transaction(async (tx) => {
+      // Update the stage
+      const updatedStage = await tx.stage.update({
+        where: { id: stageId },
+        data: {
+          title,
+          description,
+          status,
+          endDate: status === 'COMPLETED' ? new Date() : null,
+        },
+        include: {
+          checklist: true
+        }
+      });
+
+      // If checklist items are provided, update them
+      if (checklist) {
+        // Delete existing checklist items
+        await tx.stageChecklist.deleteMany({
+          where: { stageId }
+        });
+
+        // Create new checklist items
+        if (checklist.length > 0) {
+          await tx.stageChecklist.createMany({
+            data: checklist.map((item: { text: any; completed: any; }) => ({
+              stageId,
+              text: item.text,
+              completed: item.completed || false
+            }))
+          });
+        }
       }
+
+      return updatedStage;
     });
 
     // Create interaction if status is updated
