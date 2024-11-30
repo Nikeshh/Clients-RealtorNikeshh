@@ -12,6 +12,8 @@ import AddInteractionModal from '@/components/AddInteractionModal';
 import Modal from "@/components/ui/Modal";
 import DocumentUpload from '@/components/DocumentUpload';
 import { DocumentIcon, ArrowDownTrayIcon, TrashIcon } from '@heroicons/react/24/outline';
+import OnboardingTasksList from '@/components/OnboardingTasksList';
+import StartOnboardingModal from '@/components/StartOnboardingModal';
 
 interface ClientRequirement {
   id: string;
@@ -169,6 +171,7 @@ export default function ClientPage() {
   });
   const [showAddInteractionModal, setShowAddInteractionModal] = useState(false);
   const [newChecklistItem, setNewChecklistItem] = useState('');
+  const [showStartOnboardingModal, setShowStartOnboardingModal] = useState(false);
 
   useEffect(() => {
     loadClient();
@@ -1211,6 +1214,37 @@ export default function ClientPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Add Onboarding Section at the bottom */}
+      <div className="mt-8">
+        <div className="bg-white shadow rounded-lg p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Onboarding Process</h2>
+            <Button
+              onClick={() => setShowStartOnboardingModal(true)}
+              variant="primary"
+            >
+              Start Onboarding
+            </Button>
+          </div>
+          
+          <OnboardingTasksList 
+            clientId={params.id as string}
+            onUpdate={loadClient}
+          />
+        </div>
+      </div>
+
+      {/* Add Start Onboarding Modal */}
+      <StartOnboardingModal
+        isOpen={showStartOnboardingModal}
+        onClose={() => setShowStartOnboardingModal(false)}
+        clientId={params.id as string}
+        onStart={() => {
+          loadClient();
+          setShowStartOnboardingModal(false);
+        }}
+      />
     </div>
   );
 }

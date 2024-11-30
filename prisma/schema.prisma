@@ -29,6 +29,10 @@ model Client {
 
   documents Document[]
 
+  onboardingActions OnboardingAction[]
+  documentRequests  DocumentRequest[]
+  meetings          Meeting[]
+
   @@index([name])
   @@index([email])
   @@index([pinned])
@@ -308,4 +312,73 @@ model Document {
   uploadedAt DateTime @default(now())
   clientId   String   @db.ObjectId
   client     Client   @relation(fields: [clientId], references: [id])
+}
+
+model OnboardingAction {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  clientId    String   @db.ObjectId
+  title       String
+  description String
+  type        String   // DOCUMENT, EMAIL, MEETING, TASK
+  status      String   // PENDING, IN_PROGRESS, COMPLETED, FAILED
+  dueDate     DateTime?
+  completedAt DateTime?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  tasks       AutomatedTask[]
+}
+
+model AutomatedTask {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  actionId      String   @db.ObjectId
+  type          String   // EMAIL, DOCUMENT_REQUEST, CALENDAR_INVITE
+  status        String   // PENDING, COMPLETED, FAILED
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  action        OnboardingAction @relation(fields: [actionId], references: [id], onDelete: Cascade)
+}
+
+model EmailQueue {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  to          String
+  subject     String
+  content     String
+  status      String   // PENDING, SENT, FAILED
+  sentAt      DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model DocumentRequest {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  clientId    String   @db.ObjectId
+  title       String
+  description String
+  status      String   // PENDING, COMPLETED, FAILED
+  dueDate     DateTime?
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model Meeting {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  clientId      String   @db.ObjectId
+  title         String
+  description   String
+  status        String   // PENDING, SCHEDULED, COMPLETED, CANCELLED
+  suggestedDate DateTime?
+  scheduledDate DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 }
