@@ -38,8 +38,19 @@ interface DashboardStats {
   }>;
 }
 
+const defaultStats: DashboardStats = {
+  totalRevenue: 0,
+  totalCommissions: 0,
+  pendingCommissions: 0,
+  monthlyRevenue: 0,
+  monthlyGrowth: 0,
+  activeDeals: 0,
+  recentTransactions: [],
+  topProperties: []
+};
+
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [stats, setStats] = useState<DashboardStats>(defaultStats);
   const { addToast } = useToast();
   const { setLoading, isLoading } = useLoadingStates();
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +67,16 @@ export default function DashboardPage() {
       const response = await fetch('/api/dashboard/stats');
       if (!response.ok) throw new Error('Failed to fetch dashboard stats');
       const data = await response.json();
-      setStats(data);
+      setStats({
+        totalRevenue: Number(data.totalRevenue) || 0,
+        totalCommissions: Number(data.totalCommissions) || 0,
+        pendingCommissions: Number(data.pendingCommissions) || 0,
+        monthlyRevenue: Number(data.monthlyRevenue) || 0,
+        monthlyGrowth: Number(data.monthlyGrowth) || 0,
+        activeDeals: Number(data.activeDeals) || 0,
+        recentTransactions: data.recentTransactions || [],
+        topProperties: data.topProperties || []
+      });
     } catch (error) {
       console.error('Error:', error);
       setError('Failed to load dashboard statistics');
@@ -183,7 +203,7 @@ export default function DashboardPage() {
               </Link>
             </div>
             <div className="space-y-4">
-              {stats.recentTransactions.map((transaction) => (
+              {stats.recentTransactions?.map((transaction) => (
                 <div key={transaction.id} className="flex items-center justify-between">
                   <div className="flex items-center">
                     <div className={`p-2 rounded-full ${
@@ -212,6 +232,9 @@ export default function DashboardPage() {
                   </div>
                 </div>
               ))}
+              {stats.recentTransactions?.length === 0 && (
+                <p className="text-center text-gray-500">No recent transactions</p>
+              )}
             </div>
           </div>
         </div>
@@ -229,7 +252,7 @@ export default function DashboardPage() {
               </Link>
             </div>
             <div className="space-y-4">
-              {stats.topProperties.map((property) => (
+              {stats.topProperties?.map((property) => (
                 <Link 
                   key={property.id}
                   href={`/properties/${property.id}`}
@@ -246,6 +269,9 @@ export default function DashboardPage() {
                   </div>
                 </Link>
               ))}
+              {stats.topProperties?.length === 0 && (
+                <p className="text-center text-gray-500">No properties found</p>
+              )}
             </div>
           </div>
         </div>
