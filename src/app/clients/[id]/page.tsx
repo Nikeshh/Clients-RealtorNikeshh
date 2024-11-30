@@ -408,6 +408,7 @@ export default function ClientPage() {
             clientId={params.id as string}
             onSubmit={() => {
               setShowAddInteractionModal(false);
+              setShowInteractionsModal(false);
               loadClient();
             }}
             onCancel={() => setShowAddInteractionModal(false)}
@@ -481,7 +482,6 @@ export default function ClientPage() {
 
           {/* Interactions List */}
           <div className="space-y-4">
-            <div>{client?.interactions?.length ?? "No interactions"}</div>
             {client?.interactions?.map((interaction) => (
               <div key={interaction.id} className="p-4 bg-gray-50 rounded-lg">
                 <div className="flex justify-between items-start">

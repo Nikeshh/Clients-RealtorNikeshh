@@ -43,6 +43,12 @@ export const GET = withAuth(async (request: NextRequest) => {
             date: 'desc'
           },
           include: {
+            stage: {
+              select: {
+                id: true,
+                title: true
+              }
+            },
             requirement: {
               select: {
                 id: true,
