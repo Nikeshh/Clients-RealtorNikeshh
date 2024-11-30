@@ -469,7 +469,7 @@ export default function RequirementPage() {
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Preferred Move-in Date</dt>
                     <dd className="mt-1 text-sm text-gray-900">
-                      {formatDate(requirement.rentalPreferences.preferredMoveInDate)}
+                      {formatDate(requirement.rentalPreferences.preferredMoveInDate.toString())}
                     </dd>
                   </div>
                 )}

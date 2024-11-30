@@ -20,7 +20,7 @@ export default function ProcessList({ processes, stageId, clientId, onUpdate }: 
   const handleStatusChange = async (processId: string, status: string) => {
     setLoading(`updateProcess-${processId}`, true);
     try {
-      const response = await fetch(`/api/clients/${stageId}/processes/status`, {
+      const response = await fetch(`/api/clients/${clientId}/stages/${stageId}/processes/${processId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

@@ -170,6 +170,29 @@ export default function ClientStages({
     );
   };
 
+  const handleStageStatusChange = async (stageId: string, status: string) => {
+    setLoading(`updateStageStatus-${stageId}`, true);
+    try {
+      const response = await fetch(`/api/clients/${clientId}/stages/${stageId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update stage status');
+      
+      addToast('Stage status updated successfully', 'success');
+      loadStages();
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to update stage status', 'error');
+    } finally {
+      setLoading(`updateStageStatus-${stageId}`, false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="space-y-4">
@@ -183,17 +206,46 @@ export default function ClientStages({
                 <h3 className="text-lg font-medium text-gray-900">
                   {stage.title}
                 </h3>
-                <span
-                  className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    stage.status === "COMPLETED"
-                      ? "bg-green-100 text-green-800"
-                      : stage.status === "CANCELLED"
-                      ? "bg-red-100 text-red-800"
-                      : "bg-blue-100 text-blue-800"
-                  }`}
-                >
-                  {stage.status}
-                </span>
+                <div className="relative">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedStageId(prev => prev === stage.id ? '' : stage.id);
+                    }}
+                    className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                      stage.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                      stage.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                      'bg-blue-100 text-blue-800'
+                    }`}
+                  >
+                    {stage.status}
+                    <ChevronDown className="ml-1 h-4 w-4" />
+                  </button>
+
+                  {selectedStageId === stage.id && (
+                    <div className="absolute right-0 mt-1 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                      <div className="py-1" role="menu">
+                        {['ACTIVE', 'COMPLETED', 'CANCELLED'].map((status) => (
+                          <button
+                            key={status}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStageStatusChange(stage.id, status);
+                              setSelectedStageId('');
+                            }}
+                            className={`block w-full text-left px-4 py-2 text-sm ${
+                              status === stage.status ? 'bg-gray-100' : 'hover:bg-gray-50'
+                            }`}
+                            role="menuitem"
+                            disabled={isLoading(`updateStageStatus-${stage.id}`)}
+                          >
+                            {status}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
               {expandedStages.includes(stage.id) ? (
                 <ChevronUp className="h-5 w-5 text-gray-400" />
