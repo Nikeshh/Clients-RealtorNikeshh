@@ -18,7 +18,7 @@ export default async function LandingPage() {
         <nav className="flex items-center justify-between p-6 lg:px-8" aria-label="Global">
           <div className="flex lg:flex-1">
             <Link href="/" className="-m-1.5 p-1.5">
-              <span className="text-xl font-bold text-gray-900">Client Portal</span>
+              <span className="text-xl font-bold text-gray-900">Realtor Portal</span>
             </Link>
           </div>
           <div className="flex gap-x-12">

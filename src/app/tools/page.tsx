@@ -1,165 +1,129 @@
 'use client';
 
-import { useState } from 'react';
+import Link from 'next/link';
+import { 
+  Calculator, 
+  Home, 
+  TrendingUp, 
+  DollarSign, 
+  FileText,
+  BarChart2,
+  Percent,
+  Calendar,
+  Building2
+} from 'lucide-react';
+
+const tools = [
+  {
+    name: 'Mortgage Calculator',
+    description: 'Calculate monthly mortgage payments, including principal, interest, taxes, and insurance.',
+    icon: Calculator,
+    href: '/tools/calculator',
+    color: 'bg-blue-500'
+  },
+  {
+    name: 'Amortization Schedule',
+    description: 'View detailed loan amortization schedule with principal and interest breakdown.',
+    icon: Calendar,
+    href: '/tools/amortization',
+    color: 'bg-purple-500'
+  },
+  {
+    name: 'Rent vs Buy',
+    description: 'Compare the financial implications of renting versus buying a property.',
+    icon: Home,
+    href: '/tools/rent-vs-buy',
+    color: 'bg-green-500'
+  },
+  {
+    name: 'ROI Calculator',
+    description: 'Calculate potential return on investment for property investments.',
+    icon: TrendingUp,
+    href: '/tools/roi',
+    color: 'bg-indigo-500'
+  },
+  {
+    name: 'Commission Calculator',
+    description: 'Calculate real estate commission based on property price and rates.',
+    icon: DollarSign,
+    href: '/tools/commission',
+    color: 'bg-orange-500'
+  },
+  {
+    name: 'Closing Cost Calculator',
+    description: 'Estimate closing costs including fees, taxes, and other expenses.',
+    icon: FileText,
+    href: '/tools/closing-costs',
+    color: 'bg-red-500'
+  },
+  {
+    name: 'Property Tax Calculator',
+    description: 'Calculate estimated property taxes based on location and value.',
+    icon: Building2,
+    href: '/tools/property-tax',
+    color: 'bg-yellow-500'
+  },
+  {
+    name: 'Cap Rate Calculator',
+    description: 'Calculate the capitalization rate for investment properties.',
+    icon: Percent,
+    href: '/tools/cap-rate',
+    color: 'bg-teal-500'
+  }
+];
 
 export default function ToolsPage() {
-  const [loanAmount, setLoanAmount] = useState('');
-  const [interestRate, setInterestRate] = useState('');
-  const [loanTerm, setLoanTerm] = useState('30');
-  const [downPayment, setDownPayment] = useState('');
-  const [monthlyPayment, setMonthlyPayment] = useState<number | null>(null);
-  const [showAmortization, setShowAmortization] = useState(false);
-
-  const calculateMortgage = () => {
-    const principal = Number(loanAmount) - Number(downPayment);
-    const monthlyRate = (Number(interestRate) / 100) / 12;
-    const numberOfPayments = Number(loanTerm) * 12;
-
-    const monthlyPaymentAmount = 
-      (principal * monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) /
-      (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
-
-    setMonthlyPayment(monthlyPaymentAmount);
-    setShowAmortization(true);
-  };
-
-  const calculateAmortizationSchedule = () => {
-    const schedule = [];
-    let remainingBalance = Number(loanAmount) - Number(downPayment);
-    const monthlyRate = (Number(interestRate) / 100) / 12;
-    const numberOfPayments = Number(loanTerm) * 12;
-    
-    for (let month = 1; month <= Math.min(numberOfPayments, 24); month++) {
-      const interestPayment = remainingBalance * monthlyRate;
-      const principalPayment = (monthlyPayment || 0) - interestPayment;
-      remainingBalance -= principalPayment;
-
-      schedule.push({
-        month,
-        payment: monthlyPayment || 0,
-        principalPayment,
-        interestPayment,
-        remainingBalance,
-      });
-    }
-
-    return schedule;
-  };
-
   return (
-    <main className="min-h-screen p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">Mortgage Calculator</h1>
-
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Property Price ($)
-              </label>
-              <input
-                type="number"
-                value={loanAmount}
-                onChange={(e) => setLoanAmount(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2"
-                placeholder="Enter property price"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Down Payment ($)
-              </label>
-              <input
-                type="number"
-                value={downPayment}
-                onChange={(e) => setDownPayment(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2"
-                placeholder="Enter down payment"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Interest Rate (%)
-              </label>
-              <input
-                type="number"
-                value={interestRate}
-                onChange={(e) => setInterestRate(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2"
-                placeholder="Enter interest rate"
-                step="0.01"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Loan Term (years)
-              </label>
-              <select
-                value={loanTerm}
-                onChange={(e) => setLoanTerm(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2"
-              >
-                <option value="30">30 years</option>
-                <option value="25">25 years</option>
-                <option value="20">20 years</option>
-                <option value="15">15 years</option>
-                <option value="10">10 years</option>
-              </select>
-            </div>
-          </div>
-
-          <button
-            onClick={calculateMortgage}
-            className="mt-6 w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">Real Estate Tools</h1>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {tools.map((tool) => (
+          <Link 
+            key={tool.name} 
+            href={tool.href}
+            className="block group"
           >
-            Calculate
-          </button>
-        </div>
-
-        {monthlyPayment && (
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold mb-4">Results</h2>
-            
-            <div className="mb-6">
-              <p className="text-gray-600">Monthly Payment</p>
-              <p className="text-3xl font-bold">${monthlyPayment.toFixed(2)}</p>
-            </div>
-
-            {showAmortization && (
-              <div>
-                <h3 className="text-lg font-semibold mb-3">Amortization Schedule (First 24 Months)</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-2 text-left">Month</th>
-                        <th className="px-4 py-2 text-left">Payment</th>
-                        <th className="px-4 py-2 text-left">Principal</th>
-                        <th className="px-4 py-2 text-left">Interest</th>
-                        <th className="px-4 py-2 text-left">Remaining</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {calculateAmortizationSchedule().map((row) => (
-                        <tr key={row.month}>
-                          <td className="px-4 py-2">{row.month}</td>
-                          <td className="px-4 py-2">${row.payment.toFixed(2)}</td>
-                          <td className="px-4 py-2">${row.principalPayment.toFixed(2)}</td>
-                          <td className="px-4 py-2">${row.interestPayment.toFixed(2)}</td>
-                          <td className="px-4 py-2">${Math.max(0, row.remainingBalance).toFixed(2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+            <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-6 h-full border border-gray-200">
+              <div className="flex items-center gap-4">
+                <div className={`${tool.color} text-white p-3 rounded-lg`}>
+                  <tool.icon className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600">
+                    {tool.name}
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    {tool.description}
+                  </p>
                 </div>
               </div>
-            )}
-          </div>
-        )}
+            </div>
+          </Link>
+        ))}
       </div>
-    </main>
+
+      {/* Coming Soon Section */}
+      <div className="mt-12">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Coming Soon</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 opacity-60">
+          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+            <div className="flex items-center gap-4">
+              <div className="bg-gray-500 text-white p-3 rounded-lg">
+                <BarChart2 className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Market Analysis
+                </h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Analyze local market trends and property values
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 } 

@@ -1,26 +1,40 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/toast-context';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useLoadingStates } from '@/hooks/useLoadingStates';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
+import Link from 'next/link';
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  DollarSign, 
+  Building2, 
+  Users,
+  Calendar 
+} from 'lucide-react';
 
 interface DashboardStats {
-  clientCount: number;
-  propertyCount: number;
-  interactionCount: number;
-  recentClients: Array<{
+  totalRevenue: number;
+  totalCommissions: number;
+  pendingCommissions: number;
+  monthlyRevenue: number;
+  monthlyGrowth: number;
+  activeDeals: number;
+  recentTransactions: Array<{
     id: string;
-    name: string;
-    status: string;
-    lastContact: string;
+    date: string;
+    type: 'INCOME' | 'EXPENSE';
+    amount: number;
+    description: string;
+    category: string;
   }>;
-  recentProperties: Array<{
+  topProperties: Array<{
     id: string;
     title: string;
+    commission: number;
     status: string;
-    price: number;
   }>;
 }
 
@@ -28,6 +42,8 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const { addToast } = useToast();
   const { setLoading, isLoading } = useLoadingStates();
+  const [error, setError] = useState<string | null>(null);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   useEffect(() => {
     loadDashboardStats();
@@ -35,6 +51,7 @@ export default function DashboardPage() {
 
   const loadDashboardStats = async () => {
     setLoading('loadStats', true);
+    setError(null);
     try {
       const response = await fetch('/api/dashboard/stats');
       if (!response.ok) throw new Error('Failed to fetch dashboard stats');
@@ -42,153 +59,193 @@ export default function DashboardPage() {
       setStats(data);
     } catch (error) {
       console.error('Error:', error);
+      setError('Failed to load dashboard statistics');
       addToast('Failed to load dashboard statistics', 'error');
     } finally {
       setLoading('loadStats', false);
+      setInitialLoadComplete(true);
     }
   };
 
-  if (isLoading('loadStats')) {
-    return <LoadingSpinner size="large" />;
+  // Show loading spinner during initial load
+  if (!initialLoadComplete) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <LoadingSpinner size="large" />
+      </div>
+    );
   }
 
+  // Show error state if there's an error after initial load
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900">Error</h2>
+          <p className="mt-2 text-gray-600">{error}</p>
+          <button
+            onClick={loadDashboardStats}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show placeholder if no stats are available
   if (!stats) {
-    return <div>Error loading dashboard</div>;
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900">No Data Available</h2>
+          <p className="mt-2 text-gray-600">Unable to load dashboard statistics</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="py-6">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
-        
-        <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {/* Summary Cards */}
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      Total Clients
-                    </dt>
-                    <dd className="text-lg font-medium text-gray-900">
-                      {stats.clientCount}
-                    </dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          </div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">Dashboard</h1>
 
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                  </svg>
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      Active Properties
-                    </dt>
-                    <dd className="text-lg font-medium text-gray-900">
-                      {stats.propertyCount}
-                    </dd>
-                  </dl>
-                </div>
-              </div>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        {/* Revenue Card */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.totalRevenue)}</p>
             </div>
-          </div>
-
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      Recent Interactions (30 days)
-                    </dt>
-                    <dd className="text-lg font-medium text-gray-900">
-                      {stats.interactionCount}
-                    </dd>
-                  </dl>
-                </div>
-              </div>
+            <div className="bg-blue-100 p-3 rounded-full">
+              <DollarSign className="h-6 w-6 text-blue-600" />
             </div>
           </div>
         </div>
 
-        {/* Recent Activity */}
-        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {/* Recent Clients */}
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-lg font-medium text-gray-900">Recent Clients</h3>
-              <div className="mt-4 flow-root">
-                <ul className="divide-y divide-gray-200">
-                  {stats.recentClients.map((client) => (
-                    <li key={client.id} className="py-4">
-                      <div className="flex items-center space-x-4">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {client.name}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            Last contact: {formatDate(client.lastContact)}
-                          </p>
-                        </div>
-                        <div>
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            {client.status}
-                          </span>
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+        {/* Monthly Revenue Card */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Monthly Revenue</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.monthlyRevenue)}</p>
+              <div className="flex items-center mt-2">
+                {stats.monthlyGrowth >= 0 ? (
+                  <>
+                    <TrendingUp className="h-4 w-4 text-green-500" />
+                    <span className="text-sm text-green-500">{stats.monthlyGrowth}% up from last month</span>
+                  </>
+                ) : (
+                  <>
+                    <TrendingDown className="h-4 w-4 text-red-500" />
+                    <span className="text-sm text-red-500">{Math.abs(stats.monthlyGrowth)}% down from last month</span>
+                  </>
+                )}
               </div>
             </div>
+            <div className="bg-green-100 p-3 rounded-full">
+              <TrendingUp className="h-6 w-6 text-green-600" />
+            </div>
           </div>
+        </div>
 
-          {/* Recent Properties */}
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-lg font-medium text-gray-900">Recent Properties</h3>
-              <div className="mt-4 flow-root">
-                <ul className="divide-y divide-gray-200">
-                  {stats.recentProperties.map((property) => (
-                    <li key={property.id} className="py-4">
-                      <div className="flex items-center space-x-4">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {property.title}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            {formatCurrency(property.price)}
-                          </p>
-                        </div>
-                        <div>
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            {property.status}
-                          </span>
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+        {/* Active Deals Card */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Active Deals</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.activeDeals}</p>
+              <p className="text-sm text-gray-500 mt-2">
+                {formatCurrency(stats.pendingCommissions)} in pending commissions
+              </p>
+            </div>
+            <div className="bg-purple-100 p-3 rounded-full">
+              <Building2 className="h-6 w-6 text-purple-600" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Activity and Top Properties */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent Transactions */}
+        <div className="bg-white rounded-lg shadow">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Recent Transactions</h2>
+              <Link 
+                href="/finances/transactions" 
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                View All
+              </Link>
+            </div>
+            <div className="space-y-4">
+              {stats.recentTransactions.map((transaction) => (
+                <div key={transaction.id} className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className={`p-2 rounded-full ${
+                      transaction.type === 'INCOME' ? 'bg-green-100' : 'bg-red-100'
+                    }`}>
+                      {transaction.type === 'INCOME' ? (
+                        <TrendingUp className={`h-4 w-4 text-green-600`} />
+                      ) : (
+                        <TrendingDown className={`h-4 w-4 text-red-600`} />
+                      )}
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-900">{transaction.description}</p>
+                      <p className="text-sm text-gray-500">{transaction.category}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-sm font-medium ${
+                      transaction.type === 'INCOME' ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {transaction.type === 'INCOME' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(transaction.date).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Top Properties */}
+        <div className="bg-white rounded-lg shadow">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Top Properties</h2>
+              <Link 
+                href="/properties" 
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                View All
+              </Link>
+            </div>
+            <div className="space-y-4">
+              {stats.topProperties.map((property) => (
+                <Link 
+                  key={property.id}
+                  href={`/properties/${property.id}`}
+                  className="block hover:bg-gray-50 -mx-6 px-6 py-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{property.title}</p>
+                      <p className="text-xs text-gray-500">{property.status}</p>
+                    </div>
+                    <p className="text-sm font-medium text-blue-600">
+                      {formatCurrency(property.commission)}
+                    </p>
+                  </div>
+                </Link>
+              ))}
             </div>
           </div>
         </div>

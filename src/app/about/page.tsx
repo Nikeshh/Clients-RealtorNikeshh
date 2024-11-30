@@ -12,7 +12,7 @@ export default async function AboutPage() {
           <nav className="flex items-center justify-between p-6 lg:px-8" aria-label="Global">
             <div className="flex lg:flex-1">
               <Link href="/" className="-m-1.5 p-1.5">
-                <span className="text-xl font-bold text-gray-900">Client Portal</span>
+                <span className="text-xl font-bold text-gray-900">Realtor Portal</span>
               </Link>
             </div>
             <div className="flex gap-x-12">
@@ -42,7 +42,7 @@ export default async function AboutPage() {
         <div className="mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:px-8">
           <div className="mx-auto max-w-2xl lg:mx-0">
             <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-              About Client Portal
+              About Realtor Portal
             </h1>
             <p className="mt-6 text-lg leading-8 text-gray-600">
               A modern solution for real estate professionals to manage their client relationships and property listings effectively.
