@@ -7,7 +7,7 @@ import Button from '@/components/Button';
 import Modal from '@/components/ui/Modal';
 import { CheckCircle, Clock, AlertCircle, Mail, FileText, Calendar, ClipboardCheck } from 'lucide-react';
 
-interface OnboardingAction {
+interface ProcessAction {
   id: string;
   title: string;
   description: string;
@@ -23,7 +23,7 @@ interface OnboardingAction {
   }[];
 }
 
-const defaultOnboardingActions: Omit<OnboardingAction, 'id'>[] = [
+const defaultProcessActions: Omit<ProcessAction, 'id'>[] = [
   {
     title: 'Sign Representation Agreement',
     description: 'Get the representation agreement signed by the client',
@@ -91,36 +91,36 @@ interface Props {
   onComplete: () => void;
 }
 
-export default function ClientOnboardingActions({ clientId, onComplete }: Props) {
+export default function ClientProcessActions({ clientId, onComplete }: Props) {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const { addToast } = useToast();
   const { setLoading, isLoading } = useLoadingStates();
 
-  const handleInitiateOnboarding = async () => {
-    setLoading('initiateOnboarding', true);
+  const handleInitiateProcess = async () => {
+    setLoading('initiateProcess', true);
     try {
-      const response = await fetch(`/api/clients/${clientId}/onboarding`, {
+      const response = await fetch(`/api/clients/${clientId}/process`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ actions: defaultOnboardingActions })
+        body: JSON.stringify({ actions: defaultProcessActions })
       });
 
-      if (!response.ok) throw new Error('Failed to initiate onboarding');
+      if (!response.ok) throw new Error('Failed to initiate process');
 
-      addToast('Onboarding process initiated successfully', 'success');
+      addToast('Process initiated successfully', 'success');
       onComplete();
       setShowConfirmModal(false);
     } catch (error) {
       console.error('Error:', error);
-      addToast('Failed to initiate onboarding', 'error');
+      addToast('Failed to initiate process', 'error');
     } finally {
-      setLoading('initiateOnboarding', false);
+      setLoading('initiateProcess', false);
     }
   };
 
-  const getActionIcon = (type: OnboardingAction['type']) => {
+  const getActionIcon = (type: ProcessAction['type']) => {
     switch (type) {
       case 'DOCUMENT':
         return <FileText className="h-5 w-5" />;
@@ -139,21 +139,21 @@ export default function ClientOnboardingActions({ clientId, onComplete }: Props)
         onClick={() => setShowConfirmModal(true)}
         variant="primary"
       >
-        Start Onboarding Process
+        Start Process
       </Button>
 
       <Modal
         isOpen={showConfirmModal}
         onClose={() => setShowConfirmModal(false)}
-        title="Start Client Onboarding"
+        title="Start Client Process"
       >
         <div className="space-y-6">
           <p className="text-gray-500">
-            This will initiate the following onboarding actions:
+            This will initiate the following process actions:
           </p>
 
           <div className="space-y-4">
-            {defaultOnboardingActions.map((action, index) => (
+            {defaultProcessActions.map((action, index) => (
               <div
                 key={index}
                 className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg"
@@ -192,16 +192,16 @@ export default function ClientOnboardingActions({ clientId, onComplete }: Props)
             <Button
               onClick={() => setShowConfirmModal(false)}
               variant="secondary"
-              disabled={isLoading('initiateOnboarding')}
+              disabled={isLoading('initiateProcess')}
             >
               Cancel
             </Button>
             <Button
-              onClick={handleInitiateOnboarding}
+              onClick={handleInitiateProcess}
               variant="primary"
-              isLoading={isLoading('initiateOnboarding')}
+              isLoading={isLoading('initiateProcess')}
             >
-              Start Onboarding
+              Start Process
             </Button>
           </div>
         </div>

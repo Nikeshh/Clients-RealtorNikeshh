@@ -5,7 +5,7 @@ import { sendEmail } from '@/app/api/email/route';
 
 export const POST = withAuth(async (request: NextRequest) => {
   try {
-    const id = request.url.split('/clients/')[1].split('/onboarding')[0];
+    const id = request.url.split('/clients/')[1].split('/process')[0];
     const { actions } = await request.json();
 
     if (!actions || !Array.isArray(actions)) {
@@ -34,7 +34,7 @@ export const POST = withAuth(async (request: NextRequest) => {
     // Create checklist items for each action
     const checklistItems = await Promise.all(
       actions.map(async (action) => {
-        const item = await prisma.onboardingAction.create({
+        const item = await prisma.processAction.create({
           data: {
             clientId: id,
             title: action.title,
@@ -98,14 +98,14 @@ export const POST = withAuth(async (request: NextRequest) => {
       })
     );
 
-    // Create an interaction record for onboarding initiation
+    // Create an interaction record for process initiation
     await prisma.interaction.create({
       data: {
         clientId: id,
-        type: 'Onboarding',
-        description: 'Onboarding process initiated',
+        type: 'Process',
+        description: 'Process initiated',
         date: new Date(),
-        notes: `Initiated ${actions.length} onboarding actions`,
+        notes: `Initiated ${actions.length} process actions`,
       }
     });
 
@@ -114,20 +114,20 @@ export const POST = withAuth(async (request: NextRequest) => {
       actions: checklistItems
     });
   } catch (error) {
-    console.error('Error initiating onboarding:', error);
+    console.error('Error initiating process:', error);
     return NextResponse.json(
-      { error: 'Failed to initiate onboarding process' },
+      { error: 'Failed to initiate process' },
       { status: 500 }
     );
   }
 });
 
-// GET endpoint to check onboarding status
+// GET endpoint to check process status
 export const GET = withAuth(async (request: NextRequest) => {
   try {
-    const id = request.url.split('/clients/')[1].split('/onboarding')[0];
+    const id = request.url.split('/clients/')[1].split('/process')[0];
 
-    const actions = await prisma.onboardingAction.findMany({
+    const actions = await prisma.processAction.findMany({
       where: { clientId: id },
       include: {
         tasks: true
@@ -157,9 +157,9 @@ export const GET = withAuth(async (request: NextRequest) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching onboarding status:', error);
+    console.error('Error fetching process status:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch onboarding status' },
+      { error: 'Failed to fetch process status' },
       { status: 500 }
     );
   }

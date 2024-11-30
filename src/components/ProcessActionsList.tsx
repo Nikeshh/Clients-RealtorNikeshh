@@ -6,7 +6,7 @@ import { useLoadingStates } from '@/hooks/useLoadingStates';
 import Button from '@/components/Button';
 import { CheckCircle, Clock, AlertCircle, Mail, FileText, Calendar, ClipboardCheck } from 'lucide-react';
 
-interface OnboardingAction {
+interface ProcessAction {
   id: string;
   title: string;
   description: string;
@@ -28,8 +28,8 @@ interface Props {
   onUpdate: () => void;
 }
 
-export default function OnboardingActionsList({ clientId, onUpdate }: Props) {
-  const [actions, setActions] = useState<OnboardingAction[]>([]);
+export default function ProcessActionsList({ clientId, onUpdate }: Props) {
+  const [actions, setActions] = useState<ProcessAction[]>([]);
   const { addToast } = useToast();
   const { setLoading, isLoading } = useLoadingStates();
 
@@ -40,22 +40,22 @@ export default function OnboardingActionsList({ clientId, onUpdate }: Props) {
   const loadActions = async () => {
     setLoading('loadActions', true);
     try {
-      const response = await fetch(`/api/clients/${clientId}/onboarding/actions`);
-      if (!response.ok) throw new Error('Failed to fetch onboarding actions');
+      const response = await fetch(`/api/clients/${clientId}/process/actions`);
+      if (!response.ok) throw new Error('Failed to fetch process actions');
       const data = await response.json();
       setActions(data);
     } catch (error) {
       console.error('Error:', error);
-      addToast('Failed to load onboarding actions', 'error');
+      addToast('Failed to load process actions', 'error');
     } finally {
       setLoading('loadActions', false);
     }
   };
 
-  const updateActionStatus = async (actionId: string, status: OnboardingAction['status'], notes?: string) => {
+  const updateActionStatus = async (actionId: string, status: ProcessAction['status'], notes?: string) => {
     setLoading(`updateAction-${actionId}`, true);
     try {
-      const response = await fetch(`/api/clients/${clientId}/onboarding/status`, {
+      const response = await fetch(`/api/clients/${clientId}/process/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -76,7 +76,7 @@ export default function OnboardingActionsList({ clientId, onUpdate }: Props) {
     }
   };
 
-  const getStatusIcon = (status: OnboardingAction['status']) => {
+  const getStatusIcon = (status: ProcessAction['status']) => {
     switch (status) {
       case 'COMPLETED':
         return <CheckCircle className="h-5 w-5 text-green-500" />;
@@ -89,7 +89,7 @@ export default function OnboardingActionsList({ clientId, onUpdate }: Props) {
     }
   };
 
-  const getActionIcon = (type: OnboardingAction['type']) => {
+  const getActionIcon = (type: ProcessAction['type']) => {
     switch (type) {
       case 'DOCUMENT':
         return <FileText className="h-5 w-5" />;
@@ -151,7 +151,7 @@ export default function OnboardingActionsList({ clientId, onUpdate }: Props) {
               {action.status !== 'COMPLETED' && (
                 <Button
                   onClick={() => updateActionStatus(action.id, 'COMPLETED')}
-                  variant="success"
+                  variant="primary"
                   size="small"
                   isLoading={isLoading(`updateAction-${action.id}`)}
                 >
@@ -178,7 +178,7 @@ export default function OnboardingActionsList({ clientId, onUpdate }: Props) {
 
       {actions.length === 0 && (
         <div className="text-center py-6 bg-gray-50 rounded-lg">
-          <p className="text-gray-500">No onboarding actions found</p>
+          <p className="text-gray-500">No process actions found</p>
         </div>
       )}
     </div>

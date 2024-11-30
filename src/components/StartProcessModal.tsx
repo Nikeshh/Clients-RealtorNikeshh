@@ -7,7 +7,7 @@ import Button from '@/components/Button';
 import Modal from '@/components/ui/Modal';
 import { Checkbox } from "@/components/ui/checkbox";
 
-interface OnboardingTemplate {
+interface ProcessTemplate {
   id: string;
   title: string;
   description: string;
@@ -21,11 +21,11 @@ interface OnboardingTemplate {
   }[];
 }
 
-const defaultTemplates: OnboardingTemplate[] = [
+const defaultTemplates: ProcessTemplate[] = [
   {
     id: 'buyer',
-    title: 'Buyer Onboarding',
-    description: 'Standard onboarding process for buyers',
+    title: 'Buyer Process',
+    description: 'Standard process for buyers',
     actions: [
       {
         title: 'Sign Buyer Representation Agreement',
@@ -58,8 +58,8 @@ const defaultTemplates: OnboardingTemplate[] = [
   },
   {
     id: 'seller',
-    title: 'Seller Onboarding',
-    description: 'Standard onboarding process for sellers',
+    title: 'Seller Process',
+    description: 'Standard process for sellers',
     actions: [
       {
         title: 'Sign Listing Agreement',
@@ -99,13 +99,13 @@ interface Props {
   onStart: () => void;
 }
 
-export default function StartOnboardingModal({ isOpen, onClose, clientId, onStart }: Props) {
+export default function StartProcessModal({ isOpen, onClose, clientId, onStart }: Props) {
   const [selectedTemplate, setSelectedTemplate] = useState<string>('buyer');
   const [selectedActions, setSelectedActions] = useState<{[key: string]: boolean}>({});
   const { addToast } = useToast();
   const { setLoading, isLoading } = useLoadingStates();
 
-  const handleStartOnboarding = async () => {
+  const handleStartProcess = async () => {
     const template = defaultTemplates.find(t => t.id === selectedTemplate);
     if (!template) return;
 
@@ -116,9 +116,9 @@ export default function StartOnboardingModal({ isOpen, onClose, clientId, onStar
       return;
     }
 
-    setLoading('startOnboarding', true);
+    setLoading('startProcess', true);
     try {
-      const response = await fetch(`/api/clients/${clientId}/onboarding`, {
+      const response = await fetch(`/api/clients/${clientId}/process`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -128,16 +128,16 @@ export default function StartOnboardingModal({ isOpen, onClose, clientId, onStar
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to start onboarding');
+      if (!response.ok) throw new Error('Failed to start process');
 
-      addToast('Onboarding process started successfully', 'success');
+      addToast('Process started successfully', 'success');
       onStart();
       onClose();
     } catch (error) {
       console.error('Error:', error);
-      addToast('Failed to start onboarding process', 'error');
+      addToast('Failed to start process', 'error');
     } finally {
-      setLoading('startOnboarding', false);
+      setLoading('startProcess', false);
     }
   };
 
@@ -147,7 +147,7 @@ export default function StartOnboardingModal({ isOpen, onClose, clientId, onStar
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Start Onboarding Process"
+      title="Start Process"
     >
       <div className="space-y-6">
         {/* Template Selection */}
@@ -221,16 +221,16 @@ export default function StartOnboardingModal({ isOpen, onClose, clientId, onStar
           <Button
             onClick={onClose}
             variant="secondary"
-            disabled={isLoading('startOnboarding')}
+            disabled={isLoading('startProcess')}
           >
             Cancel
           </Button>
           <Button
-            onClick={handleStartOnboarding}
+            onClick={handleStartProcess}
             variant="primary"
-            isLoading={isLoading('startOnboarding')}
+            isLoading={isLoading('startProcess')}
           >
-            Start Onboarding
+            Start Process
           </Button>
         </div>
       </div>

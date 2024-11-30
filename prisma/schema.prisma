@@ -29,7 +29,7 @@ model Client {
 
   documents Document[]
 
-  onboardingActions OnboardingAction[]
+  processActions ProcessAction[]
   documentRequests  DocumentRequest[]
   meetings          Meeting[]
 
@@ -314,7 +314,7 @@ model Document {
   client     Client   @relation(fields: [clientId], references: [id])
 }
 
-model OnboardingAction {
+model ProcessAction {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   clientId    String   @db.ObjectId
   title       String
@@ -328,10 +328,10 @@ model OnboardingAction {
   updatedAt   DateTime @updatedAt
 
   client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  tasks       AutomatedTask[]
+  tasks       ProcessTask[]
 }
 
-model AutomatedTask {
+model ProcessTask {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
   actionId      String   @db.ObjectId
   type          String   // EMAIL, DOCUMENT_REQUEST, CALENDAR_INVITE
@@ -340,7 +340,7 @@ model AutomatedTask {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  action        OnboardingAction @relation(fields: [actionId], references: [id], onDelete: Cascade)
+  action        ProcessAction @relation(fields: [actionId], references: [id], onDelete: Cascade)
 }
 
 model EmailQueue {

@@ -12,8 +12,8 @@ import AddInteractionModal from '@/components/AddInteractionModal';
 import Modal from "@/components/ui/Modal";
 import DocumentUpload from '@/components/DocumentUpload';
 import { DocumentIcon, ArrowDownTrayIcon, TrashIcon } from '@heroicons/react/24/outline';
-import OnboardingTasksList from '@/components/OnboardingTasksList';
-import StartOnboardingModal from '@/components/StartOnboardingModal';
+import ProcessTasksList from '@/components/ProcessTasksList';
+import StartProcessModal from '@/components/StartProcessModal';
 
 interface ClientRequirement {
   id: string;
@@ -171,7 +171,7 @@ export default function ClientPage() {
   });
   const [showAddInteractionModal, setShowAddInteractionModal] = useState(false);
   const [newChecklistItem, setNewChecklistItem] = useState('');
-  const [showStartOnboardingModal, setShowStartOnboardingModal] = useState(false);
+  const [showStartProcessModal, setshowStartProcessModal] = useState(false);
 
   useEffect(() => {
     loadClient();
@@ -1215,34 +1215,34 @@ export default function ClientPage() {
         </div>
       </Modal>
 
-      {/* Add Onboarding Section at the bottom */}
+      {/* Process Section */}
       <div className="mt-8">
         <div className="bg-white shadow rounded-lg p-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Onboarding Process</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Process</h2>
             <Button
-              onClick={() => setShowStartOnboardingModal(true)}
+              onClick={() => setshowStartProcessModal(true)}
               variant="primary"
             >
-              Start Onboarding
+              Start Process
             </Button>
           </div>
           
-          <OnboardingTasksList 
+          <ProcessTasksList 
             clientId={params.id as string}
             onUpdate={loadClient}
           />
         </div>
       </div>
 
-      {/* Add Start Onboarding Modal */}
-      <StartOnboardingModal
-        isOpen={showStartOnboardingModal}
-        onClose={() => setShowStartOnboardingModal(false)}
+      {/* Add Start Process Modal */}
+      <StartProcessModal
+        isOpen={showStartProcessModal}
+        onClose={() => setshowStartProcessModal(false)}
         clientId={params.id as string}
         onStart={() => {
           loadClient();
-          setShowStartOnboardingModal(false);
+          setshowStartProcessModal(false);
         }}
       />
     </div>

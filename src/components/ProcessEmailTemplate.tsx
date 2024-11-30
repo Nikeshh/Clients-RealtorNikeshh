@@ -1,4 +1,4 @@
-interface OnboardingEmailProps {
+interface ProcessEmailProps {
   clientName: string;
   agentName: string;
   action: {
@@ -10,12 +10,12 @@ interface OnboardingEmailProps {
   status: 'initiated' | 'completed';
 }
 
-export default function OnboardingEmailTemplate({
+export default function ProcessEmailTemplate({
   clientName,
   agentName,
   action,
   status,
-}: OnboardingEmailProps) {
+}: ProcessEmailProps) {
   const getStatusMessage = () => {
     if (status === 'initiated') {
       return `Action Required: ${action.title}`;

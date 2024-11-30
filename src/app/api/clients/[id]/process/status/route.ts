@@ -4,11 +4,11 @@ import prisma from '@/lib/prisma';
 
 export const PATCH = withAuth(async (request: NextRequest) => {
   try {
-    const id = request.url.split('/clients/')[1].split('/onboarding')[0];
+    const id = request.url.split('/clients/')[1].split('/process')[0];
     const { actionId, status, notes } = await request.json();
 
-    // Update the onboarding action status
-    const action = await prisma.onboardingAction.update({
+    // Update the process action status
+    const action = await prisma.processAction.update({
       where: { id: actionId },
       data: {
         status,
@@ -24,8 +24,8 @@ export const PATCH = withAuth(async (request: NextRequest) => {
     await prisma.interaction.create({
       data: {
         clientId: id,
-        type: 'Onboarding',
-        description: `Onboarding action "${action.title}" marked as ${status}`,
+        type: 'Process',
+        description: `Process action "${action.title}" marked as ${status}`,
         date: new Date(),
         notes: notes || undefined,
       }
@@ -33,9 +33,9 @@ export const PATCH = withAuth(async (request: NextRequest) => {
 
     return NextResponse.json(action);
   } catch (error) {
-    console.error('Error updating onboarding status:', error);
+    console.error('Error updating process status:', error);
     return NextResponse.json(
-      { error: 'Failed to update onboarding status' },
+      { error: 'Failed to update process status' },
       { status: 500 }
     );
   }

@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/api-middleware';
 import prisma from '@/lib/prisma';
 
-// GET /api/clients/[id]/onboarding/actions - Get all onboarding actions
+// GET /api/clients/[id]/process/actions - Get all process actions
 export const GET = withAuth(async (request: NextRequest) => {
   try {
-    const id = request.url.split('/clients/')[1].split('/onboarding')[0];
+    const id = request.url.split('/clients/')[1].split('/process')[0];
 
-    const actions = await prisma.onboardingAction.findMany({
+    const actions = await prisma.processAction.findMany({
       where: { clientId: id },
       include: {
         tasks: true
@@ -19,22 +19,22 @@ export const GET = withAuth(async (request: NextRequest) => {
 
     return NextResponse.json(actions);
   } catch (error) {
-    console.error('Error fetching onboarding actions:', error);
+    console.error('Error fetching process actions:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch onboarding actions' },
+      { error: 'Failed to fetch process actions' },
       { status: 500 }
     );
   }
 });
 
-// POST /api/clients/[id]/onboarding/actions - Create a new onboarding action
+// POST /api/clients/[id]/process/actions - Create a new process action
 export const POST = withAuth(async (request: NextRequest) => {
   try {
-    const id = request.url.split('/clients/')[1].split('/onboarding')[0];
+    const id = request.url.split('/clients/')[1].split('/process')[0];
     const { action } = await request.json();
 
-    // Create the onboarding action with its tasks
-    const newAction = await prisma.onboardingAction.create({
+    // Create the process action with its tasks
+    const newAction = await prisma.processAction.create({
       data: {
         clientId: id,
         title: action.title,
@@ -106,30 +106,30 @@ export const POST = withAuth(async (request: NextRequest) => {
     await prisma.interaction.create({
       data: {
         clientId: id,
-        type: 'Onboarding',
-        description: `Added onboarding action: ${newAction.title}`,
+        type: 'Process',
+        description: `Added process action: ${newAction.title}`,
         date: new Date(),
       }
     });
 
     return NextResponse.json(newAction);
   } catch (error) {
-    console.error('Error creating onboarding action:', error);
+    console.error('Error creating process action:', error);
     return NextResponse.json(
-      { error: 'Failed to create onboarding action' },
+      { error: 'Failed to create process action' },
       { status: 500 }
     );
   }
 });
 
-// PATCH /api/clients/[id]/onboarding/actions/[actionId] - Update an onboarding action
+// PATCH /api/clients/[id]/process/actions/[actionId] - Update an process action
 export const PATCH = withAuth(async (request: NextRequest) => {
   try {
     const urlParts = request.url.split('/');
     const actionId = urlParts[urlParts.length - 1];
     const { status, notes } = await request.json();
 
-    const action = await prisma.onboardingAction.update({
+    const action = await prisma.processAction.update({
       where: { id: actionId },
       data: {
         status,
@@ -161,9 +161,9 @@ export const PATCH = withAuth(async (request: NextRequest) => {
 
     return NextResponse.json(action);
   } catch (error) {
-    console.error('Error updating onboarding action:', error);
+    console.error('Error updating process action:', error);
     return NextResponse.json(
-      { error: 'Failed to update onboarding action' },
+      { error: 'Failed to update process action' },
       { status: 500 }
     );
   }

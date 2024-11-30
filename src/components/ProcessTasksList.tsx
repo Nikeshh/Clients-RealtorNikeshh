@@ -7,7 +7,7 @@ import Button from '@/components/Button';
 import { CheckCircle, Clock, AlertCircle, Mail, FileText, Calendar, ClipboardCheck } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 
-interface OnboardingTask {
+interface ProcessTask {
   id: string;
   title: string;
   description: string;
@@ -29,8 +29,8 @@ interface Props {
   onUpdate: () => void;
 }
 
-export default function OnboardingTasksList({ clientId, onUpdate }: Props) {
-  const [tasks, setTasks] = useState<OnboardingTask[]>([]);
+export default function ProcessTasksList({ clientId, onUpdate }: Props) {
+  const [tasks, setTasks] = useState<ProcessTask[]>([]);
   const { addToast } = useToast();
   const { setLoading, isLoading } = useLoadingStates();
 
@@ -41,22 +41,22 @@ export default function OnboardingTasksList({ clientId, onUpdate }: Props) {
   const loadTasks = async () => {
     setLoading('loadTasks', true);
     try {
-      const response = await fetch(`/api/clients/${clientId}/onboarding/tasks`);
-      if (!response.ok) throw new Error('Failed to fetch onboarding tasks');
+      const response = await fetch(`/api/clients/${clientId}/process/tasks`);
+      if (!response.ok) throw new Error('Failed to fetch process tasks');
       const data = await response.json();
       setTasks(data);
     } catch (error) {
       console.error('Error:', error);
-      addToast('Failed to load onboarding tasks', 'error');
+      addToast('Failed to load process tasks', 'error');
     } finally {
       setLoading('loadTasks', false);
     }
   };
 
-  const updateTaskStatus = async (taskId: string, status: OnboardingTask['status'], notes?: string) => {
+  const updateTaskStatus = async (taskId: string, status: ProcessTask['status'], notes?: string) => {
     setLoading(`updateTask-${taskId}`, true);
     try {
-      const response = await fetch(`/api/clients/${clientId}/onboarding/tasks/${taskId}`, {
+      const response = await fetch(`/api/clients/${clientId}/process/tasks/${taskId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -68,7 +68,7 @@ export default function OnboardingTasksList({ clientId, onUpdate }: Props) {
 
       loadTasks();
       onUpdate();
-      addToast('Task status updated successfully', 'success');
+      addToast(`Task ${status === 'COMPLETED' ? 'completed' : 'started'} successfully`, 'success');
     } catch (error) {
       console.error('Error:', error);
       addToast('Failed to update task status', 'error');
@@ -77,7 +77,7 @@ export default function OnboardingTasksList({ clientId, onUpdate }: Props) {
     }
   };
 
-  const getStatusIcon = (status: OnboardingTask['status']) => {
+  const getStatusIcon = (status: ProcessTask['status']) => {
     switch (status) {
       case 'COMPLETED':
         return <CheckCircle className="h-5 w-5 text-green-500" />;
@@ -90,7 +90,7 @@ export default function OnboardingTasksList({ clientId, onUpdate }: Props) {
     }
   };
 
-  const getTaskIcon = (type: OnboardingTask['type']) => {
+  const getTaskIcon = (type: ProcessTask['type']) => {
     switch (type) {
       case 'DOCUMENT':
         return <FileText className="h-5 w-5" />;
@@ -103,7 +103,7 @@ export default function OnboardingTasksList({ clientId, onUpdate }: Props) {
     }
   };
 
-  const getStatusColor = (status: OnboardingTask['status']) => {
+  const getStatusColor = (status: ProcessTask['status']) => {
     switch (status) {
       case 'COMPLETED':
         return 'bg-green-50 text-green-700 border-green-200';
@@ -164,27 +164,25 @@ export default function OnboardingTasksList({ clientId, onUpdate }: Props) {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {task.status !== 'COMPLETED' && (
-                <>
-                  {task.status === 'PENDING' && (
-                    <Button
-                      onClick={() => updateTaskStatus(task.id, 'IN_PROGRESS')}
-                      variant="secondary"
-                      size="small"
-                      isLoading={isLoading(`updateTask-${task.id}`)}
-                    >
-                      Start
-                    </Button>
-                  )}
-                  <Button
-                    onClick={() => updateTaskStatus(task.id, 'COMPLETED')}
-                    variant="success"
-                    size="small"
-                    isLoading={isLoading(`updateTask-${task.id}`)}
-                  >
-                    Complete
-                  </Button>
-                </>
+              {task.status === 'PENDING' && (
+                <Button
+                  onClick={() => updateTaskStatus(task.id, 'IN_PROGRESS')}
+                  variant="secondary"
+                  size="small"
+                  isLoading={isLoading(`updateTask-${task.id}`)}
+                >
+                  Start
+                </Button>
+              )}
+              {task.status === 'IN_PROGRESS' && (
+                <Button
+                  onClick={() => updateTaskStatus(task.id, 'COMPLETED')}
+                  variant="primary"
+                  size="small"
+                  isLoading={isLoading(`updateTask-${task.id}`)}
+                >
+                  Complete
+                </Button>
               )}
             </div>
           </div>
@@ -196,7 +194,7 @@ export default function OnboardingTasksList({ clientId, onUpdate }: Props) {
 
       {tasks.length === 0 && (
         <div className="text-center py-6 bg-gray-50 rounded-lg">
-          <p className="text-gray-500">No onboarding tasks found</p>
+          <p className="text-gray-500">No process tasks found</p>
         </div>
       )}
     </div>
