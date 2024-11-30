@@ -12,6 +12,19 @@ import Link from 'next/link';
 import { Upload } from 'lucide-react';
 import { Checkbox } from "@/components/ui/checkbox";
 
+interface SharedProperty {
+  id: string;
+  sharedDate: Date;
+  stage: {
+    id: string;
+    client: {
+      id: string;
+      name: string;
+      email: string;
+    };
+  };
+}
+
 interface Property {
   id: string;
   title: string;
@@ -43,15 +56,7 @@ interface Property {
   propertyStyle?: string | null;
   createdAt: string;
   
-  sharedWith: Array<{
-    id: string;
-    sharedDate: string;
-    client: {
-      id: string;
-      name: string;
-      email: string;
-    };
-  }>;
+  sharedWith: SharedProperty[];
   link: string;
 }
 
@@ -473,13 +478,23 @@ export default function PropertyPage() {
           </div>
 
           {/* Shared With */}
-          <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Shared With</h2>
-            <div className="space-y-4">
+          <div className="mt-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Shared With</h3>
+              <Button
+                onClick={() => setShowShareModal(true)}
+                variant="secondary"
+                size="small"
+              >
+                Share Property
+              </Button>
+            </div>
+
+            <div className="bg-white shadow rounded-lg divide-y divide-gray-200">
               {property?.sharedWith?.length > 0 ? (
                 property.sharedWith.map((shared) => (
-                  <div key={shared.id} className="flex items-center justify-between py-2">
-                    <div className="flex items-center gap-2">
+                  <div key={shared.id} className="p-4 flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
                       <div className="flex-1">
                         <p className="text-sm font-medium text-gray-900">
                           {shared.stage?.client?.name || 'Unnamed Client'}
@@ -489,13 +504,15 @@ export default function PropertyPage() {
                         </p>
                       </div>
                     </div>
-                    <span className="text-xs text-gray-500">
+                    <div className="text-xs text-gray-500">
                       Shared {new Date(shared.sharedDate).toLocaleDateString()}
-                    </span>
+                    </div>
                   </div>
                 ))
               ) : (
-                <p className="text-center text-gray-500">Not shared with any clients yet</p>
+                <div className="p-4 text-center text-gray-500">
+                  Not shared with any clients yet
+                </div>
               )}
             </div>
           </div>
@@ -505,110 +522,60 @@ export default function PropertyPage() {
       {/* Share Modal */}
       <Modal
         isOpen={showShareModal}
-        onClose={() => {
-          setShowShareModal(false);
-          setClientSearchTerm('');
-          setSearchResults([]);
-          setSelectedClients([]);
-          setIsSearchFocused(false);
-        }}
+        onClose={() => setShowShareModal(false)}
         title="Share Property"
       >
-        <div className="space-y-6">
-          {/* Property Preview */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              {property.images[0] && (
-                <img
-                  src={property.images[0]}
-                  alt={property.title}
-                  className="h-12 w-12 object-cover rounded"
-                />
-              )}
-              <div>
-                <h4 className="font-medium text-gray-900">{property.title}</h4>
-                <p className="text-sm text-gray-500">{property.address}</p>
-                <p className="text-sm font-medium text-blue-600 mt-1">
-                  {formatCurrency(property.price)}
-                  {property.listingType === 'RENTAL' && <span className="text-sm font-normal">/month</span>}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Client Search */}
+        <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700">
               Search Clients
             </label>
             <input
               type="text"
               value={clientSearchTerm}
               onChange={(e) => setClientSearchTerm(e.target.value)}
-              onFocus={() => {
-                setIsSearchFocused(true);
-                if (!searchResults.length) {
-                  loadClients();
-                }
-              }}
+              onFocus={() => setIsSearchFocused(true)}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               placeholder="Search by name or email..."
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
 
-          {/* Client List */}
-          <div className="border rounded-md max-h-60 overflow-y-auto">
-            {isSearchFocused && searchResults.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white shadow-lg rounded-md border">
-                {searchResults.map((client: any) => (
-                  <div key={client.id} className="border-b last:border-b-0">
-                    <div className="p-3 bg-gray-50">
-                      <p className="font-medium text-gray-900">{client.name || 'Unnamed Client'}</p>
-                      <p className="text-sm text-gray-500">{client.email || 'No email'}</p>
-                    </div>
-                    <div className="p-2 space-y-2">
-                      {client.stages?.map((stage: any) => (
-                        <label
-                          key={stage.id}
-                          className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedClients.includes(stage.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedClients([...selectedClients, stage.id]);
-                              } else {
-                                setSelectedClients(selectedClients.filter(id => id !== stage.id));
-                              }
-                            }}
-                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="text-sm text-gray-700">{stage.title || 'Untitled Stage'}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            {isSearchFocused && searchResults.length === 0 && (
-              <p className="text-center py-4 text-gray-500">
-                No clients found matching your search
-              </p>
-            )}
-          </div>
+          {isSearchFocused && searchResults.length > 0 && (
+            <div className="mt-2 max-h-60 overflow-y-auto border rounded-md divide-y">
+              {searchResults.map((client: any) => (
+                <div key={client.id} className="p-3">
+                  <div className="font-medium">{client.name}</div>
+                  <div className="text-sm text-gray-500">{client.email}</div>
+                  {client.stages?.map((stage: any) => (
+                    <label
+                      key={stage.id}
+                      className="flex items-center mt-2 text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedClients.includes(stage.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedClients([...selectedClients, stage.id]);
+                          } else {
+                            setSelectedClients(
+                              selectedClients.filter(id => id !== stage.id)
+                            );
+                          }
+                        }}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="ml-2">{stage.title}</span>
+                    </label>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
 
-          {/* Actions */}
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-3 mt-6">
             <Button
-              onClick={() => {
-                setShowShareModal(false);
-                setClientSearchTerm('');
-                setSearchResults([]);
-                setSelectedClients([]);
-                setIsSearchFocused(false);
-              }}
+              onClick={() => setShowShareModal(false)}
               variant="secondary"
               disabled={isLoading('shareProperty')}
             >
@@ -618,9 +585,8 @@ export default function PropertyPage() {
               onClick={handleShare}
               variant="primary"
               isLoading={isLoading('shareProperty')}
-              disabled={selectedClients.length === 0}
             >
-              Share with {selectedClients.length} client{selectedClients.length !== 1 ? 's' : ''}
+              Share
             </Button>
           </div>
         </div>
