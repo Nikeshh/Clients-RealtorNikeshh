@@ -5,17 +5,23 @@ import { useToast } from '@/components/ui/toast-context';
 import { useLoadingStates } from '@/hooks/useLoadingStates';
 import Button from '@/components/Button';
 import Modal from '@/components/ui/Modal';
-import { Checkbox } from "@/components/ui/checkbox";
 import { Mail, FileText, Calendar, ClipboardCheck } from 'lucide-react';
 
-interface Props {
-  isOpen: boolean;
-  onClose: () => void;
-  clientId: string;
-  onStart: () => void;
+interface ProcessTemplate {
+  id: string;
+  title: string;
+  description: string;
+  actions: {
+    title: string;
+    description: string;
+    type: 'DOCUMENT' | 'EMAIL' | 'MEETING' | 'TASK';
+    automatedTasks: {
+      type: 'EMAIL' | 'DOCUMENT_REQUEST' | 'CALENDAR_INVITE';
+    }[];
+  }[];
 }
 
-const defaultTemplates = [
+const defaultTemplates: ProcessTemplate[] = [
   {
     id: 'buyer',
     title: 'Buyer Process',
@@ -84,47 +90,16 @@ const defaultTemplates = [
   }
 ];
 
-export default function StartProcessModal({ isOpen, onClose, clientId, onStart }: Props) {
+interface Props {
+  isOpen: boolean;
+  onClose: () => void;
+  onSelect: (template: ProcessTemplate) => void;
+}
+
+export default function ProcessTemplates({ isOpen, onClose, onSelect }: Props) {
   const [selectedTemplate, setSelectedTemplate] = useState<string>('buyer');
-  const [selectedActions, setSelectedActions] = useState<{[key: string]: boolean}>({});
   const { addToast } = useToast();
   const { setLoading, isLoading } = useLoadingStates();
-
-  const handleStartProcess = async () => {
-    const template = defaultTemplates.find(t => t.id === selectedTemplate);
-    if (!template) return;
-
-    const selectedTemplateActions = template.actions.filter((_, index) => selectedActions[index]);
-    
-    if (selectedTemplateActions.length === 0) {
-      addToast('Please select at least one action', 'error');
-      return;
-    }
-
-    setLoading('startProcess', true);
-    try {
-      const response = await fetch(`/api/clients/${clientId}/process/actions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          actions: selectedTemplateActions
-        }),
-      });
-
-      if (!response.ok) throw new Error('Failed to start process');
-
-      addToast('Process started successfully', 'success');
-      onStart();
-      onClose();
-    } catch (error) {
-      console.error('Error:', error);
-      addToast('Failed to start process', 'error');
-    } finally {
-      setLoading('startProcess', false);
-    }
-  };
 
   const getTaskIcon = (type: string) => {
     switch (type) {
@@ -139,13 +114,20 @@ export default function StartProcessModal({ isOpen, onClose, clientId, onStart }
     }
   };
 
-  const currentTemplate = defaultTemplates.find(t => t.id === selectedTemplate);
+  const handleSelectTemplate = () => {
+    const template = defaultTemplates.find(t => t.id === selectedTemplate);
+    if (!template) {
+      addToast('Please select a template', 'error');
+      return;
+    }
+    onSelect(template);
+  };
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Start Process"
+      title="Select Process Template"
     >
       <div className="space-y-6">
         {/* Template Selection */}
@@ -171,28 +153,18 @@ export default function StartProcessModal({ isOpen, onClose, clientId, onStart }
           </div>
         </div>
 
-        {/* Actions Selection */}
-        {currentTemplate && (
+        {/* Template Preview */}
+        {selectedTemplate && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Actions
-            </label>
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Template Actions</h3>
             <div className="space-y-3">
-              {currentTemplate.actions.map((action, index) => (
-                <label
-                  key={index}
-                  className="flex items-start gap-3 p-3 border rounded-lg hover:bg-gray-50"
-                >
-                  <Checkbox
-                    checked={selectedActions[index] || false}
-                    onCheckedChange={(checked) => {
-                      setSelectedActions(prev => ({
-                        ...prev,
-                        [index]: checked
-                      }));
-                    }}
-                  />
-                  <div>
+              {defaultTemplates
+                .find(t => t.id === selectedTemplate)
+                ?.actions.map((action, index) => (
+                  <div
+                    key={index}
+                    className="p-3 border rounded-lg"
+                  >
                     <p className="font-medium text-gray-900">{action.title}</p>
                     <p className="text-sm text-gray-500">{action.description}</p>
                     {action.automatedTasks.length > 0 && (
@@ -209,8 +181,7 @@ export default function StartProcessModal({ isOpen, onClose, clientId, onStart }
                       </div>
                     )}
                   </div>
-                </label>
-              ))}
+                ))}
             </div>
           </div>
         )}
@@ -220,16 +191,14 @@ export default function StartProcessModal({ isOpen, onClose, clientId, onStart }
           <Button
             onClick={onClose}
             variant="secondary"
-            disabled={isLoading('startProcess')}
           >
             Cancel
           </Button>
           <Button
-            onClick={handleStartProcess}
+            onClick={handleSelectTemplate}
             variant="primary"
-            isLoading={isLoading('startProcess')}
           >
-            Start Process
+            Use Template
           </Button>
         </div>
       </div>

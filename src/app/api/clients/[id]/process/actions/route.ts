@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/api-middleware';
 import prisma from '@/lib/prisma';
+import { ProcessTaskProcessor } from '@/services/processTaskProcessor';
+
+type ProcessTaskData = {
+  type: 'EMAIL' | 'DOCUMENT_REQUEST' | 'CALENDAR_INVITE';
+  to?: string;
+  subject?: string;
+  content?: string;
+  clientId?: string;
+  title?: string;
+  description?: string;
+  dueDate?: Date;
+  suggestedDate?: Date;
+};
 
 // GET /api/clients/[id]/process/actions - Get all process actions
 export const GET = withAuth(async (request: NextRequest) => {
@@ -43,8 +56,8 @@ export const POST = withAuth(async (request: NextRequest) => {
         status: 'PENDING',
         dueDate: action.dueDate ? new Date(action.dueDate) : null,
         tasks: {
-          create: action.automatedTasks.map((task: any) => ({
-            type: task.type,
+          create: action.automatedTasks.map((task: { type: string }) => ({
+            type: task.type as 'EMAIL' | 'DOCUMENT_REQUEST' | 'CALENDAR_INVITE',
             status: 'PENDING'
           }))
         }
@@ -62,44 +75,43 @@ export const POST = withAuth(async (request: NextRequest) => {
 
     // Process automated tasks
     for (const task of newAction.tasks) {
+      let taskData: ProcessTaskData;
+
       switch (task.type) {
         case 'EMAIL':
-          if (newAction.client.email) {
-            await prisma.emailQueue.create({
-              data: {
-                to: newAction.client.email,
-                subject: `Action Required: ${newAction.title}`,
-                content: `Dear ${newAction.client.name},\n\n${newAction.description}\n\nBest regards,\nYour Agent`,
-                status: 'PENDING'
-              }
-            });
-          }
+          taskData = {
+            type: 'EMAIL',
+            to: newAction.client.email || '',
+            subject: `Action Required: ${newAction.title}`,
+            content: `Dear ${newAction.client.name},\n\n${newAction.description}\n\nBest regards,\nYour Agent`
+          };
           break;
 
         case 'DOCUMENT_REQUEST':
-          await prisma.documentRequest.create({
-            data: {
-              clientId: id,
-              title: newAction.title,
-              description: newAction.description,
-              status: 'PENDING',
-              dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-            }
-          });
+          taskData = {
+            type: 'DOCUMENT_REQUEST',
+            clientId: id,
+            title: newAction.title,
+            description: newAction.description,
+            dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now
+          };
           break;
 
         case 'CALENDAR_INVITE':
-          await prisma.meeting.create({
-            data: {
-              clientId: id,
-              title: newAction.title,
-              description: newAction.description,
-              status: 'PENDING',
-              suggestedDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
-            }
-          });
+          taskData = {
+            type: 'CALENDAR_INVITE',
+            clientId: id,
+            title: newAction.title,
+            description: newAction.description,
+            suggestedDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) // 3 days from now
+          };
           break;
+
+        default:
+          continue;
       }
+
+      await ProcessTaskProcessor.processTask(task.id, taskData);
     }
 
     // Create an interaction record
@@ -122,7 +134,7 @@ export const POST = withAuth(async (request: NextRequest) => {
   }
 });
 
-// PATCH /api/clients/[id]/process/actions/[actionId] - Update an process action
+// PATCH /api/clients/[id]/process/actions/[actionId] - Update a process action
 export const PATCH = withAuth(async (request: NextRequest) => {
   try {
     const urlParts = request.url.split('/');
