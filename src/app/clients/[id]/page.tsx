@@ -10,6 +10,8 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import Link from "next/link";
 import AddInteractionModal from '@/components/AddInteractionModal';
 import Modal from "@/components/ui/Modal";
+import DocumentUpload from '@/components/DocumentUpload';
+import { DocumentIcon, ArrowDownTrayIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 interface ClientRequirement {
   id: string;
@@ -87,6 +89,12 @@ interface Client {
     id: string;
     text: string;
     completed: boolean;
+  }>;
+  documents: Array<{
+    id: string;
+    name: string;
+    url: string;
+    uploadedAt: string;
   }>;
 }
 
@@ -353,6 +361,46 @@ export default function ClientPage() {
       addToast('Failed to delete checklist item', 'error');
     } finally {
       setLoading(`deleteChecklist-${itemId}`, false);
+    }
+  };
+
+  const handleDocumentUpload = async (files: Array<{ name: string; url: string; type: string }>) => {
+    try {
+      const response = await fetch(`/api/clients/${params.id}/documents`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ documents: files }),
+      });
+
+      if (!response.ok) throw new Error('Failed to save documents');
+
+      // Reload client data to get updated documents
+      loadClient();
+      addToast('Documents uploaded successfully', 'success');
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to upload documents', 'error');
+    }
+  };
+
+  const handleDeleteDocument = async (documentId: string) => {
+    if (!confirm('Are you sure you want to delete this document?')) return;
+
+    try {
+      const response = await fetch(`/api/clients/${params.id}/documents/${documentId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete document');
+
+      // Reload client data to get updated documents
+      loadClient();
+      addToast('Document deleted successfully', 'success');
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to delete document', 'error');
     }
   };
 
@@ -661,6 +709,63 @@ export default function ClientPage() {
                   </p>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* Documents Section */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Documents</h2>
+            </div>
+
+            <DocumentUpload 
+              onUpload={(files) => {
+                // Handle the uploaded files
+                handleDocumentUpload(files);
+              }}
+              maxFiles={5}
+              acceptedTypes={['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png']}
+            />
+
+            {/* Documents List */}
+            <div className="mt-6 space-y-4">
+              {client?.documents?.map((document) => (
+                <div 
+                  key={document.id} 
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                >
+                  <div className="flex items-center gap-3">
+                    <DocumentIcon className="h-5 w-5 text-gray-500" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{document.name}</p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(document.uploadedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={document.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      <ArrowDownTrayIcon className="h-5 w-5" />
+                    </a>
+                    <button
+                      onClick={() => handleDeleteDocument(document.id)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <TrashIcon className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {(!client?.documents || client.documents.length === 0) && (
+                <p className="text-center text-gray-500 py-4">
+                  No documents uploaded yet
+                </p>
+              )}
             </div>
           </div>
         </div>
