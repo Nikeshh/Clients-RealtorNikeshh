@@ -2,16 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/api-middleware';
 import prisma from '@/lib/prisma';
 
-// POST /api/clients/[id]/requirements - Add a new requirement
+// POST /api/clients/[id]/stages/[stageId]/requirements - Add a new requirement
 export const POST = withAuth(async (request: NextRequest) => {
   try {
-    const clientId = request.url.split('/clients/')[1].split('/requirements')[0];
+    const urlParts = request.url.split('/');
+    const stageId = urlParts[urlParts.indexOf('stages') + 1];
     const data = await request.json();
 
     // Create the requirement with type-specific preferences
     const requirement = await prisma.clientRequirement.create({
       data: {
-        clientId,
+        stageId,
         name: data.name || "New Requirement",
         type: data.type,
         propertyType: data.propertyType,
@@ -58,15 +59,24 @@ export const POST = withAuth(async (request: NextRequest) => {
       }
     });
 
-    // Create an interaction record
-    await prisma.interaction.create({
-      data: {
-        clientId,
-        type: 'Requirement Added',
-        description: `Added new ${data.type.toLowerCase()} requirement: ${data.name}`,
-        date: new Date(),
-      },
+    // Get the client ID from the stage
+    const stage = await prisma.stage.findUnique({
+      where: { id: stageId },
+      select: { clientId: true }
     });
+
+    if (stage) {
+      // Create an interaction record
+      await prisma.interaction.create({
+        data: {
+          clientId: stage.clientId,
+          stageId,
+          type: 'Requirement Added',
+          description: `Added new ${data.type.toLowerCase()} requirement: ${data.name}`,
+          date: new Date(),
+        },
+      });
+    }
 
     return NextResponse.json(requirement);
   } catch (error) {
@@ -78,13 +88,14 @@ export const POST = withAuth(async (request: NextRequest) => {
   }
 });
 
-// GET /api/clients/[id]/requirements - Get all requirements for a client
+// GET /api/clients/[id]/stages/[stageId]/requirements - Get all requirements for a stage
 export const GET = withAuth(async (request: NextRequest) => {
   try {
-    const clientId = request.url.split('/clients/')[1].split('/requirements')[0];
+    const urlParts = request.url.split('/');
+    const stageId = urlParts[urlParts.indexOf('stages') + 1];
 
     const requirements = await prisma.clientRequirement.findMany({
-      where: { clientId },
+      where: { stageId },
       include: {
         rentalPreferences: true,
         purchasePreferences: true,

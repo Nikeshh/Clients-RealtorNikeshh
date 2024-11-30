@@ -143,6 +143,7 @@ export default function ClientPage() {
   const [showAddInteractionModal, setShowAddInteractionModal] = useState(false);
   const [showChecklistModal, setShowChecklistModal] = useState(false);
   const [showInteractionsModal, setShowInteractionsModal] = useState(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   useEffect(() => {
     loadClient();
@@ -155,12 +156,12 @@ export default function ClientPage() {
       if (!response.ok) throw new Error('Failed to fetch client');
       const data = await response.json();
       setClient(data);
-      setEditedData(data);
     } catch (error) {
       console.error('Error:', error);
       addToast('Failed to load client details', 'error');
     } finally {
       setLoading('loadClient', false);
+      setInitialLoadComplete(true);
     }
   };
 
@@ -232,7 +233,7 @@ export default function ClientPage() {
     }
   };
 
-  if (isLoading('loadClient')) {
+  if (!initialLoadComplete) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <LoadingSpinner size="large" />
