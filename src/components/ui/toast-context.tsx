@@ -1,6 +1,7 @@
 'use client'
 
-import React, { createContext, useContext, useState, useCallback } from 'react'
+import React, { createContext, useContext, useState } from 'react'
+import { X } from 'lucide-react'
 
 type ToastType = 'success' | 'error' | 'info' | 'warning'
 
@@ -13,7 +14,6 @@ interface Toast {
 interface ToastContextType {
   addToast: (message: string, type: ToastType) => void
   removeToast: (id: string) => void
-  toasts: Toast[]
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined)
@@ -21,35 +21,41 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined)
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
 
-  const addToast = useCallback((message: string, type: ToastType) => {
+  const addToast = (message: string, type: ToastType) => {
     const id = Math.random().toString(36).substr(2, 9)
     setToasts((prev) => [...prev, { id, message, type }])
 
     // Auto remove after 5 seconds
     setTimeout(() => {
-      setToasts((prev) => prev.filter((toast) => toast.id !== id))
+      removeToast(id)
     }, 5000)
-  }, [])
+  }
 
-  const removeToast = useCallback((id: string) => {
+  const removeToast = (id: string) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id))
-  }, [])
+  }
 
   return (
-    <ToastContext.Provider value={{ addToast, removeToast, toasts }}>
+    <ToastContext.Provider value={{ addToast, removeToast }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-50 space-y-2">
+      <div className="fixed bottom-0 right-0 p-6 space-y-4 z-50">
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`p-4 rounded-lg shadow-lg text-white ${
-              toast.type === 'success' ? 'bg-green-500' :
-              toast.type === 'error' ? 'bg-red-500' :
-              toast.type === 'warning' ? 'bg-yellow-500' :
-              'bg-blue-500'
+            className={`flex items-center justify-between p-4 rounded-lg shadow-lg ${
+              toast.type === 'success' ? 'bg-green-500 text-white' :
+              toast.type === 'error' ? 'bg-red-500 text-white' :
+              toast.type === 'warning' ? 'bg-yellow-500 text-white' :
+              'bg-blue-500 text-white'
             }`}
           >
-            {toast.message}
+            <p>{toast.message}</p>
+            <button
+              onClick={() => removeToast(toast.id)}
+              className="ml-4 text-white hover:text-gray-200"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
         ))}
       </div>
