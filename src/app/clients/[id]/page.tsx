@@ -260,6 +260,7 @@ export default function ClientPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{client?.name}</h1>
           <p className="text-gray-500">{client?.email}</p>
+          <p className="text-gray-500">{client?.phone}</p>
         </div>
         <div className="flex gap-3">
           <Button
@@ -276,6 +277,16 @@ export default function ClientPage() {
           </Button>
         </div>
       </div>
+
+      {/* Client Notes */}
+      {client?.notes && (
+        <div className="bg-white rounded-lg shadow mb-6">
+          <div className="p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Notes</h2>
+            <p className="text-gray-700 whitespace-pre-wrap">{client.notes}</p>
+          </div>
+        </div>
+      )}
 
       {/* Client Content */}
       <div className="space-y-6">
