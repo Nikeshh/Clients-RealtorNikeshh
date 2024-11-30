@@ -89,6 +89,7 @@ export default function ClientStages({
   const [showAddChecklistModal, setShowAddChecklistModal] = useState(false);
   const [expandedStages, setExpandedStages] = useState<string[]>([]);
   const [selectedStageId, setSelectedStageId] = useState<string>("");
+  const [showStatusDropdown, setShowStatusDropdown] = useState<string>('');
   const { addToast } = useToast();
   const { setLoading, isLoading } = useLoadingStates();
 
@@ -210,7 +211,7 @@ export default function ClientStages({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setSelectedStageId(prev => prev === stage.id ? '' : stage.id);
+                      setShowStatusDropdown(prev => prev === stage.id ? '' : stage.id);
                     }}
                     className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
                       stage.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
@@ -222,7 +223,7 @@ export default function ClientStages({
                     <ChevronDown className="ml-1 h-4 w-4" />
                   </button>
 
-                  {selectedStageId === stage.id && (
+                  {showStatusDropdown === stage.id && (
                     <div className="absolute right-0 mt-1 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
                       <div className="py-1" role="menu">
                         {['ACTIVE', 'COMPLETED', 'CANCELLED'].map((status) => (
@@ -231,7 +232,7 @@ export default function ClientStages({
                             onClick={(e) => {
                               e.stopPropagation();
                               handleStageStatusChange(stage.id, status);
-                              setSelectedStageId('');
+                              setShowStatusDropdown('');
                             }}
                             className={`block w-full text-left px-4 py-2 text-sm ${
                               status === stage.status ? 'bg-gray-100' : 'hover:bg-gray-50'
@@ -311,6 +312,11 @@ export default function ClientStages({
                     stageId={stage.id}
                     onUpdate={loadStages}
                   />
+                  <SharedPropertiesList
+                    properties={stage.sharedProperties}
+                    stageId={stage.id}
+                    onUpdate={loadStages}
+                  />
                 </div>
               </div>
             )}
@@ -323,12 +329,11 @@ export default function ClientStages({
         <Modal
           isOpen={showAddStageModal}
           onClose={() => setShowAddStageModal(false)}
-          title="Add Stage"
+          title="Add Base Stage"
         >
           <StageTemplates
             onSelect={handleAddStage}
             onClose={() => setShowAddStageModal(false)}
-            isOpen={false}
           />
         </Modal>
       )}

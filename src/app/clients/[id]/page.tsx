@@ -318,7 +318,7 @@ export default function ClientPage() {
             onClick={() => setShowAddStageModal(true)}
             variant="secondary"
           >
-            Add Stage
+            Add Base Stage
           </Button>
           <Button
             onClick={() => {

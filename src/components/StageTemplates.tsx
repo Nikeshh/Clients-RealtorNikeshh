@@ -1,28 +1,23 @@
 'use client';
 
 import { useState } from 'react';
-import { useToast } from '@/components/ui/toast-context';
-import { useLoadingStates } from '@/hooks/useLoadingStates';
-import Button from '@/components/Button';
-import Modal from '@/components/ui/Modal';
-import { Mail, FileText, Calendar, ClipboardCheck } from 'lucide-react';
-import { Checkbox } from "@/components/ui/checkbox";
+import Button from './Button';
 
 interface StageTemplate {
   id: string;
   title: string;
   description: string;
-  processes: {
+  processes?: Array<{
     title: string;
     description: string;
-    type: 'DOCUMENT' | 'EMAIL' | 'MEETING' | 'TASK';
-    automatedTasks: {
-      type: 'EMAIL' | 'DOCUMENT_REQUEST' | 'CALENDAR_INVITE';
-    }[];
-  }[];
+    type: string;
+    automatedTasks: Array<{
+      type: string;
+    }>;
+  }>;
 }
 
-const defaultTemplates: StageTemplate[] = [
+const stageTemplates: StageTemplate[] = [
   {
     id: 'buyer-consultation',
     title: 'Buyer Consultation',
@@ -50,20 +45,27 @@ const defaultTemplates: StageTemplate[] = [
   {
     id: 'property-search',
     title: 'Property Search',
-    description: 'Active property search and viewings',
+    description: 'Active property search and viewings phase',
     processes: [
       {
         title: 'Property Viewings',
-        description: 'Schedule and coordinate property viewings',
+        description: 'Schedule and conduct property viewings',
         type: 'MEETING',
         automatedTasks: [
           { type: 'CALENDAR_INVITE' },
           { type: 'EMAIL' }
         ]
-      },
+      }
+    ]
+  },
+  {
+    id: 'offer-negotiation',
+    title: 'Offer & Negotiation',
+    description: 'Prepare and submit offers, handle negotiations',
+    processes: [
       {
-        title: 'Viewing Feedback',
-        description: 'Collect and document feedback on viewed properties',
+        title: 'Offer Preparation',
+        description: 'Prepare and review offer documents',
         type: 'DOCUMENT',
         automatedTasks: [
           { type: 'DOCUMENT_REQUEST' },
@@ -73,21 +75,29 @@ const defaultTemplates: StageTemplate[] = [
     ]
   },
   {
-    id: 'offer-submission',
-    title: 'Offer Submission',
-    description: 'Prepare and submit property offer',
+    id: 'due-diligence',
+    title: 'Due Diligence',
+    description: 'Property inspection and document review period',
     processes: [
       {
-        title: 'Offer Documentation',
-        description: 'Prepare and review offer documents',
-        type: 'DOCUMENT',
+        title: 'Property Inspection',
+        description: 'Schedule and conduct property inspection',
+        type: 'MEETING',
         automatedTasks: [
-          { type: 'DOCUMENT_REQUEST' }
+          { type: 'CALENDAR_INVITE' },
+          { type: 'EMAIL' }
         ]
-      },
+      }
+    ]
+  },
+  {
+    id: 'closing',
+    title: 'Closing',
+    description: 'Final walkthrough and closing process',
+    processes: [
       {
-        title: 'Offer Review Meeting',
-        description: 'Review offer details with client',
+        title: 'Final Walkthrough',
+        description: 'Schedule and conduct final property walkthrough',
         type: 'MEETING',
         automatedTasks: [
           { type: 'CALENDAR_INVITE' },
@@ -99,120 +109,57 @@ const defaultTemplates: StageTemplate[] = [
 ];
 
 interface Props {
-  isOpen: boolean;
+  onSelect: (template: StageTemplate) => void;
   onClose: () => void;
-  onSelect: (templates: StageTemplate[]) => void;
 }
 
-export default function StageTemplates({ isOpen, onClose, onSelect }: Props) {
-  const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
-  const { addToast } = useToast();
-  const { isLoading } = useLoadingStates();
-
-  const handleSelectTemplates = () => {
-    if (selectedTemplates.length === 0) {
-      addToast('Please select at least one template', 'error');
-      return;
-    }
-
-    const templates = defaultTemplates.filter(template => 
-      selectedTemplates.includes(template.id)
-    );
-    onSelect(templates);
-  };
-
-  const getTaskIcon = (type: string) => {
-    switch (type) {
-      case 'EMAIL':
-        return <Mail className="h-3 w-3 mr-1" />;
-      case 'DOCUMENT_REQUEST':
-        return <FileText className="h-3 w-3 mr-1" />;
-      case 'CALENDAR_INVITE':
-        return <Calendar className="h-3 w-3 mr-1" />;
-      default:
-        return <ClipboardCheck className="h-3 w-3 mr-1" />;
-    }
-  };
+export default function StageTemplates({ onSelect, onClose }: Props) {
+  const [selectedTemplate, setSelectedTemplate] = useState<StageTemplate | null>(null);
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Select Stage Template"
-    >
-      <div className="space-y-6">
-        {/* Template Selection */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Select Templates
-          </label>
-          <div className="space-y-4">
-            {defaultTemplates.map(template => (
-              <label
-                key={template.id}
-                className="flex items-start gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-              >
-                <Checkbox
-                  checked={selectedTemplates.includes(template.id)}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setSelectedTemplates([...selectedTemplates, template.id]);
-                    } else {
-                      setSelectedTemplates(selectedTemplates.filter(id => id !== template.id));
-                    }
-                  }}
-                />
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900">{template.title}</p>
-                  <p className="text-sm text-gray-500">{template.description}</p>
-                  {template.processes.length > 0 && (
-                    <div className="mt-2 space-y-2">
-                      {template.processes.map((process, index) => (
-                        <div
-                          key={index}
-                          className="text-sm text-gray-600 pl-4 border-l-2 border-gray-200"
-                        >
-                          <p>{process.title}</p>
-                          {process.automatedTasks.length > 0 && (
-                            <div className="mt-1 flex gap-2">
-                              {process.automatedTasks.map((task, taskIndex) => (
-                                <span
-                                  key={taskIndex}
-                                  className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                                >
-                                  {getTaskIcon(task.type)}
-                                  {task.type.replace('_', ' ')}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </label>
-            ))}
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-4">
+        {stageTemplates.map((template) => (
+          <div
+            key={template.id}
+            className={`p-4 border rounded-lg cursor-pointer ${
+              selectedTemplate?.id === template.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+            }`}
+            onClick={() => setSelectedTemplate(template)}
+          >
+            <h3 className="font-medium text-gray-900">{template.title}</h3>
+            <p className="text-sm text-gray-500 mt-1">{template.description}</p>
+            {selectedTemplate?.id === template.id && template.processes && (
+              <div className="mt-3 pl-4 border-l-2 border-blue-200">
+                <p className="text-sm font-medium text-gray-700">Included Processes:</p>
+                <ul className="mt-1 space-y-1">
+                  {template.processes.map((process, index) => (
+                    <li key={index} className="text-sm text-gray-600">
+                      • {process.title}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex justify-end gap-3">
-          <Button
-            onClick={onClose}
-            variant="secondary"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSelectTemplates}
-            variant="primary"
-            disabled={selectedTemplates.length === 0}
-          >
-            Start {selectedTemplates.length} Stage{selectedTemplates.length !== 1 ? 's' : ''}
-          </Button>
-        </div>
+        ))}
       </div>
-    </Modal>
+
+      <div className="flex justify-end gap-3">
+        <Button
+          onClick={onClose}
+          variant="secondary"
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={() => selectedTemplate && onSelect(selectedTemplate)}
+          variant="primary"
+          disabled={!selectedTemplate}
+        >
+          Add Base Stage
+        </Button>
+      </div>
+    </div>
   );
 } 
