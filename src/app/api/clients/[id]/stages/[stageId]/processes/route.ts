@@ -1,165 +1,169 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/api-middleware';
 import prisma from '@/lib/prisma';
-import { sendEmail } from '@/app/api/email/route';
 
 export const POST = withAuth(async (request: NextRequest) => {
   try {
-    const id = request.url.split('/clients/')[1].split('/process')[0];
-    const { actions } = await request.json();
+    // Extract IDs from URL
+    const urlParts = request.url.split('/');
+    const stageId = urlParts[urlParts.indexOf('stages') + 1];
+    const data = await request.json();
 
-    if (!actions || !Array.isArray(actions)) {
+    // Validate input
+    if (!data || !data.title) {
       return NextResponse.json(
-        { error: 'Actions array is required' },
+        { error: 'Process details are required' },
         { status: 400 }
       );
     }
 
-    // Get client details for email notifications
-    const client = await prisma.client.findUnique({
-      where: { id },
-      select: {
-        name: true,
-        email: true,
+    // Get stage details
+    const stage = await prisma.stage.findUnique({
+      where: { id: stageId },
+      include: {
+        client: {
+          select: {
+            id: true,
+            email: true,
+            name: true
+          }
+        }
       }
     });
 
-    if (!client) {
+    if (!stage) {
       return NextResponse.json(
-        { error: 'Client not found' },
+        { error: 'Stage not found' },
         { status: 404 }
       );
     }
 
-    // Create checklist items for each action
-    const checklistItems = await Promise.all(
-      actions.map(async (action) => {
-        const item = await prisma.processAction.create({
-          data: {
-            clientId: id,
-            title: action.title,
-            description: action.description,
-            type: action.type,
-            status: 'PENDING',
-            tasks: {
-              create: action.automatedTasks.map((task: any) => ({
-                type: task.type,
-                status: 'PENDING'
-              }))
+    // Create the process
+    const newProcess = await prisma.process.create({
+      data: {
+        stageId,
+        title: data.title,
+        description: data.description || '',
+        type: data.type || 'TASK',
+        status: 'PENDING',
+        dueDate: data.dueDate ? new Date(data.dueDate) : null,
+        tasks: data.automatedTasks ? {
+          create: data.automatedTasks.map((task: { type: string }) => ({
+            type: task.type,
+            status: 'PENDING'
+          }))
+        } : undefined
+      },
+      include: {
+        tasks: true,
+        stage: {
+          include: {
+            client: {
+              select: {
+                id: true,
+                email: true,
+                name: true
+              }
             }
           }
-        });
-
-        // Handle automated tasks for each action
-        if (action.automatedTasks?.length > 0) {
-          await Promise.all(action.automatedTasks.map(async (task: any) => {
-            switch (task.type) {
-              case 'EMAIL':
-                if (client.email) {
-                  await prisma.emailQueue.create({
-                    data: {
-                      to: client.email,
-                      subject: `${action.title} - Action Required`,
-                      content: `Dear ${client.name},\n\n${action.description}\n\nBest regards,\nYour Agent`,
-                      status: 'PENDING'
-                    }
-                  });
-                }
-                break;
-
-              case 'DOCUMENT_REQUEST':
-                await prisma.documentRequest.create({
-                  data: {
-                    clientId: id,
-                    title: action.title,
-                    description: action.description,
-                    status: 'PENDING',
-                    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-                  }
-                });
-                break;
-
-              case 'CALENDAR_INVITE':
-                await prisma.meeting.create({
-                  data: {
-                    clientId: id,
-                    title: action.title,
-                    description: action.description,
-                    status: 'PENDING',
-                    suggestedDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
-                  }
-                });
-                break;
-            }
-          }));
         }
-
-        return item;
-      })
-    );
-
-    // Create an interaction record for process initiation
-    await prisma.interaction.create({
-      data: {
-        clientId: id,
-        type: 'Process',
-        description: 'Process initiated',
-        date: new Date(),
-        notes: `Initiated ${actions.length} process actions`,
       }
     });
 
-    return NextResponse.json({
-      success: true,
-      actions: checklistItems
+    // Create an interaction record
+    await prisma.interaction.create({
+      data: {
+        clientId: stage.client.id,
+        stageId,
+        type: 'Process',
+        description: `Added process: ${newProcess.title}`,
+        date: new Date(),
+      }
     });
+
+    // Handle automated tasks if any
+    if (stage.client.email && newProcess.tasks.length > 0) {
+      for (const task of newProcess.tasks) {
+        switch (task.type) {
+          case 'EMAIL':
+            await prisma.emailQueue.create({
+              data: {
+                to: stage.client.email,
+                subject: `New Process: ${newProcess.title}`,
+                content: `Dear ${stage.client.name},\n\n${newProcess.description}\n\nBest regards,\nYour Agent`,
+                status: 'PENDING'
+              }
+            });
+            break;
+
+          case 'DOCUMENT_REQUEST':
+            await prisma.documentRequest.create({
+              data: {
+                clientId: stage.client.id,
+                title: newProcess.title,
+                description: newProcess.description || '',
+                status: 'PENDING',
+                dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now
+              }
+            });
+            break;
+
+          case 'CALENDAR_INVITE':
+            await prisma.meeting.create({
+              data: {
+                clientId: stage.client.id,
+                title: newProcess.title,
+                description: newProcess.description || '',
+                status: 'PENDING',
+                suggestedDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) // 3 days from now
+              }
+            });
+            break;
+        }
+      }
+    }
+
+    return NextResponse.json(newProcess);
   } catch (error) {
-    console.error('Error initiating process:', error);
+    console.error('Error creating process:', error);
     return NextResponse.json(
-      { error: 'Failed to initiate process' },
+      { error: 'Failed to create process' },
       { status: 500 }
     );
   }
 });
 
-// GET endpoint to check process status
 export const GET = withAuth(async (request: NextRequest) => {
   try {
-    const id = request.url.split('/clients/')[1].split('/process')[0];
+    const urlParts = request.url.split('/');
+    const stageId = urlParts[urlParts.indexOf('stages') + 1];
 
-    const actions = await prisma.processAction.findMany({
-      where: { clientId: id },
+    const processes = await prisma.process.findMany({
+      where: { stageId },
       include: {
-        tasks: true
+        tasks: true,
+        stage: {
+          include: {
+            client: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            }
+          }
+        }
       },
       orderBy: {
         createdAt: 'desc'
       }
     });
 
-    const documentRequests = await prisma.documentRequest.findMany({
-      where: { clientId: id },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    const meetings = await prisma.meeting.findMany({
-      where: { clientId: id },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    return NextResponse.json({
-      actions,
-      documentRequests,
-      meetings,
-      progress: {
-        total: actions.length,
-        completed: actions.filter(action => action.status === 'COMPLETED').length,
-      }
-    });
+    return NextResponse.json(processes);
   } catch (error) {
-    console.error('Error fetching process status:', error);
+    console.error('Error fetching processes:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch process status' },
+      { error: 'Failed to fetch processes' },
       { status: 500 }
     );
   }

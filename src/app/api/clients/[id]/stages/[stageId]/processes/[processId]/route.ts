@@ -2,14 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/api-middleware';
 import prisma from '@/lib/prisma';
 
-export const PATCH = withAuth(async (request: NextRequest) => {
+export const DELETE = withAuth(async (request: NextRequest) => {
   try {
     const urlParts = request.url.split('/');
+    const processId = urlParts[urlParts.length - 1];
     const stageId = urlParts[urlParts.indexOf('stages') + 1];
-    const processId = urlParts[urlParts.indexOf('processes') + 1];
-    const { status, notes } = await request.json();
 
-    // Get the process with stage and client info
+    // Get process details before deletion
     const process = await prisma.process.findFirst({
       where: { 
         id: processId,
@@ -20,9 +19,7 @@ export const PATCH = withAuth(async (request: NextRequest) => {
           include: {
             client: {
               select: {
-                id: true,
-                email: true,
-                name: true
+                id: true
               }
             }
           }
@@ -37,17 +34,9 @@ export const PATCH = withAuth(async (request: NextRequest) => {
       );
     }
 
-    // Update the process
-    const updatedProcess = await prisma.process.update({
-      where: { id: processId },
-      data: {
-        status,
-        notes: notes || undefined,
-        completedAt: status === 'COMPLETED' ? new Date() : null,
-      },
-      include: {
-        tasks: true
-      }
+    // Delete the process
+    await prisma.process.delete({
+      where: { id: processId }
     });
 
     // Create an interaction record
@@ -56,17 +45,16 @@ export const PATCH = withAuth(async (request: NextRequest) => {
         clientId: process.stage.client.id,
         stageId,
         type: 'Process',
-        description: `Process "${process.title}" marked as ${status}`,
+        description: `Deleted process: ${process.title}`,
         date: new Date(),
-        notes: notes || undefined
       }
     });
 
-    return NextResponse.json(updatedProcess);
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error updating process status:', error);
+    console.error('Error deleting process:', error);
     return NextResponse.json(
-      { error: 'Failed to update process status' },
+      { error: 'Failed to delete process' },
       { status: 500 }
     );
   }
