@@ -60,6 +60,7 @@ export const GET = withAuth(async (request: NextRequest) => {
 // POST /api/clients/[id]/process/tasks - Create a new process task
 export const POST = withAuth(async (request: NextRequest) => {
   try {
+    const id = request.url.split('/clients/')[1].split('/process')[0];
     const { stageId, task } = await request.json();
 
     if (!stageId) {
@@ -75,6 +76,7 @@ export const POST = withAuth(async (request: NextRequest) => {
       include: {
         client: {
           select: {
+            id: true,
             email: true,
             name: true
           }
@@ -111,6 +113,7 @@ export const POST = withAuth(async (request: NextRequest) => {
           include: {
             client: {
               select: {
+                id: true,
                 email: true,
                 name: true
               }
@@ -156,9 +159,10 @@ export const POST = withAuth(async (request: NextRequest) => {
       }
     }
 
-    // Create an interaction record
+    // Create an interaction record with clientId
     await prisma.interaction.create({
       data: {
+        clientId: stage.client.id,
         stageId,
         type: 'Process',
         description: `Added process task: ${newProcess.title}`,

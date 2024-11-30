@@ -4,20 +4,18 @@ import prisma from '@/lib/prisma';
 
 export const POST = withAuth(async (request: NextRequest) => {
   try {
-    const clientId = request.url.split('/clients/')[1].split('/interactions')[0];
-    const data = await request.json();
+    const id = request.url.split('/clients/')[1].split('/interactions')[0];
+    const { type, description, notes, stageId, requirementId } = await request.json();
 
     const interaction = await prisma.interaction.create({
       data: {
-        clientId,
-        requirementId: data.requirementId || null,
-        type: data.type,
-        description: data.description,
-        notes: data.notes,
-        date: new Date(data.date),
-      },
-      include: {
-        requirement: true,
+        clientId: id,
+        type,
+        description,
+        notes,
+        date: new Date(),
+        stageId: stageId || undefined,
+        requirementId: requirementId || undefined,
       },
     });
 
@@ -33,21 +31,20 @@ export const POST = withAuth(async (request: NextRequest) => {
 
 export const GET = withAuth(async (request: NextRequest) => {
   try {
-    const clientId = request.url.split('/clients/')[1].split('/interactions')[0];
-    const { searchParams } = new URL(request.url);
-    const requirementId = searchParams.get('requirementId');
+    const id = request.url.split('/clients/')[1].split('/interactions')[0];
 
     const interactions = await prisma.interaction.findMany({
-      where: {
-        clientId,
-        ...(requirementId && { requirementId }),
-      },
-      orderBy: {
-        date: 'desc',
-      },
+      where: { clientId: id },
+      orderBy: { date: 'desc' },
       include: {
-        requirement: true,
-      },
+        requirement: {
+          select: {
+            id: true,
+            name: true,
+            type: true
+          }
+        }
+      }
     });
 
     return NextResponse.json(interactions);

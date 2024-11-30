@@ -38,6 +38,20 @@ export const GET = withAuth(async (request: NextRequest) => {
             order: 'asc'
           }
         },
+        interactions: {
+          orderBy: {
+            date: 'desc'
+          },
+          include: {
+            requirement: {
+              select: {
+                id: true,
+                name: true,
+                type: true
+              }
+            }
+          }
+        },
         documentRequests: true,
         meetings: true,
         transactions: {

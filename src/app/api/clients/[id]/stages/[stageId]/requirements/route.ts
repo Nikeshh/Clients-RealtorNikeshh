@@ -6,6 +6,7 @@ export const POST = withAuth(async (request: NextRequest) => {
   try {
     const urlParts = request.url.split('/');
     const stageId = urlParts[urlParts.indexOf('stages') + 1];
+    const clientId = urlParts[urlParts.indexOf('clients') + 1];
     const { name, description, status, type, propertyType, budgetMin, budgetMax, bedrooms, bathrooms, preferredLocations, additionalRequirements } = await request.json();
 
     // Validate required fields
@@ -32,9 +33,10 @@ export const POST = withAuth(async (request: NextRequest) => {
       }
     });
 
-    // Create an interaction record
+    // Create an interaction record with clientId
     await prisma.interaction.create({
       data: {
+        clientId,
         stageId,
         type: 'Requirement',
         description: `Added requirement: ${name}`,

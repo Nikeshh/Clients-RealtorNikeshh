@@ -33,10 +33,10 @@ export const POST = withAuth(async (request: NextRequest) => {
       },
     });
 
-    // Create an interaction record
+    // Create an interaction record with clientId
     await prisma.interaction.create({
       data: {
-        stageId,
+        clientId: id,
         type: 'Document Upload',
         description: `Uploaded ${documents.length} documents`,
         date: new Date(),

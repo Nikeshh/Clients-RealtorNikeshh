@@ -118,32 +118,15 @@ export const POST = withAuth(async (request: NextRequest) => {
               title: true,
               address: true
             }
-          },
-          commission: {
-            select: {
-              id: true,
-              amount: true,
-              status: true
-            }
           }
         }
       });
-
-      // Update commission status if this is a commission payment
-      if (data.commissionId) {
-        await tx.commission.update({
-          where: { id: data.commissionId },
-          data: {
-            status: 'RECEIVED',
-            receivedDate: new Date()
-          }
-        });
-      }
 
       // Create interaction if client is associated
       if (data.clientId) {
         await tx.interaction.create({
           data: {
+            clientId: data.clientId,
             stageId: data.stageId,
             type: 'Financial',
             description: `${data.type === 'INCOME' ? 'Received' : 'Paid'} ${formatCurrency(parseFloat(data.amount))} - ${data.description}`,

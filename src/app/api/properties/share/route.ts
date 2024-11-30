@@ -51,9 +51,9 @@ export const POST = withAuth(async (request: NextRequest) => {
     const stageShares = new Map<string, { stage: any; properties: any[] }>();
 
     // Create share records for each stage
-    const shares: SharedPropertyWithRelations[] = await Promise.all(
+    const shares = await Promise.all(
       stageIds.map(async (stageId) => {
-        // Check if stage exists
+        // Get stage with client info
         const stage = await prisma.stage.findUnique({
           where: { id: stageId },
           include: {
@@ -126,6 +126,17 @@ export const POST = withAuth(async (request: NextRequest) => {
         }
         stageShares.get(stageId)?.properties.push(property);
 
+        // Create interaction record with clientId
+        await prisma.interaction.create({
+          data: {
+            clientId: stage.client.id,
+            stageId,
+            type: 'Property Shared',
+            description: `Shared property: ${property.title}`,
+            date: new Date(),
+          }
+        });
+
         return newShare;
       })
     );
@@ -141,20 +152,6 @@ export const POST = withAuth(async (request: NextRequest) => {
           );
         }
       })
-    );
-
-    // Create interaction records
-    await Promise.all(
-      Array.from(stageShares.entries()).map(([stageId, { properties }]) =>
-        prisma.interaction.create({
-          data: {
-            stageId,
-            type: 'Property Shared',
-            description: `Shared ${properties.length} properties: ${properties.map(p => p.title).join(', ')}`,
-            date: new Date(),
-          },
-        })
-      )
     );
 
     return NextResponse.json({

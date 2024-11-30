@@ -25,6 +25,7 @@ model Client {
   documentRequests DocumentRequest[]
   meetings    Meeting[]
   checklist   ClientChecklist[]
+  interactions Interaction[]
 
   @@index([name])
   @@index([email])
@@ -178,15 +179,17 @@ model SharedProperty {
 
 model Interaction {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  stageId       String   @db.ObjectId
-  requirementId String?  @db.ObjectId
+  clientId      String   @db.ObjectId
   type          String
-  date          DateTime @default(now())
   description   String
   notes         String?
+  date          DateTime @default(now())
 
-  stage         Stage    @relation(fields: [stageId], references: [id], onDelete: Cascade)
-  requirement   ClientRequirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  stage         Stage?   @relation(fields: [stageId], references: [id])
+  stageId       String?  @db.ObjectId
+  requirement   ClientRequirement? @relation(fields: [requirementId], references: [id])
+  requirementId String? @db.ObjectId
 }
 
 model Account {

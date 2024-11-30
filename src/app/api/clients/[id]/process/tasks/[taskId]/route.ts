@@ -9,7 +9,7 @@ export const PATCH = withAuth(async (request: NextRequest) => {
     const taskId = urlParts[urlParts.length - 1];
     const { status, notes } = await request.json();
 
-    // Get the task with stage info
+    // Get the task with stage and client info
     const task = await prisma.process.findUnique({
       where: { id: taskId },
       include: {
@@ -17,6 +17,7 @@ export const PATCH = withAuth(async (request: NextRequest) => {
           include: {
             client: {
               select: {
+                id: true,
                 email: true,
                 name: true
               }
@@ -47,6 +48,7 @@ export const PATCH = withAuth(async (request: NextRequest) => {
           include: {
             client: {
               select: {
+                id: true,
                 email: true,
                 name: true
               }
@@ -68,9 +70,10 @@ export const PATCH = withAuth(async (request: NextRequest) => {
       });
     }
 
-    // Create an interaction record
+    // Create an interaction record with clientId
     await prisma.interaction.create({
       data: {
+        clientId: task.stage.client.id, // Add clientId
         stageId: task.stageId,
         type: 'Process',
         description: `Task "${updatedTask.title}" marked as ${status}`,

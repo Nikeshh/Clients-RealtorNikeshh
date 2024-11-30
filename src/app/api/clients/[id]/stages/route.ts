@@ -20,10 +20,18 @@ export const GET = withAuth(async (request: NextRequest) => {
         documents: true,
         sharedProperties: {
           include: {
-            property: true
+            property: {
+              select: {
+                id: true,
+                title: true,
+                address: true,
+                price: true,
+                images: true,
+                status: true
+              }
+            }
           }
-        },
-        interactions: true
+        }
       },
       orderBy: {
         order: 'asc'
@@ -44,9 +52,9 @@ export const GET = withAuth(async (request: NextRequest) => {
 export const POST = withAuth(async (request: NextRequest) => {
   try {
     const id = request.url.split('/clients/')[1].split('/stages')[0];
-    const { title, description, processes } = await request.json();
+    const { title, description, status } = await request.json();
 
-    // Get the highest order number
+    // Get current highest order
     const lastStage = await prisma.stage.findFirst({
       where: { clientId: id },
       orderBy: { order: 'desc' }
@@ -54,45 +62,26 @@ export const POST = withAuth(async (request: NextRequest) => {
 
     const order = lastStage ? lastStage.order + 1 : 0;
 
-    // Create the stage with its processes
+    // Create the stage
     const stage = await prisma.stage.create({
       data: {
         clientId: id,
         title,
         description,
+        status: status || 'ACTIVE',
         order,
-        status: 'ACTIVE',
-        processes: {
-          create: processes.map((process: any) => ({
-            title: process.title,
-            description: process.description,
-            type: process.type,
-            status: 'PENDING',
-            tasks: {
-              create: process.automatedTasks.map((task: any) => ({
-                type: task.type,
-                status: 'PENDING'
-              }))
-            }
-          }))
-        }
-      },
-      include: {
-        processes: {
-          include: {
-            tasks: true
-          }
-        }
+        startDate: new Date(),
       }
     });
 
     // Create an interaction record
     await prisma.interaction.create({
       data: {
+        clientId: id,
         stageId: stage.id,
         type: 'Stage',
         description: `Stage "${title}" created`,
-        date: new Date()
+        date: new Date(),
       }
     });
 
@@ -109,36 +98,28 @@ export const POST = withAuth(async (request: NextRequest) => {
 // PATCH /api/clients/[id]/stages/[stageId] - Update a stage
 export const PATCH = withAuth(async (request: NextRequest) => {
   try {
-    const urlParts = request.url.split('/');
-    const stageId = urlParts[urlParts.length - 1];
-    const { status, title, description, order } = await request.json();
+    const id = request.url.split('/clients/')[1].split('/stages')[0];
+    const { stageId, title, description, status } = await request.json();
 
     const stage = await prisma.stage.update({
       where: { id: stageId },
       data: {
-        status: status || undefined,
-        title: title || undefined,
-        description: description || undefined,
-        order: order || undefined,
-        endDate: status === 'COMPLETED' ? new Date() : undefined
-      },
-      include: {
-        processes: {
-          include: {
-            tasks: true
-          }
-        }
+        title,
+        description,
+        status,
+        endDate: status === 'COMPLETED' ? new Date() : null,
       }
     });
 
-    // Create an interaction record for status change
+    // Create interaction if status is updated
     if (status) {
       await prisma.interaction.create({
         data: {
+          clientId: id,
           stageId: stageId,
           type: 'Stage',
           description: `Stage "${stage.title}" marked as ${status}`,
-          date: new Date()
+          date: new Date(),
         }
       });
     }
@@ -156,11 +137,34 @@ export const PATCH = withAuth(async (request: NextRequest) => {
 // DELETE /api/clients/[id]/stages/[stageId] - Delete a stage
 export const DELETE = withAuth(async (request: NextRequest) => {
   try {
-    const urlParts = request.url.split('/');
-    const stageId = urlParts[urlParts.length - 1];
+    const id = request.url.split('/clients/')[1].split('/stages')[0];
+    const { stageId } = await request.json();
 
+    // Get stage details before deletion
+    const stage = await prisma.stage.findUnique({
+      where: { id: stageId }
+    });
+
+    if (!stage) {
+      return NextResponse.json(
+        { error: 'Stage not found' },
+        { status: 404 }
+      );
+    }
+
+    // Delete the stage
     await prisma.stage.delete({
       where: { id: stageId }
+    });
+
+    // Create an interaction record for the deletion
+    await prisma.interaction.create({
+      data: {
+        clientId: id,
+        type: 'Stage',
+        description: `Stage "${stage.title}" deleted`,
+        date: new Date(),
+      }
     });
 
     return NextResponse.json({ success: true });
