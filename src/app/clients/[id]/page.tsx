@@ -429,63 +429,152 @@ export default function ClientPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Header Section */}
+      <div className="md:flex md:items-center md:justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">{client?.name}</h1>
+          <div className="mt-1 flex items-center gap-4">
+            <p className="text-sm text-gray-500">{client?.email}</p>
+            <p className="text-sm text-gray-500">{client?.phone}</p>
+          </div>
+        </div>
+        <div className="mt-4 flex md:mt-0 gap-2">
+          <Button onClick={() => setIsEditing(true)} variant="secondary">
+            Edit Client
+          </Button>
+        </div>
+      </div>
+
+      {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Main Content */}
+        {/* Left Column - Process and Shared Properties */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Client Info Card */}
+          {/* Process Section */}
           <div className="bg-white shadow rounded-lg p-6">
-            <div className="flex justify-between items-start mb-4">
-              <h1 className="text-2xl font-bold text-gray-900">{client?.name}</h1>
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={() => setIsEditing(true)}
-                  variant="secondary"
-                  size="small"
-                >
-                  Edit
-                </Button>
-              </div>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Process</h2>
+              <Button
+                onClick={() => setshowStartProcessModal(true)}
+                variant="primary"
+              >
+                Start Process
+              </Button>
             </div>
-
-            <dl className="grid grid-cols-2 gap-4">
-              <div>
-                <dt className="text-sm text-gray-500">Email</dt>
-                <dd className="text-sm font-medium">{client?.email}</dd>
-              </div>
-              <div>
-                <dt className="text-sm text-gray-500">Phone</dt>
-                <dd className="text-sm font-medium">{client?.phone}</dd>
-              </div>
-              <div>
-                <dt className="text-sm text-gray-500">Status</dt>
-                <dd className="text-sm font-medium">{client?.status}</dd>
-              </div>
-              <div>
-                <dt className="text-sm text-gray-500">Client Since</dt>
-                <dd className="text-sm font-medium">
-                  {client?.createdAt && formatDate(client.createdAt)}
-                </dd>
-              </div>
-            </dl>
-
-            {client?.notes && (
-              <div className="mt-4">
-                <dt className="text-sm text-gray-500">Notes</dt>
-                <dd className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">
-                  {client.notes}
-                </dd>
-              </div>
-            )}
+            
+            <ProcessTasksList 
+              clientId={params.id as string}
+              onUpdate={loadClient}
+            />
           </div>
 
+                    {/* Documents Section */}
+                    <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Documents</h2>
+
+            <DocumentUpload 
+              onUpload={(files) => {
+                // Handle the uploaded files
+                handleDocumentUpload(files);
+              }}
+              maxFiles={5}
+              acceptedTypes={['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png']}
+            />
+
+            {/* Documents List */}
+            <div className="mt-6 space-y-4">
+              {client?.documents?.map((document) => (
+                <div 
+                  key={document.id} 
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                >
+                  <div className="flex items-center gap-3">
+                    <DocumentIcon className="h-5 w-5 text-gray-500" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{document.name}</p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(document.uploadedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={document.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      <ArrowDownTrayIcon className="h-5 w-5" />
+                    </a>
+                    <button
+                      onClick={() => handleDeleteDocument(document.id)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <TrashIcon className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {(!client?.documents || client.documents.length === 0) && (
+                <p className="text-center text-gray-500 py-4">
+                  No documents uploaded yet
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Shared Properties Section */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Shared Properties</h2>
+            <div className="relative">
+              <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                <div className="flex gap-4 pb-4">
+                  {client?.sharedProperties.map((shared) => (
+                    <div
+                      key={shared.id}
+                      className="flex-none w-80 border rounded-lg overflow-hidden hover:shadow-lg transition-shadow bg-white"
+                    >
+                      <Link 
+                        href={`/properties/${shared.property.id}`}
+                        className="block"
+                      >
+                        <div className="p-4">
+                          <h3 className="text-lg font-medium text-gray-900 hover:text-blue-600 truncate">
+                            {shared.property.title}
+                          </h3>
+                          <p className="text-sm text-gray-500 mt-1 truncate">
+                            {shared.property.address}
+                          </p>
+                          <p className="text-sm font-medium text-blue-600 mt-2">
+                            {formatCurrency(shared.property.price)}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-2">
+                            Shared on: {formatDate(shared.sharedDate)}
+                          </p>
+                        </div>
+                      </Link>
+                    </div>
+                  ))}
+                  
+                  {(!client?.sharedProperties || client.sharedProperties.length === 0) && (
+                    <div className="w-full text-center text-gray-500 py-4">
+                      No properties shared yet
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column - Requirements and Interactions */}
+        <div className="space-y-6">
           {/* Requirements Section */}
           <div className="bg-white shadow rounded-lg p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Requirements</h2>
               <Button
                 onClick={() => setShowNewRequirementModal(true)}
-                variant="primary"
-                size="small"
+                variant="secondary"
               >
                 Add Requirement
               </Button>
@@ -535,56 +624,8 @@ export default function ClientPage() {
             </div>
           </div>
 
-          {/* Shared Properties Section */}
-          <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Shared Properties
-            </h2>
-            <div className="relative">
-              <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                <div className="flex gap-4 pb-4">
-                  {client?.sharedProperties.map((shared) => (
-                    <div
-                      key={shared.id}
-                      className="flex-none w-80 border rounded-lg overflow-hidden hover:shadow-lg transition-shadow bg-white"
-                    >
-                      <Link 
-                        href={`/properties/${shared.property.id}`}
-                        className="block"
-                      >
-                        <div className="p-4">
-                          <h3 className="text-lg font-medium text-gray-900 hover:text-blue-600 truncate">
-                            {shared.property.title}
-                          </h3>
-                          <p className="text-sm text-gray-500 mt-1 truncate">
-                            {shared.property.address}
-                          </p>
-                          <p className="text-sm font-medium text-blue-600 mt-2">
-                            {formatCurrency(shared.property.price)}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-2">
-                            Shared on: {formatDate(shared.sharedDate)}
-                          </p>
-                        </div>
-                      </Link>
-                    </div>
-                  ))}
-                  
-                  {(!client?.sharedProperties || client.sharedProperties.length === 0) && (
-                    <div className="w-full text-center text-gray-500 py-4">
-                      No properties shared yet
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column - Checklist & Interactions */}
-        <div className="space-y-6">
-          {/* Checklist Section */}
-          <div className="bg-white shadow rounded-lg p-6">
+                    {/* Checklist Section */}
+                    <div className="bg-white shadow rounded-lg p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Checklist</h2>
             
             {/* Add New Item */}
@@ -667,8 +708,7 @@ export default function ClientPage() {
               <h2 className="text-lg font-semibold text-gray-900">Interactions</h2>
               <Button
                 onClick={() => setShowAddInteractionModal(true)}
-                variant="primary"
-                size="small"
+                variant="secondary"
               >
                 Add Interaction
               </Button>
@@ -712,63 +752,6 @@ export default function ClientPage() {
                   </p>
                 )}
               </div>
-            </div>
-          </div>
-
-          {/* Documents Section */}
-          <div className="bg-white shadow rounded-lg p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Documents</h2>
-            </div>
-
-            <DocumentUpload 
-              onUpload={(files) => {
-                // Handle the uploaded files
-                handleDocumentUpload(files);
-              }}
-              maxFiles={5}
-              acceptedTypes={['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png']}
-            />
-
-            {/* Documents List */}
-            <div className="mt-6 space-y-4">
-              {client?.documents?.map((document) => (
-                <div 
-                  key={document.id} 
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                >
-                  <div className="flex items-center gap-3">
-                    <DocumentIcon className="h-5 w-5 text-gray-500" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{document.name}</p>
-                      <p className="text-xs text-gray-500">
-                        {new Date(document.uploadedAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <a
-                      href={document.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800"
-                    >
-                      <ArrowDownTrayIcon className="h-5 w-5" />
-                    </a>
-                    <button
-                      onClick={() => handleDeleteDocument(document.id)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <TrashIcon className="h-5 w-5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {(!client?.documents || client.documents.length === 0) && (
-                <p className="text-center text-gray-500 py-4">
-                  No documents uploaded yet
-                </p>
-              )}
             </div>
           </div>
         </div>
@@ -1214,26 +1197,6 @@ export default function ClientPage() {
           </div>
         </div>
       </Modal>
-
-      {/* Process Section */}
-      <div className="mt-8">
-        <div className="bg-white shadow rounded-lg p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Process</h2>
-            <Button
-              onClick={() => setshowStartProcessModal(true)}
-              variant="primary"
-            >
-              Start Process
-            </Button>
-          </div>
-          
-          <ProcessTasksList 
-            clientId={params.id as string}
-            onUpdate={loadClient}
-          />
-        </div>
-      </div>
 
       {/* Add Start Process Modal */}
       <StartProcessModal
