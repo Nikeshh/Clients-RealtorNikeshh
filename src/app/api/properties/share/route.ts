@@ -6,29 +6,31 @@ import { sendEmail } from '../../email/route';
 interface SharedPropertyWithRelations {
   id: string;
   propertyId: string;
-  clientId: string;
+  stageId: string;
   status: string;
   sharedDate: Date;
-  client: {
+  stage: {
     id: string;
-    name: string;
-    email: string;
+    client: {
+      id: string;
+      name: string;
+      email: string;
+    }
   };
   property: {
     id: string;
     title: string;
-    // Add other property fields you need
   };
 }
 
 export const POST = withAuth(async (request: NextRequest) => {
   try {
-    const { propertyId, clientIds } = await request.json();
+    const { propertyId, stageIds } = await request.json();
 
     // Validate input
-    if (!propertyId || !clientIds || !Array.isArray(clientIds)) {
+    if (!propertyId || !stageIds || !Array.isArray(stageIds)) {
       return NextResponse.json(
-        { error: 'Property ID and Client IDs array are required' },
+        { error: 'Property ID and Stage IDs array are required' },
         { status: 400 }
       );
     }
@@ -45,33 +47,40 @@ export const POST = withAuth(async (request: NextRequest) => {
       );
     }
 
-    // Group shares by client to send one email per client with all properties
-    const clientShares = new Map<string, { client: any; properties: any[] }>();
+    // Group shares by stage to send one email per client with all properties
+    const stageShares = new Map<string, { stage: any; properties: any[] }>();
 
-    // Create share records for each client
+    // Create share records for each stage
     const shares: SharedPropertyWithRelations[] = await Promise.all(
-      clientIds.map(async (clientId) => {
-        // Check if client exists
-        const client = await prisma.client.findUnique({
-          where: { id: clientId }
+      stageIds.map(async (stageId) => {
+        // Check if stage exists
+        const stage = await prisma.stage.findUnique({
+          where: { id: stageId },
+          include: {
+            client: true
+          }
         });
 
-        if (!client) {
-          throw new Error(`Client with ID ${clientId} not found`);
+        if (!stage) {
+          throw new Error(`Stage with ID ${stageId} not found`);
         }
 
         // Check if already shared
         const existingShare = await prisma.sharedProperty.findFirst({
           where: {
             propertyId,
-            clientId: clientId
+            stageId
           },
           include: {
-            client: {
-              select: {
-                id: true,
-                name: true,
-                email: true
+            stage: {
+              include: {
+                client: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true
+                  }
+                }
               }
             },
             property: true
@@ -79,11 +88,11 @@ export const POST = withAuth(async (request: NextRequest) => {
         });
 
         if (existingShare) {
-          // Add to client's properties group
-          if (!clientShares.has(clientId)) {
-            clientShares.set(clientId, { client, properties: [] });
+          // Add to stage's properties group
+          if (!stageShares.has(stageId)) {
+            stageShares.set(stageId, { stage, properties: [] });
           }
-          clientShares.get(clientId)?.properties.push(property);
+          stageShares.get(stageId)?.properties.push(property);
           return existingShare;
         }
 
@@ -91,27 +100,31 @@ export const POST = withAuth(async (request: NextRequest) => {
         const newShare = await prisma.sharedProperty.create({
           data: {
             propertyId,
-            clientId: clientId,
+            stageId,
             status: 'Shared',
             sharedDate: new Date(),
           },
           include: {
-            client: {
-              select: {
-                id: true,
-                name: true,
-                email: true
+            stage: {
+              include: {
+                client: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true
+                  }
+                }
               }
             },
             property: true
           }
         });
 
-        // Add to client's properties group
-        if (!clientShares.has(clientId)) {
-          clientShares.set(clientId, { client, properties: [] });
+        // Add to stage's properties group
+        if (!stageShares.has(stageId)) {
+          stageShares.set(stageId, { stage, properties: [] });
         }
-        clientShares.get(clientId)?.properties.push(property);
+        stageShares.get(stageId)?.properties.push(property);
 
         return newShare;
       })
@@ -119,12 +132,12 @@ export const POST = withAuth(async (request: NextRequest) => {
 
     // Send one email per client with all their shared properties
     await Promise.all(
-      Array.from(clientShares.values()).map(async ({ client, properties }) => {
-        if (client.email) {
+      Array.from(stageShares.values()).map(async ({ stage, properties }) => {
+        if (stage.client.email) {
           await sendEmail(
-            client.email,
-            client.name,
-            properties // Send all properties for this client in one email
+            stage.client.email,
+            stage.client.name,
+            properties
           );
         }
       })
@@ -132,10 +145,10 @@ export const POST = withAuth(async (request: NextRequest) => {
 
     // Create interaction records
     await Promise.all(
-      Array.from(clientShares.entries()).map(([clientId, { properties }]) =>
+      Array.from(stageShares.entries()).map(([stageId, { properties }]) =>
         prisma.interaction.create({
           data: {
-            clientId,
+            stageId,
             type: 'Property Shared',
             description: `Shared ${properties.length} properties: ${properties.map(p => p.title).join(', ')}`,
             date: new Date(),
@@ -160,18 +173,18 @@ export const POST = withAuth(async (request: NextRequest) => {
 export const GET = withAuth(async (request: NextRequest) => {
   try {
     const { searchParams } = new URL(request.url);
-    const clientId = searchParams.get('clientId');
+    const stageId = searchParams.get('stageId');
 
-    if (!clientId) {
+    if (!stageId) {
       return NextResponse.json(
-        { error: 'Client ID is required' },
+        { error: 'Stage ID is required' },
         { status: 400 }
       );
     }
 
     const sharedProperties = await prisma.sharedProperty.findMany({
       where: {
-        clientId: clientId,
+        stageId,
       },
       include: {
         property: {

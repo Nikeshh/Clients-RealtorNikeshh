@@ -2,15 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/toast-context';
-import Modal from '@/components/ui/Modal';
-import Button from '@/components/Button';
 import { useLoadingStates } from '@/hooks/useLoadingStates';
 import { formatCurrency } from '@/lib/utils';
+import Button from '@/components/Button';
+import Modal from '@/components/ui/Modal';
 
 interface Client {
   id: string;
   name: string;
   email: string;
+  stages: Array<{
+    id: string;
+    title: string;
+  }>;
 }
 
 interface Property {
@@ -21,7 +25,7 @@ interface Property {
   images?: string[];
 }
 
-interface SharePropertiesModalProps {
+interface Props {
   isOpen: boolean;
   onClose: () => void;
   properties: Property[];
@@ -33,9 +37,9 @@ export default function SharePropertiesModal({
   onClose,
   properties,
   onShare,
-}: SharePropertiesModalProps) {
+}: Props) {
   const [clients, setClients] = useState<Client[]>([]);
-  const [selectedClients, setSelectedClients] = useState<string[]>([]);
+  const [selectedStages, setSelectedStages] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const { setLoading, isLoading } = useLoadingStates();
   const { addToast } = useToast();
@@ -48,7 +52,7 @@ export default function SharePropertiesModal({
 
   useEffect(() => {
     if (!isOpen) {
-      setSelectedClients([]);
+      setSelectedStages([]);
       setSearchTerm('');
     }
   }, [isOpen]);
@@ -69,8 +73,8 @@ export default function SharePropertiesModal({
   };
 
   const handleShare = async () => {
-    if (selectedClients.length === 0) {
-      addToast('Please select at least one client', 'error');
+    if (selectedStages.length === 0) {
+      addToast('Please select at least one stage', 'error');
       return;
     }
 
@@ -85,7 +89,7 @@ export default function SharePropertiesModal({
             },
             body: JSON.stringify({
               propertyId: property.id,
-              clientIds: selectedClients,
+              stageIds: selectedStages,
             }),
           });
 
@@ -94,7 +98,7 @@ export default function SharePropertiesModal({
       );
 
       addToast('Properties shared successfully', 'success');
-      setSelectedClients([]);
+      setSelectedStages([]);
       onShare();
       onClose();
     } catch (error) {
@@ -121,7 +125,7 @@ export default function SharePropertiesModal({
           <div className="space-y-2 max-h-40 overflow-y-auto">
             {properties.map((property) => (
               <div
-                key={`property-${property.id}`}
+                key={property.id}
                 className="flex items-center gap-3 p-2 bg-white rounded-md"
               >
                 {property.images?.[0] && (
@@ -159,30 +163,37 @@ export default function SharePropertiesModal({
           />
         </div>
 
-        {/* Client List */}
+        {/* Client and Stage List */}
         <div className="border rounded-md max-h-60 overflow-y-auto">
           {filteredClients.map((client) => (
-            <label
-              key={`client-${client.id}`}
-              className="flex items-center gap-2 p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
-            >
-              <input
-                type="checkbox"
-                checked={selectedClients.includes(client.id)}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    setSelectedClients([...selectedClients, client.id]);
-                  } else {
-                    setSelectedClients(selectedClients.filter(id => id !== client.id));
-                  }
-                }}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">{client.name}</p>
+            <div key={client.id} className="border-b last:border-b-0">
+              <div className="p-3 bg-gray-50">
+                <p className="font-medium text-gray-900">{client.name}</p>
                 <p className="text-sm text-gray-500">{client.email}</p>
               </div>
-            </label>
+              <div className="p-2 space-y-2">
+                {client.stages.map((stage) => (
+                  <label
+                    key={stage.id}
+                    className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedStages.includes(stage.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedStages([...selectedStages, stage.id]);
+                        } else {
+                          setSelectedStages(selectedStages.filter(id => id !== stage.id));
+                        }
+                      }}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">{stage.title}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           ))}
           {filteredClients.length === 0 && (
             <p className="text-center py-4 text-gray-500">
@@ -204,9 +215,9 @@ export default function SharePropertiesModal({
             onClick={handleShare}
             variant="primary"
             isLoading={isLoading('shareProperties')}
-            disabled={selectedClients.length === 0}
+            disabled={selectedStages.length === 0}
           >
-            Share with {selectedClients.length} client{selectedClients.length !== 1 ? 's' : ''}
+            Share with {selectedStages.length} stage{selectedStages.length !== 1 ? 's' : ''}
           </Button>
         </div>
       </div>

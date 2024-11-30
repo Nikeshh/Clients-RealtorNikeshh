@@ -2,58 +2,72 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/api-middleware';
 import prisma from '@/lib/prisma';
 
-// GET /api/clients/[id] - Get a single client
 export const GET = withAuth(async (request: NextRequest) => {
   try {
-    // Extract id from the URL
-    const id = request.url.split('/').pop();
-
-    if (!id) {
-      return NextResponse.json(
-        { error: 'Client ID is required' },
-        { status: 400 }
-      );
-    }
+    const id = request.url.split('/clients/')[1].split('/')[0];
 
     const client = await prisma.client.findUnique({
-      where: {
-        id: id,
-      },
+      where: { id },
       include: {
-        requirements: {
+        stages: {
           include: {
-            rentalPreferences: true,
-            purchasePreferences: true,
-            gatheredProperties: {
+            processes: {
               include: {
-                property: true,
+                tasks: true
+              }
+            },
+            requirements: true,
+            checklist: true,
+            documents: true,
+            sharedProperties: {
+              include: {
+                property: {
+                  select: {
+                    id: true,
+                    title: true,
+                    address: true,
+                    price: true,
+                    images: true,
+                    status: true
+                  }
+                }
+              }
+            }
+          },
+          orderBy: {
+            order: 'asc'
+          }
+        },
+        documentRequests: true,
+        meetings: true,
+        transactions: {
+          include: {
+            property: {
+              select: {
+                id: true,
+                title: true,
+                address: true
+              }
+            }
+          },
+          orderBy: {
+            date: 'desc'
+          }
+        },
+        commissions: {
+          include: {
+            property: {
+              select: {
+                id: true,
+                title: true,
+                price: true,
+                status: true
               }
             }
           }
         },
-        interactions: {
-          include: {
-            requirement: {
-              select: {
-                id: true,
-                name: true,
-                type: true
-              }
-            }
-          },
-          orderBy: {
-            date: 'desc',
-          },
-        },
-        sharedProperties: {
-          include: {
-            property: true,
-          },
-          orderBy: {
-            sharedDate: 'desc',
-          },
-        },
-      },
+        checklist: true
+      }
     });
 
     if (!client) {
@@ -73,68 +87,38 @@ export const GET = withAuth(async (request: NextRequest) => {
   }
 });
 
-// PATCH /api/clients/[id] - Update a client
 export const PATCH = withAuth(async (request: NextRequest) => {
   try {
-    const id = request.url.split('/').pop();
+    const id = request.url.split('/clients/')[1].split('/')[0];
     const data = await request.json();
 
-    if (!id) {
-      return NextResponse.json(
-        { error: 'Client ID is required' },
-        { status: 400 }
-      );
-    }
-
-    // Update the client with the new data
-    const updatedClient = await prisma.client.update({
+    const client = await prisma.client.update({
       where: { id },
       data: {
-        ...(data.status && { status: data.status }), // Only update status if provided
-        ...(data.name && { name: data.name }),
-        ...(data.email && { email: data.email }),
-        ...(data.phone && { phone: data.phone }),
-        ...(data.notes && { notes: data.notes }),
-        ...(typeof data.pinned !== 'undefined' && { pinned: data.pinned }),
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        status: data.status,
+        notes: data.notes,
       },
       include: {
-        requirements: {
+        stages: {
           include: {
-            rentalPreferences: true,
-            purchasePreferences: true,
-            gatheredProperties: {
-              include: {
-                property: true,
-              }
-            }
+            processes: true,
+            requirements: true,
+            checklist: true,
+            documents: true
           }
         },
-        interactions: {
-          orderBy: {
-            date: 'desc',
-          },
-        },
-        sharedProperties: {
-          include: {
-            property: true,
-          },
-        },
-      },
+        documentRequests: true,
+        meetings: true,
+        transactions: true,
+        commissions: true,
+        checklist: true
+      }
     });
 
-    // Create an interaction for the status change if it was updated
-    if (data.status) {
-      await prisma.interaction.create({
-        data: {
-          clientId: id,
-          type: 'Status Update',
-          description: `Status updated to ${data.status}`,
-          date: new Date(),
-        },
-      });
-    }
-
-    return NextResponse.json(updatedClient);
+    return NextResponse.json(client);
   } catch (error) {
     console.error('Error updating client:', error);
     return NextResponse.json(
@@ -144,22 +128,12 @@ export const PATCH = withAuth(async (request: NextRequest) => {
   }
 });
 
-// DELETE /api/clients/[id] - Delete a client
 export const DELETE = withAuth(async (request: NextRequest) => {
   try {
-    const id = request.url.split('/').pop();
-
-    if (!id) {
-      return NextResponse.json(
-        { error: 'Client ID is required' },
-        { status: 400 }
-      );
-    }
+    const id = request.url.split('/clients/')[1].split('/')[0];
 
     await prisma.client.delete({
-      where: {
-        id: id,
-      },
+      where: { id }
     });
 
     return NextResponse.json({ success: true });

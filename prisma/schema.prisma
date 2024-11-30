@@ -19,28 +19,70 @@ model Client {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  requirements     ClientRequirement[]
-  interactions     Interaction[]
-  sharedProperties SharedProperty[]
-  checklist        ClientChecklist[]
-
-  commissions   Commission[]
-  transactions  Transaction[]
-
-  documents Document[]
-
-  processActions ProcessAction[]
-  documentRequests  DocumentRequest[]
-  meetings          Meeting[]
+  stages      Stage[]
+  commissions Commission[]
+  transactions Transaction[]
+  documentRequests DocumentRequest[]
+  meetings    Meeting[]
+  checklist   ClientChecklist[]
 
   @@index([name])
   @@index([email])
   @@index([pinned])
 }
 
+model Stage {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  clientId    String   @db.ObjectId
+  title       String
+  description String?
+  status      String   @default("ACTIVE") // ACTIVE, COMPLETED, CANCELLED
+  startDate   DateTime @default(now())
+  endDate     DateTime?
+  order       Int      // To maintain stage sequence
+  
+  // Relations
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  processes   Process[]
+  requirements ClientRequirement[]
+  checklist   StageChecklist[]
+  documents   Document[]
+  sharedProperties SharedProperty[]
+  interactions Interaction[]
+}
+
+model Process {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  stageId     String   @db.ObjectId
+  title       String
+  description String?
+  type        String   // DOCUMENT, EMAIL, MEETING, TASK
+  status      String   // PENDING, IN_PROGRESS, COMPLETED, FAILED
+  dueDate     DateTime?
+  completedAt DateTime?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  stage       Stage    @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  tasks       ProcessTask[]
+}
+
+model ProcessTask {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  processId     String   @db.ObjectId
+  type          String   // EMAIL, DOCUMENT_REQUEST, CALENDAR_INVITE
+  status        String   // PENDING, COMPLETED, FAILED
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  process       Process @relation(fields: [processId], references: [id], onDelete: Cascade)
+}
+
 model ClientRequirement {
   id                    String   @id @default(auto()) @map("_id") @db.ObjectId
-  clientId             String   @db.ObjectId
+  stageId              String   @db.ObjectId
   name                 String
   type                 String   @default("PURCHASE")
   propertyType         String
@@ -56,11 +98,11 @@ model ClientRequirement {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
-  client               Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  stage               Stage    @relation(fields: [stageId], references: [id], onDelete: Cascade)
   gatheredProperties   GatheredProperty[]
   interactions         Interaction[]
   checklist            RequirementChecklist[]
-  commissions   Commission[]
+  commissions          Commission[]
 }
 
 model GatheredProperty {
@@ -123,26 +165,26 @@ model Property {
 
 model SharedProperty {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  clientId    String   @db.ObjectId
+  stageId     String   @db.ObjectId
   propertyId  String   @db.ObjectId
   status      String   @default("Shared")
   sharedDate  DateTime @default(now())
 
-  client      Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  stage       Stage    @relation(fields: [stageId], references: [id], onDelete: Cascade)
   property    Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 }
 
 model Interaction {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  clientId      String   @db.ObjectId
+  stageId       String   @db.ObjectId
   requirementId String?  @db.ObjectId
   type          String
   date          DateTime @default(now())
   description   String
   notes         String?
 
-  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  requirement   ClientRequirement? @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  stage         Stage    @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  requirement   ClientRequirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
 }
 
 model Account {
@@ -310,37 +352,19 @@ model Document {
   url        String
   type       String
   uploadedAt DateTime @default(now())
-  clientId   String   @db.ObjectId
-  client     Client   @relation(fields: [clientId], references: [id])
+  stageId    String   @db.ObjectId
+  stage      Stage    @relation(fields: [stageId], references: [id], onDelete: Cascade)
 }
 
-model ProcessAction {
+model StageChecklist {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  clientId    String   @db.ObjectId
-  title       String
-  description String
-  type        String   // DOCUMENT, EMAIL, MEETING, TASK
-  status      String   // PENDING, IN_PROGRESS, COMPLETED, FAILED
-  dueDate     DateTime?
-  completedAt DateTime?
-  notes       String?
+  stageId     String   @db.ObjectId
+  text        String
+  completed   Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  tasks       ProcessTask[]
-}
-
-model ProcessTask {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  actionId      String   @db.ObjectId
-  type          String   // EMAIL, DOCUMENT_REQUEST, CALENDAR_INVITE
-  status        String   // PENDING, COMPLETED, FAILED
-  completedAt   DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  action        ProcessAction @relation(fields: [actionId], references: [id], onDelete: Cascade)
+  stage       Stage    @relation(fields: [stageId], references: [id], onDelete: Cascade)
 }
 
 model EmailQueue {

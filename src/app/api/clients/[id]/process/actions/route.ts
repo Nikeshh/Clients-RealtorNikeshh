@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/api-middleware';
 import prisma from '@/lib/prisma';
-import { ProcessTaskProcessor } from '@/services/processTaskProcessor';
 
 type ProcessTaskData = {
   type: 'EMAIL' | 'DOCUMENT_REQUEST' | 'CALENDAR_INVITE';
   to?: string;
   subject?: string;
   content?: string;
-  clientId?: string;
-  title?: string;
-  description?: string;
+  stageId: string;
+  title: string;
+  description: string;
   dueDate?: Date;
   suggestedDate?: Date;
 };
@@ -18,45 +17,89 @@ type ProcessTaskData = {
 // GET /api/clients/[id]/process/actions - Get all process actions
 export const GET = withAuth(async (request: NextRequest) => {
   try {
-    const id = request.url.split('/clients/')[1].split('/process')[0];
+    const { searchParams } = new URL(request.url);
+    const stageId = searchParams.get('stageId');
 
-    const actions = await prisma.processAction.findMany({
-      where: { clientId: id },
+    if (!stageId) {
+      return NextResponse.json(
+        { error: 'Stage ID is required' },
+        { status: 400 }
+      );
+    }
+
+    const processes = await prisma.process.findMany({
+      where: { stageId },
       include: {
-        tasks: true
+        tasks: true,
+        stage: {
+          include: {
+            client: {
+              select: {
+                name: true,
+                email: true
+              }
+            }
+          }
+        }
       },
       orderBy: {
         createdAt: 'asc'
       }
     });
 
-    return NextResponse.json(actions);
+    return NextResponse.json(processes);
   } catch (error) {
-    console.error('Error fetching process actions:', error);
+    console.error('Error fetching processes:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch process actions' },
+      { error: 'Failed to fetch processes' },
       { status: 500 }
     );
   }
 });
 
-// POST /api/clients/[id]/process/actions - Create a new process action
+// POST /api/clients/[id]/process/actions - Create a new process
 export const POST = withAuth(async (request: NextRequest) => {
   try {
-    const id = request.url.split('/clients/')[1].split('/process')[0];
-    const { action } = await request.json();
+    const { stageId, process } = await request.json();
 
-    // Create the process action with its tasks
-    const newAction = await prisma.processAction.create({
+    if (!stageId) {
+      return NextResponse.json(
+        { error: 'Stage ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Get stage details for notifications
+    const stage = await prisma.stage.findUnique({
+      where: { id: stageId },
+      include: {
+        client: {
+          select: {
+            email: true,
+            name: true
+          }
+        }
+      }
+    });
+
+    if (!stage) {
+      return NextResponse.json(
+        { error: 'Stage not found' },
+        { status: 404 }
+      );
+    }
+
+    // Create the process with its tasks
+    const newProcess = await prisma.process.create({
       data: {
-        clientId: id,
-        title: action.title,
-        description: action.description,
-        type: action.type,
+        stageId,
+        title: process.title,
+        description: process.description,
+        type: process.type,
         status: 'PENDING',
-        dueDate: action.dueDate ? new Date(action.dueDate) : null,
+        dueDate: process.dueDate ? new Date(process.dueDate) : null,
         tasks: {
-          create: action.automatedTasks.map((task: { type: string }) => ({
+          create: process.automatedTasks.map((task: { type: string }) => ({
             type: task.type as 'EMAIL' | 'DOCUMENT_REQUEST' | 'CALENDAR_INVITE',
             status: 'PENDING'
           }))
@@ -64,118 +107,70 @@ export const POST = withAuth(async (request: NextRequest) => {
       },
       include: {
         tasks: true,
-        client: {
-          select: {
-            email: true,
-            name: true
+        stage: {
+          include: {
+            client: {
+              select: {
+                email: true,
+                name: true
+              }
+            }
           }
         }
       }
     });
 
     // Process automated tasks
-    for (const task of newAction.tasks) {
-      let taskData: ProcessTaskData;
+    for (const task of newProcess.tasks) {
+      if (stage.client.email) {
+        const taskData: ProcessTaskData = {
+          type: task.type as 'EMAIL' | 'DOCUMENT_REQUEST' | 'CALENDAR_INVITE',
+          stageId,
+          title: newProcess.title,
+          description: newProcess.description || ''
+        };
 
-      switch (task.type) {
-        case 'EMAIL':
-          taskData = {
-            type: 'EMAIL',
-            to: newAction.client.email || '',
-            subject: `Action Required: ${newAction.title}`,
-            content: `Dear ${newAction.client.name},\n\n${newAction.description}\n\nBest regards,\nYour Agent`
-          };
-          break;
+        switch (task.type) {
+          case 'EMAIL':
+            taskData.to = stage.client.email;
+            taskData.subject = `Action Required: ${newProcess.title}`;
+            taskData.content = `Dear ${stage.client.name},\n\n${newProcess.description}\n\nBest regards,\nYour Agent`;
+            break;
 
-        case 'DOCUMENT_REQUEST':
-          taskData = {
-            type: 'DOCUMENT_REQUEST',
-            clientId: id,
-            title: newAction.title,
-            description: newAction.description,
-            dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now
-          };
-          break;
+          case 'DOCUMENT_REQUEST':
+            taskData.dueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
+            break;
 
-        case 'CALENDAR_INVITE':
-          taskData = {
-            type: 'CALENDAR_INVITE',
-            clientId: id,
-            title: newAction.title,
-            description: newAction.description,
-            suggestedDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) // 3 days from now
-          };
-          break;
+          case 'CALENDAR_INVITE':
+            taskData.suggestedDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000); // 3 days from now
+            break;
+        }
 
-        default:
-          continue;
+        await prisma.processTask.update({
+          where: { id: task.id },
+          data: {
+            status: 'COMPLETED',
+            completedAt: new Date()
+          }
+        });
       }
-
-      await ProcessTaskProcessor.processTask(task.id, taskData);
     }
 
     // Create an interaction record
     await prisma.interaction.create({
       data: {
-        clientId: id,
+        stageId,
         type: 'Process',
-        description: `Added process action: ${newAction.title}`,
+        description: `Added process: ${newProcess.title}`,
         date: new Date(),
       }
     });
 
-    return NextResponse.json(newAction);
+    return NextResponse.json(newProcess);
   } catch (error) {
-    console.error('Error creating process action:', error);
+    console.error('Error creating process:', error);
     return NextResponse.json(
-      { error: 'Failed to create process action' },
-      { status: 500 }
-    );
-  }
-});
-
-// PATCH /api/clients/[id]/process/actions/[actionId] - Update a process action
-export const PATCH = withAuth(async (request: NextRequest) => {
-  try {
-    const urlParts = request.url.split('/');
-    const actionId = urlParts[urlParts.length - 1];
-    const { status, notes } = await request.json();
-
-    const action = await prisma.processAction.update({
-      where: { id: actionId },
-      data: {
-        status,
-        notes: notes || undefined,
-        completedAt: status === 'COMPLETED' ? new Date() : undefined,
-      },
-      include: {
-        tasks: true,
-        client: {
-          select: {
-            email: true,
-            name: true
-          }
-        }
-      }
-    });
-
-    // If action is completed, send notification email
-    if (status === 'COMPLETED' && action.client.email) {
-      await prisma.emailQueue.create({
-        data: {
-          to: action.client.email,
-          subject: `${action.title} Completed`,
-          content: `Dear ${action.client.name},\n\nThe action "${action.title}" has been completed.\n\nBest regards,\nYour Agent`,
-          status: 'PENDING'
-        }
-      });
-    }
-
-    return NextResponse.json(action);
-  } catch (error) {
-    console.error('Error updating process action:', error);
-    return NextResponse.json(
-      { error: 'Failed to update process action' },
+      { error: 'Failed to create process' },
       { status: 500 }
     );
   }

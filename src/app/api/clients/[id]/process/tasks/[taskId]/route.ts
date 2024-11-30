@@ -4,18 +4,25 @@ import prisma from '@/lib/prisma';
 
 export const PATCH = withAuth(async (request: NextRequest) => {
   try {
-    // Extract client ID and task ID from the URL
+    // Extract task ID from the URL
     const urlParts = request.url.split('/');
     const taskId = urlParts[urlParts.length - 1];
-    const clientId = urlParts[urlParts.indexOf('clients') + 1];
-
     const { status, notes } = await request.json();
 
-    // Validate the task belongs to the client
-    const task = await prisma.processAction.findFirst({
-      where: {
-        id: taskId,
-        clientId: clientId
+    // Get the task with stage info
+    const task = await prisma.process.findUnique({
+      where: { id: taskId },
+      include: {
+        stage: {
+          include: {
+            client: {
+              select: {
+                email: true,
+                name: true
+              }
+            }
+          }
+        }
       }
     });
 
@@ -27,7 +34,7 @@ export const PATCH = withAuth(async (request: NextRequest) => {
     }
 
     // Update the task
-    const updatedTask = await prisma.processAction.update({
+    const updatedTask = await prisma.process.update({
       where: { id: taskId },
       data: {
         status,
@@ -36,22 +43,26 @@ export const PATCH = withAuth(async (request: NextRequest) => {
       },
       include: {
         tasks: true,
-        client: {
-          select: {
-            email: true,
-            name: true
+        stage: {
+          include: {
+            client: {
+              select: {
+                email: true,
+                name: true
+              }
+            }
           }
         }
       }
     });
 
     // If task is completed, send notification email
-    if (status === 'COMPLETED' && updatedTask.client.email) {
+    if (status === 'COMPLETED' && updatedTask.stage.client.email) {
       await prisma.emailQueue.create({
         data: {
-          to: updatedTask.client.email,
+          to: updatedTask.stage.client.email,
           subject: `${updatedTask.title} Completed`,
-          content: `Dear ${updatedTask.client.name},\n\nThe task "${updatedTask.title}" has been completed.\n\nBest regards,\nYour Agent`,
+          content: `Dear ${updatedTask.stage.client.name},\n\nThe task "${updatedTask.title}" has been completed.\n\nBest regards,\nYour Agent`,
           status: 'PENDING'
         }
       });
@@ -60,7 +71,7 @@ export const PATCH = withAuth(async (request: NextRequest) => {
     // Create an interaction record
     await prisma.interaction.create({
       data: {
-        clientId,
+        stageId: task.stageId,
         type: 'Process',
         description: `Task "${updatedTask.title}" marked as ${status}`,
         date: new Date(),

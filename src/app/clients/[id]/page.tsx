@@ -12,8 +12,8 @@ import AddInteractionModal from '@/components/AddInteractionModal';
 import Modal from "@/components/ui/Modal";
 import DocumentUpload from '@/components/DocumentUpload';
 import { DocumentIcon, ArrowDownTrayIcon, TrashIcon } from '@heroicons/react/24/outline';
-import ProcessTasksList from '@/components/ProcessTasksList';
-import StartProcessModal from '@/components/StartProcessModal';
+import ClientStages from '@/components/ClientStages';
+import StartProcessModal from "@/components/StartProcessModal";
 
 interface ClientRequirement {
   id: string;
@@ -447,80 +447,10 @@ export default function ClientPage() {
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Process and Shared Properties */}
+        {/* Left Column - Stages and Shared Properties */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Process Section */}
-          <div className="bg-white shadow rounded-lg p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Process</h2>
-              <Button
-                onClick={() => setshowStartProcessModal(true)}
-                variant="primary"
-              >
-                Start Process
-              </Button>
-            </div>
-            
-            <ProcessTasksList 
-              clientId={params.id as string}
-              onUpdate={loadClient}
-            />
-          </div>
-
-                    {/* Documents Section */}
-                    <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Documents</h2>
-
-            <DocumentUpload 
-              onUpload={(files) => {
-                // Handle the uploaded files
-                handleDocumentUpload(files);
-              }}
-              maxFiles={5}
-              acceptedTypes={['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png']}
-            />
-
-            {/* Documents List */}
-            <div className="mt-6 space-y-4">
-              {client?.documents?.map((document) => (
-                <div 
-                  key={document.id} 
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                >
-                  <div className="flex items-center gap-3">
-                    <DocumentIcon className="h-5 w-5 text-gray-500" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{document.name}</p>
-                      <p className="text-xs text-gray-500">
-                        {new Date(document.uploadedAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <a
-                      href={document.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800"
-                    >
-                      <ArrowDownTrayIcon className="h-5 w-5" />
-                    </a>
-                    <button
-                      onClick={() => handleDeleteDocument(document.id)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <TrashIcon className="h-5 w-5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {(!client?.documents || client.documents.length === 0) && (
-                <p className="text-center text-gray-500 py-4">
-                  No documents uploaded yet
-                </p>
-              )}
-            </div>
-          </div>
+          {/* Stages Section */}
+          <ClientStages clientId={params.id as string} />
 
           {/* Shared Properties Section */}
           <div className="bg-white shadow rounded-lg p-6">
@@ -528,7 +458,7 @@ export default function ClientPage() {
             <div className="relative">
               <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                 <div className="flex gap-4 pb-4">
-                  {client?.sharedProperties.map((shared) => (
+                  {client?.sharedProperties && client?.sharedProperties.map((shared) => (
                     <div
                       key={shared.id}
                       className="flex-none w-80 border rounded-lg overflow-hidden hover:shadow-lg transition-shadow bg-white"
@@ -583,7 +513,7 @@ export default function ClientPage() {
             <div className="relative">
               <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                 <div className="flex gap-4 pb-4">
-                  {client?.requirements.map((requirement) => (
+                  {client?.requirements && client?.requirements.map((requirement) => (
                     <div
                       key={requirement.id}
                       className="flex-none w-80 border rounded-lg p-4 hover:shadow-lg transition-shadow bg-white"
@@ -614,7 +544,7 @@ export default function ClientPage() {
                     </div>
                   ))}
                   
-                  {client?.requirements.length === 0 && (
+                  {client?.requirements?.length === 0 && (
                     <div className="w-full text-center text-gray-500 py-4">
                       No requirements added yet
                     </div>
@@ -716,7 +646,7 @@ export default function ClientPage() {
 
             <div className="max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
               <div className="space-y-4">
-                {client?.interactions.map((interaction) => (
+                {client?.interactions && client?.interactions.map((interaction) => (
                   <div
                     key={interaction.id}
                     className="border-b pb-4 last:border-b-0 last:pb-0"
@@ -746,7 +676,7 @@ export default function ClientPage() {
                   </div>
                 ))}
                 
-                {client?.interactions.length === 0 && (
+                {client?.interactions?.length === 0 && (
                   <p className="text-center text-gray-500 py-4">
                     No interactions recorded yet
                   </p>
