@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/toast-context';
 import { useLoadingStates } from '@/hooks/useLoadingStates';
 import Button from './Button';
-import Modal from './ui/Modal';
 import { Calendar } from 'lucide-react';
 
 interface Props {

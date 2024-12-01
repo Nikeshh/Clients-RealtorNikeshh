@@ -7,6 +7,7 @@ import Button from './Button';
 import Modal from './ui/Modal';
 
 interface GatheredProperty {
+  id: string;
   title: string;
   address?: string;
   price?: number;
@@ -103,7 +104,7 @@ export default function EmailTemplateModal({ isOpen, onClose, properties, onSubm
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {properties.map((property) => (
               <div
-                key={property.title}
+                key={property.id}
                 className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg"
               >
                 <div>

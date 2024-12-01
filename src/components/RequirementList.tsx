@@ -5,7 +5,7 @@ import { useToast } from '@/components/ui/toast-context';
 import { useLoadingStates } from '@/hooks/useLoadingStates';
 import Button from './Button';
 import Modal from './ui/Modal';
-import { Building2, Mail, Plus, Settings, CheckSquare, Edit, Trash2 } from 'lucide-react';
+import { Building2, Mail, Plus, Settings, CheckSquare, Edit, Trash2, Check } from 'lucide-react';
 import EmailTemplateModal from './EmailTemplateModal';
 import PropertySearch from './PropertySearch';
 import RentalPreferencesForm from './RentalPreferencesForm';
@@ -84,6 +84,7 @@ export default function RequirementList({ requirements, clientId, requestId, onU
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedRequirement, setSelectedRequirement] = useState<Requirement | null>(null);
+  const [selectedProperties, setSelectedProperties] = useState<GatheredProperty[]>([]);
   const { addToast } = useToast();
   const { setLoading, isLoading } = useLoadingStates();
 
@@ -159,6 +160,22 @@ export default function RequirementList({ requirements, clientId, requestId, onU
     }
 
     return preferences.filter(Boolean);
+  };
+
+  const handleSelectProperty = (property: GatheredProperty) => {
+    if (selectedProperties.some(p => p.id === property.id)) {
+      setSelectedProperties(selectedProperties.filter(p => p.id !== property.id));
+    } else {
+      setSelectedProperties([...selectedProperties, property]);
+    }
+  };
+
+  const handleSelectAllProperties = (properties: GatheredProperty[]) => {
+    if (selectedProperties.length === properties.length) {
+      setSelectedProperties([]);
+    } else {
+      setSelectedProperties([...properties]);
+    }
   };
 
   return (
@@ -266,18 +283,6 @@ export default function RequirementList({ requirements, clientId, requestId, onU
                 size="small"
                 onClick={() => {
                   setSelectedRequirement(requirement);
-                  setShowEmailModal(true);
-                }}
-                disabled={requirement.gatheredProperties.length === 0}
-              >
-                <Mail className="h-4 w-4 mr-2" />
-                Email
-              </Button>
-              <Button
-                variant="secondary"
-                size="small"
-                onClick={() => {
-                  setSelectedRequirement(requirement);
                   setShowChecklistModal(true);
                 }}
               >
@@ -317,25 +322,74 @@ export default function RequirementList({ requirements, clientId, requestId, onU
           {/* Gathered Properties */}
           {requirement.gatheredProperties.length > 0 && (
             <div className="mt-4">
-              <h5 className="text-sm font-medium mb-2">Gathered Properties</h5>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {requirement.gatheredProperties.map((property) => (
-                  <div key={property.id} className="border rounded-lg p-3">
-                    <h6 className="font-medium">{property.title}</h6>
-                    {property.address && (
-                      <p className="text-sm text-gray-500">{property.address}</p>
-                    )}
-                    {property.price && (
-                      <p className="text-sm font-medium">${property.price.toLocaleString()}</p>
-                    )}
-                    <a 
-                      href={property.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-blue-600 hover:underline mt-1 inline-block"
+              <div className="flex justify-between items-center mb-2">
+                <h5 className="text-sm font-medium">Gathered Properties</h5>
+                <div className="flex gap-2">
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    onClick={() => handleSelectAllProperties(requirement.gatheredProperties)}
+                  >
+                    {selectedProperties.length === requirement.gatheredProperties.length 
+                      ? 'Deselect All' 
+                      : 'Select All'}
+                  </Button>
+                  {selectedProperties.length > 0 && (
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      onClick={() => setShowEmailModal(true)}
                     >
-                      View Property
-                    </a>
+                      <Mail className="h-4 w-4 mr-1" />
+                      Email ({selectedProperties.length})
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {requirement.gatheredProperties.map((property) => (
+                  <div
+                    key={property.id}
+                    className={`flex justify-between items-start p-3 border rounded-lg ${
+                      selectedProperties.some(p => p.id === property.id)
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200'
+                    }`}
+                  >
+                    <div className="flex-grow">
+                      <h6 className="font-medium">{property.title}</h6>
+                      {property.address && (
+                        <p className="text-sm text-gray-500">{property.address}</p>
+                      )}
+                      <div className="mt-1 space-x-4 text-sm">
+                        {property.price && <span>${property.price.toLocaleString()}</span>}
+                        {property.bedrooms && <span>{property.bedrooms} beds</span>}
+                        {property.bathrooms && <span>{property.bathrooms} baths</span>}
+                        {property.area && <span>{property.area} sqft</span>}
+                      </div>
+                      <a
+                        href={property.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 hover:underline mt-1 inline-block"
+                      >
+                        View Property
+                      </a>
+                    </div>
+                    <div 
+                      className="ml-4 cursor-pointer"
+                      onClick={() => handleSelectProperty(property)}
+                    >
+                      <div className={`w-6 h-6 rounded border-2 flex items-center justify-center ${
+                        selectedProperties.some(p => p.id === property.id)
+                          ? 'border-blue-500 bg-blue-500'
+                          : 'border-gray-300'
+                      }`}>
+                        {selectedProperties.some(p => p.id === property.id) && (
+                          <Check className="h-4 w-4 text-white" />
+                        )}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -379,23 +433,30 @@ export default function RequirementList({ requirements, clientId, requestId, onU
           <PropertySearch
             clientId={clientId}
             requirementId={selectedRequirement.id}
-            onUpdate={onUpdate}
+            onUpdate={() => {
+              setShowGatherModal(false);
+              onUpdate();
+            }}
           />
         </Modal>
       )}
 
       {/* Email Modal */}
-      {showEmailModal && selectedRequirement && (
+      {showEmailModal && selectedProperties.length > 0 && (
         <EmailTemplateModal
           isOpen={showEmailModal}
-          onClose={() => setShowEmailModal(false)}
+          onClose={() => {
+            setShowEmailModal(false);
+            setSelectedProperties([]);
+          }}
+          properties={selectedProperties}
           onSubmit={() => {
             setShowEmailModal(false);
+            setSelectedProperties([]);
             onUpdate();
           }}
-          properties={selectedRequirement.gatheredProperties}
           clientId={clientId}
-          requirementId={selectedRequirement.id}
+          requirementId={selectedRequirement?.id || ''}
         />
       )}
 
