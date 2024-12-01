@@ -5,14 +5,6 @@ import prisma from '@/lib/prisma';
 export const GET = withAuth(async (request: NextRequest) => {
   try {
     const clients = await prisma.client.findMany({
-      include: {
-        stages: {
-          select: {
-            id: true,
-            title: true,
-          },
-        },
-      },
       orderBy: {
         createdAt: 'desc',
       },
@@ -39,9 +31,6 @@ export const POST = withAuth(async (request: NextRequest) => {
         phone: data.phone,
         status: data.status || 'Active',
         notes: data.notes,
-      },
-      include: {
-        stages: true,
       },
     });
 

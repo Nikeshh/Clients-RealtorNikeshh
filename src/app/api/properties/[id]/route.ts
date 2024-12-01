@@ -19,23 +19,6 @@ export const GET = withAuth(async (request: NextRequest) => {
 
     const property = await prisma.property.findUnique({
       where: { id },
-      include: {
-        sharedWith: {
-          include: {
-            stage: {
-              include: {
-                client: {
-                  select: {
-                    id: true,
-                    name: true,
-                    email: true
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
     });
 
     if (!property) {

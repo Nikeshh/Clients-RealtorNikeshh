@@ -19,42 +19,21 @@ model Client {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  stages      Stage[]
   commissions Commission[]
   transactions Transaction[]
   documentRequests DocumentRequest[]
   meetings    Meeting[]
   checklist   ClientChecklist[]
   interactions Interaction[]
+  requests    Request[]
 
   @@index([name])
   @@index([email])
   @@index([pinned])
 }
 
-model Stage {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  clientId    String   @db.ObjectId
-  title       String
-  description String?
-  status      String   @default("ACTIVE") // ACTIVE, COMPLETED, CANCELLED
-  startDate   DateTime @default(now())
-  endDate     DateTime?
-  order       Int      // To maintain stage sequence
-  
-  // Relations
-  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  processes   Process[]
-  requirements ClientRequirement[]
-  checklist   StageChecklist[]
-  documents   Document[]
-  sharedProperties SharedProperty[]
-  interactions Interaction[]
-}
-
 model Process {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  stageId     String   @db.ObjectId
   title       String
   description String?
   type        String   // DOCUMENT, EMAIL, MEETING, TASK
@@ -65,8 +44,9 @@ model Process {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  stage       Stage    @relation(fields: [stageId], references: [id], onDelete: Cascade)
   tasks       ProcessTask[]
+  requestId   String?  @db.ObjectId
+  request     Request? @relation(fields: [requestId], references: [id], onDelete: Cascade)
 }
 
 model ProcessTask {
@@ -83,7 +63,6 @@ model ProcessTask {
 
 model ClientRequirement {
   id                    String   @id @default(auto()) @map("_id") @db.ObjectId
-  stageId              String   @db.ObjectId
   name                 String
   type                 String   @default("PURCHASE")
   propertyType         String
@@ -97,7 +76,6 @@ model ClientRequirement {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
-  stage               Stage    @relation(fields: [stageId], references: [id], onDelete: Cascade)
   gatheredProperties   GatheredProperty[]
   interactions         Interaction[]
   commissions          Commission[]
@@ -106,6 +84,8 @@ model ClientRequirement {
   rentalPreferences    RentalPreferences?
   purchasePreferences  PurchasePreferences?
   checklist           RequirementChecklist?
+  requestId           String?  @db.ObjectId
+  request             Request? @relation(fields: [requestId], references: [id], onDelete: Cascade)
 }
 
 model GatheredProperty {
@@ -169,12 +149,10 @@ model Property {
 
 model SharedProperty {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  stageId     String   @db.ObjectId
   propertyId  String   @db.ObjectId
   status      String   @default("Shared")
   sharedDate  DateTime @default(now())
 
-  stage       Stage    @relation(fields: [stageId], references: [id], onDelete: Cascade)
   property    Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 }
 
@@ -187,10 +165,10 @@ model Interaction {
   date          DateTime @default(now())
 
   client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  stage         Stage?   @relation(fields: [stageId], references: [id])
-  stageId       String?  @db.ObjectId
   requirement   ClientRequirement? @relation(fields: [requirementId], references: [id])
   requirementId String? @db.ObjectId
+  requestId     String?  @db.ObjectId
+  request       Request? @relation(fields: [requestId], references: [id])
 }
 
 model Account {
@@ -354,19 +332,6 @@ model Document {
   url        String
   type       String
   uploadedAt DateTime @default(now())
-  stageId    String   @db.ObjectId
-  stage      Stage    @relation(fields: [stageId], references: [id], onDelete: Cascade)
-}
-
-model StageChecklist {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  stageId     String   @db.ObjectId
-  text        String
-  completed   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  stage       Stage    @relation(fields: [stageId], references: [id], onDelete: Cascade)
 }
 
 model EmailQueue {
@@ -407,4 +372,31 @@ model Meeting {
   updatedAt     DateTime @updatedAt
 
   client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model Request {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  clientId    String   @db.ObjectId
+  type        String   // RENTAL, BUYING, SELLER
+  status      String   @default("ACTIVE")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  processes   Process[]
+  requirements ClientRequirement[]
+  checklist   RequestChecklist[]
+  interactions Interaction[]
+}
+
+model RequestChecklist {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  requestId   String   @db.ObjectId
+  text        String
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  request     Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
 }

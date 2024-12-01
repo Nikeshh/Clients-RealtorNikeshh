@@ -8,62 +8,60 @@ import Modal from './ui/Modal';
 
 interface Props {
   clientId: string;
-  requestId?: string;
+  requestId: string;
+  processId: string;
   onSubmit: () => void;
   onCancel: () => void;
 }
 
-export default function ChecklistForm({ clientId, requestId, onSubmit, onCancel }: Props) {
-  const [text, setText] = useState('');
+export default function TaskForm({ clientId, requestId, processId, onSubmit, onCancel }: Props) {
+  const [type, setType] = useState('EMAIL');
   const { addToast } = useToast();
   const { setLoading, isLoading } = useLoadingStates();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading('submitChecklist', true);
+    setLoading('submitTask', true);
 
     try {
-      const endpoint = requestId 
-        ? `/api/clients/${clientId}/requests/${requestId}/checklist`
-        : `/api/clients/${clientId}/checklist`;
+      const response = await fetch(
+        `/api/clients/${clientId}/requests/${requestId}/processes/${processId}/tasks`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type }),
+        }
+      );
 
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-      });
-
-      if (!response.ok) throw new Error('Failed to create checklist item');
+      if (!response.ok) throw new Error('Failed to create task');
       
-      addToast('Checklist item created', 'success');
+      addToast('Task created successfully', 'success');
       onSubmit();
     } catch (error) {
       console.error('Error:', error);
-      addToast('Failed to create checklist item', 'error');
+      addToast('Failed to create task', 'error');
     } finally {
-      setLoading('submitChecklist', false);
+      setLoading('submitTask', false);
     }
   };
 
   return (
-    <Modal
-      isOpen={true}
-      onClose={onCancel}
-      title="Add Checklist Item"
-    >
+    <Modal isOpen={true} onClose={onCancel} title="Add Task">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700">
-            Item Text
+            Task Type
           </label>
-          <textarea
+          <select
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            rows={3}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Enter checklist item..."
+            value={type}
+            onChange={(e) => setType(e.target.value)}
             required
-          />
+          >
+            <option value="EMAIL">Send Email</option>
+            <option value="DOCUMENT_REQUEST">Request Document</option>
+            <option value="CALENDAR_INVITE">Schedule Meeting</option>
+          </select>
         </div>
 
         <div className="flex justify-end gap-2">
@@ -71,15 +69,15 @@ export default function ChecklistForm({ clientId, requestId, onSubmit, onCancel 
             type="button"
             variant="secondary"
             onClick={onCancel}
-            disabled={isLoading('submitChecklist')}
+            disabled={isLoading('submitTask')}
           >
             Cancel
           </Button>
           <Button
             type="submit"
-            isLoading={isLoading('submitChecklist')}
+            isLoading={isLoading('submitTask')}
           >
-            Add Item
+            Create Task
           </Button>
         </div>
       </form>

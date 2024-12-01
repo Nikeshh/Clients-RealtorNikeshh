@@ -127,7 +127,6 @@ export const POST = withAuth(async (request: NextRequest) => {
         await tx.interaction.create({
           data: {
             clientId: data.clientId,
-            stageId: data.stageId,
             type: 'Financial',
             description: `${data.type === 'INCOME' ? 'Received' : 'Paid'} ${formatCurrency(parseFloat(data.amount))} - ${data.description}`,
             date: new Date(),

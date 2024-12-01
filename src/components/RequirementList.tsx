@@ -3,9 +3,52 @@
 import { useState } from 'react';
 import { useToast } from '@/components/ui/toast-context';
 import { useLoadingStates } from '@/hooks/useLoadingStates';
-import Button from '@/components/Button';
-import { formatCurrency } from '@/lib/utils';
-import { Home, Building2, MapPin, DollarSign } from 'lucide-react';
+import Button from './Button';
+import Modal from './ui/Modal';
+import { Building2, Mail, Plus, Settings, CheckSquare } from 'lucide-react';
+import EmailTemplateModal from './EmailTemplateModal';
+import PropertySearch from './PropertySearch';
+import RentalPreferencesForm from './RentalPreferencesForm';
+import PurchasePreferencesForm from './PurchasePreferencesForm';
+import RequirementForm from './RequirementForm';
+import ChecklistList from './ChecklistList';
+
+interface Property {
+  id: string;
+  title: string;
+  address: string;
+  price: number;
+  images?: string[];
+  link?: string;
+}
+
+interface GatheredProperty {
+  id: string;
+  property: Property;
+}
+
+interface RentalPreferences {
+  leaseTerm: string;
+  furnished: boolean;
+  petsAllowed: boolean;
+  maxRentalBudget: number;
+  preferredMoveInDate?: string;
+}
+
+interface PurchasePreferences {
+  propertyAge?: string;
+  preferredStyle?: string;
+  parking?: number;
+  lotSize?: number;
+  basement?: boolean;
+  garage?: boolean;
+}
+
+interface ChecklistItem {
+  id: string;
+  text: string;
+  completed: boolean;
+}
 
 interface Requirement {
   id: string;
@@ -18,116 +61,320 @@ interface Requirement {
   bathrooms?: number;
   preferredLocations: string[];
   status: string;
+  gatheredProperties: GatheredProperty[];
+  rentalPreferences?: RentalPreferences;
+  purchasePreferences?: PurchasePreferences;
+  checklist?: ChecklistItem[];
 }
 
 interface Props {
   requirements: Requirement[];
   clientId: string;
-  stageId: string;
+  requestId: string;
   onUpdate: () => void;
 }
 
-export default function RequirementList({ requirements, clientId, stageId, onUpdate }: Props) {
+export default function RequirementList({ requirements, clientId, requestId, onUpdate }: Props) {
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showGatherModal, setShowGatherModal] = useState(false);
+  const [showPreferencesModal, setShowPreferencesModal] = useState(false);
+  const [showChecklistModal, setShowChecklistModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedRequirement, setSelectedRequirement] = useState<Requirement | null>(null);
   const { addToast } = useToast();
   const { setLoading, isLoading } = useLoadingStates();
 
-  const updateRequirementStatus = async (requirementId: string, status: string) => {
-    setLoading(`updateRequirement-${requirementId}`, true);
+  const handleAddRequirement = async (data: any) => {
+    setLoading('addRequirement', true);
     try {
-      const response = await fetch(`/api/clients/${clientId}/stages/${stageId}/requirements/${requirementId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status }),
+      const response = await fetch(`/api/clients/${clientId}/requests/${requestId}/requirements`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
       });
 
-      if (!response.ok) throw new Error('Failed to update requirement');
-
-      addToast('Requirement updated successfully', 'success');
+      if (!response.ok) throw new Error('Failed to add requirement');
+      
+      addToast('Requirement added successfully', 'success');
+      setShowAddModal(false);
       onUpdate();
     } catch (error) {
       console.error('Error:', error);
-      addToast('Failed to update requirement', 'error');
+      addToast('Failed to add requirement', 'error');
     } finally {
-      setLoading(`updateRequirement-${requirementId}`, false);
+      setLoading('addRequirement', false);
+    }
+  };
+
+  const handleGatherProperty = async (requirementId: string, propertyId: string) => {
+    setLoading(`gather-${propertyId}`, true);
+    try {
+      const response = await fetch(`/api/clients/${clientId}/requests/${requestId}/requirements/${requirementId}/properties`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ propertyId }),
+      });
+
+      if (!response.ok) throw new Error('Failed to gather property');
+      
+      addToast('Property gathered successfully', 'success');
+      onUpdate();
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to gather property', 'error');
+    } finally {
+      setLoading(`gather-${propertyId}`, false);
+    }
+  };
+
+  const handleSendEmail = async (requirementId: string, emailData: any) => {
+    setLoading('sendEmail', true);
+    try {
+      const response = await fetch(`/api/email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...emailData,
+          template: 'PropertyEmail',
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to send email');
+      
+      // Create interaction for email sent
+      await fetch(`/api/clients/${clientId}/interactions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'EMAIL_SENT',
+          description: `Sent property recommendations email`,
+          requestId,
+          requirementId,
+        }),
+      });
+      
+      addToast('Email sent successfully', 'success');
+      setShowEmailModal(false);
+      onUpdate();
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to send email', 'error');
+    } finally {
+      setLoading('sendEmail', false);
     }
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Requirements</h3>
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-medium">Requirements</h3>
+        <Button
+          variant="secondary"
+          size="small"
+          onClick={() => setShowAddModal(true)}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Requirement
+        </Button>
+      </div>
       
-      <div className="space-y-4">
-        {requirements.map((requirement) => (
-          <div 
-            key={requirement.id}
-            className="border rounded-lg p-4"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-blue-100">
-                  {requirement.type === 'PURCHASE' ? (
-                    <Home className="h-5 w-5 text-blue-600" />
-                  ) : (
-                    <Building2 className="h-5 w-5 text-blue-600" />
-                  )}
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900">{requirement.name}</h4>
-                  <div className="mt-2 space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <DollarSign className="h-4 w-4" />
-                      <span>
-                        {formatCurrency(requirement.budgetMin)} - {formatCurrency(requirement.budgetMax)}
-                      </span>
-                    </div>
-                    {requirement.bedrooms && requirement.bathrooms && (
-                      <div className="text-sm text-gray-600">
-                        {requirement.bedrooms} beds • {requirement.bathrooms} baths
-                      </div>
-                    )}
-                    {requirement.preferredLocations.length > 0 && (
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <MapPin className="h-4 w-4" />
-                        <span>{requirement.preferredLocations.join(', ')}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {requirement.status !== 'Completed' && (
-                  <Button
-                    onClick={() => updateRequirementStatus(requirement.id, 'Completed')}
-                    variant="primary"
-                    size="small"
-                    isLoading={isLoading(`updateRequirement-${requirement.id}`)}
+      {/* Requirements List */}
+      {requirements.map((requirement) => (
+        <div key={requirement.id} className="bg-white rounded-lg shadow p-4">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h4 className="font-medium">{requirement.name}</h4>
+              <p className="text-sm text-gray-500">
+                {requirement.propertyType} - {requirement.type}
+              </p>
+              <p className="text-sm text-gray-500">
+                Budget: ${requirement.budgetMin.toLocaleString()} - ${requirement.budgetMax.toLocaleString()}
+              </p>
+              {requirement.bedrooms && (
+                <p className="text-sm text-gray-500">
+                  {requirement.bedrooms} beds, {requirement.bathrooms} baths
+                </p>
+              )}
+              <div className="mt-2 flex flex-wrap gap-2">
+                {requirement.preferredLocations.map((location) => (
+                  <span
+                    key={location}
+                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
                   >
-                    Complete
-                  </Button>
-                )}
-                {requirement.status === 'Pending' && (
-                  <Button
-                    onClick={() => updateRequirementStatus(requirement.id, 'Active')}
-                    variant="secondary"
-                    size="small"
-                    isLoading={isLoading(`updateRequirement-${requirement.id}`)}
-                  >
-                    Start
-                  </Button>
-                )}
+                    {location}
+                  </span>
+                ))}
               </div>
             </div>
+            <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                size="small"
+                onClick={() => {
+                  setSelectedRequirement(requirement);
+                  setShowPreferencesModal(true);
+                }}
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Preferences
+              </Button>
+              <Button
+                variant="secondary"
+                size="small"
+                onClick={() => {
+                  setSelectedRequirement(requirement);
+                  setShowGatherModal(true);
+                }}
+              >
+                <Building2 className="h-4 w-4 mr-2" />
+                Properties
+              </Button>
+              <Button
+                variant="secondary"
+                size="small"
+                onClick={() => {
+                  setSelectedRequirement(requirement);
+                  setShowEmailModal(true);
+                }}
+                disabled={requirement.gatheredProperties.length === 0}
+              >
+                <Mail className="h-4 w-4 mr-2" />
+                Email
+              </Button>
+              <Button
+                variant="secondary"
+                size="small"
+                onClick={() => {
+                  setSelectedRequirement(requirement);
+                  setShowChecklistModal(true);
+                }}
+              >
+                <CheckSquare className="h-4 w-4 mr-2" />
+                Checklist
+              </Button>
+            </div>
           </div>
-        ))}
 
-        {requirements.length === 0 && (
-          <div className="text-center py-6 bg-gray-50 rounded-lg">
-            <p className="text-gray-500">No requirements found</p>
-          </div>
-        )}
-      </div>
+          {/* Gathered Properties */}
+          {requirement.gatheredProperties.length > 0 && (
+            <div className="mt-4">
+              <h5 className="text-sm font-medium mb-2">Gathered Properties</h5>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {requirement.gatheredProperties.map(({ property }) => (
+                  <div key={property.id} className="border rounded-lg p-3">
+                    {property.images?.[0] && (
+                      <img
+                        src={property.images[0]}
+                        alt={property.title}
+                        className="w-full h-32 object-cover rounded-lg mb-2"
+                      />
+                    )}
+                    <h6 className="font-medium">{property.title}</h6>
+                    <p className="text-sm text-gray-500">{property.address}</p>
+                    <p className="text-sm font-medium">${property.price.toLocaleString()}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+
+      {/* Add Requirement Modal */}
+      {showAddModal && (
+        <RequirementForm
+          clientId={clientId}
+          requestId={requestId}
+          onSubmit={handleAddRequirement}
+          onCancel={() => setShowAddModal(false)}
+        />
+      )}
+
+      {/* Property Search Modal */}
+      {showGatherModal && selectedRequirement && (
+        <Modal
+          isOpen={showGatherModal}
+          onClose={() => setShowGatherModal(false)}
+          title="Gather Properties"
+        >
+          <PropertySearch
+            onSelect={(propertyId) => handleGatherProperty(selectedRequirement.id, propertyId)}
+            filters={{
+              type: selectedRequirement.propertyType,
+              minPrice: selectedRequirement.budgetMin,
+              maxPrice: selectedRequirement.budgetMax,
+              bedrooms: selectedRequirement.bedrooms,
+              bathrooms: selectedRequirement.bathrooms,
+            }}
+          />
+        </Modal>
+      )}
+
+      {/* Email Modal */}
+      {showEmailModal && selectedRequirement && (
+        <EmailTemplateModal
+          isOpen={showEmailModal}
+          onClose={() => setShowEmailModal(false)}
+          onSubmit={(emailData) => handleSendEmail(selectedRequirement.id, emailData)}
+          properties={selectedRequirement.gatheredProperties.map(gp => gp.property)}
+          isLoading={isLoading('sendEmail')}
+        />
+      )}
+
+      {/* Preferences Modal */}
+      {showPreferencesModal && selectedRequirement && (
+        <Modal
+          isOpen={showPreferencesModal}
+          onClose={() => setShowPreferencesModal(false)}
+          title={`${selectedRequirement.type} Preferences`}
+        >
+          {selectedRequirement.type === 'RENTAL' ? (
+            <RentalPreferencesForm
+              clientId={clientId}
+              requestId={requestId}
+              requirementId={selectedRequirement.id}
+              initialData={selectedRequirement.rentalPreferences}
+              onSubmit={() => {
+                setShowPreferencesModal(false);
+                onUpdate();
+              }}
+              onCancel={() => setShowPreferencesModal(false)}
+            />
+          ) : (
+            <PurchasePreferencesForm
+              clientId={clientId}
+              requestId={requestId}
+              requirementId={selectedRequirement.id}
+              initialData={selectedRequirement.purchasePreferences}
+              onSubmit={() => {
+                setShowPreferencesModal(false);
+                onUpdate();
+              }}
+              onCancel={() => setShowPreferencesModal(false)}
+            />
+          )}
+        </Modal>
+      )}
+
+      {/* Checklist Modal */}
+      {showChecklistModal && selectedRequirement && (
+        <Modal
+          isOpen={showChecklistModal}
+          onClose={() => setShowChecklistModal(false)}
+          title="Requirement Checklist"
+        >
+          <ChecklistList
+            checklist={selectedRequirement.checklist || []}
+            clientId={clientId}
+            requestId={requestId}
+            requirementId={selectedRequirement.id}
+            onUpdate={() => {
+              onUpdate();
+              setShowChecklistModal(false);
+            }}
+          />
+        </Modal>
+      )}
     </div>
   );
 } 

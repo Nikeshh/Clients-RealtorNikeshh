@@ -118,7 +118,6 @@ export const POST = withAuth(async (request: NextRequest) => {
       await tx.interaction.create({
         data: {
           clientId: data.clientId,
-          stageId: data.stageId,
           type: 'Commission',
           description: `Commission of ${data.amount} set for ${newCommission.property.title}`,
           date: new Date(),

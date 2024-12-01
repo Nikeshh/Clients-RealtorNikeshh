@@ -4,90 +4,40 @@ import prisma from '@/lib/prisma';
 
 export const GET = withAuth(async (request: NextRequest) => {
   try {
-    const id = request.url.split('/clients/')[1].split('/')[0];
+    const clientId = request.url.split('/clients/')[1].split('/')[0];
 
     const client = await prisma.client.findUnique({
-      where: { id },
+      where: { id: clientId },
       include: {
-        stages: {
+        requests: {
           include: {
             processes: {
               include: {
-                tasks: true
-              }
+                tasks: true,
+              },
             },
-            requirements: true,
-            checklist: true,
-            documents: true,
-            sharedProperties: {
+            requirements: {
               include: {
-                property: {
-                  select: {
-                    id: true,
-                    title: true,
-                    address: true,
-                    price: true,
-                    images: true,
-                    status: true
-                  }
-                }
-              }
-            }
+                gatheredProperties: {
+                  include: {
+                    property: true,
+                  },
+                },
+                rentalPreferences: true,
+                purchasePreferences: true,
+              },
+            },
+            checklist: true,
+            interactions: true,
           },
-          orderBy: {
-            order: 'asc'
-          }
         },
+        checklist: true,
         interactions: {
           orderBy: {
-            date: 'desc'
+            date: 'desc',
           },
-          include: {
-            stage: {
-              select: {
-                id: true,
-                title: true
-              }
-            },
-            requirement: {
-              select: {
-                id: true,
-                name: true,
-                type: true
-              }
-            }
-          }
         },
-        documentRequests: true,
-        meetings: true,
-        transactions: {
-          include: {
-            property: {
-              select: {
-                id: true,
-                title: true,
-                address: true
-              }
-            }
-          },
-          orderBy: {
-            date: 'desc'
-          }
-        },
-        commissions: {
-          include: {
-            property: {
-              select: {
-                id: true,
-                title: true,
-                price: true,
-                status: true
-              }
-            }
-          }
-        },
-        checklist: true
-      }
+      },
     });
 
     if (!client) {
@@ -99,7 +49,7 @@ export const GET = withAuth(async (request: NextRequest) => {
 
     return NextResponse.json(client);
   } catch (error) {
-    console.error('Error fetching client:', error);
+    console.error('Error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch client' },
       { status: 500 }
@@ -109,38 +59,47 @@ export const GET = withAuth(async (request: NextRequest) => {
 
 export const PATCH = withAuth(async (request: NextRequest) => {
   try {
-    const id = request.url.split('/clients/')[1].split('/')[0];
-    const data = await request.json();
+    const clientId = request.url.split('/clients/')[1].split('/')[0];
+    const updates = await request.json();
 
     const client = await prisma.client.update({
-      where: { id },
-      data: {
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
-        status: data.status,
-        notes: data.notes,
-      },
+      where: { id: clientId },
+      data: updates,
       include: {
-        stages: {
+        requests: {
           include: {
-            processes: true,
-            requirements: true,
+            processes: {
+              include: {
+                tasks: true,
+              },
+            },
+            requirements: {
+              include: {
+                gatheredProperties: {
+                  include: {
+                    property: true,
+                  },
+                },
+                rentalPreferences: true,
+                purchasePreferences: true,
+              },
+            },
             checklist: true,
-            documents: true
-          }
+            interactions: true,
+          },
         },
-        documentRequests: true,
-        meetings: true,
-        transactions: true,
-        commissions: true,
-        checklist: true
-      }
+        checklist: true,
+        interactions: {
+          orderBy: {
+            date: 'desc',
+          },
+        },
+      },
     });
 
     return NextResponse.json(client);
   } catch (error) {
-    console.error('Error updating client:', error);
+    console.error('Error:', error);
     return NextResponse.json(
       { error: 'Failed to update client' },
       { status: 500 }
@@ -150,15 +109,15 @@ export const PATCH = withAuth(async (request: NextRequest) => {
 
 export const DELETE = withAuth(async (request: NextRequest) => {
   try {
-    const id = request.url.split('/clients/')[1].split('/')[0];
+    const clientId = request.url.split('/clients/')[1].split('/')[0];
 
     await prisma.client.delete({
-      where: { id }
+      where: { id: clientId },
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting client:', error);
+    console.error('Error:', error);
     return NextResponse.json(
       { error: 'Failed to delete client' },
       { status: 500 }

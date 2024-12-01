@@ -10,135 +10,85 @@ import {
   Section,
   Text,
 } from '@react-email/components';
+import { Tailwind } from '@react-email/tailwind';
 
 interface Property {
   title: string;
   address: string;
   price: number;
-  bedrooms?: number;
-  bathrooms?: number;
-  area: number;
-  images: string[];
+  images?: string[];
   description?: string;
+  link?: string;
 }
 
 interface PropertyEmailProps {
   clientName: string;
+  message: string;
   properties: Property[];
 }
 
-export default function PropertyEmail({ clientName, properties }: PropertyEmailProps) {
+export default function PropertyEmail({
+  clientName,
+  message,
+  properties,
+}: PropertyEmailProps) {
   return (
     <Html>
       <Head />
-      <Preview>Check out these properties selected for you</Preview>
-      <Body style={main}>
-        <Container style={container}>
-          <Heading style={h1}>Hello {clientName},</Heading>
-          <Text style={text}>
-            Here are some properties that match your requirements:
-          </Text>
+      <Preview>Property suggestions for your review</Preview>
+      <Tailwind>
+        <Body className="bg-gray-100 my-auto mx-auto font-sans">
+          <Container className="bg-white border border-gray-200 rounded my-8 mx-auto p-8 max-w-xl">
+            <Heading className="text-2xl font-bold text-gray-900 mb-4">
+              Hello {clientName},
+            </Heading>
 
-          {properties.map((property, index) => (
-            <Section key={index} style={propertySection}>
-              {property.images[0] && (
-                <Img
-                  src={property.images[0]}
-                  alt={property.title}
-                  width={600}
-                  height={400}
-                  style={image}
-                />
-              )}
-              <Heading style={h2}>{property.title}</Heading>
-              <Text style={text}>{property.address}</Text>
-              <Text style={price}>
-                ${property.price.toLocaleString()}
-              </Text>
-              <Text style={details}>
-                {property.bedrooms && `${property.bedrooms} beds • `}
-                {property.bathrooms && `${property.bathrooms} baths • `}
-                {property.area} sqft
-              </Text>
-              {property.description && (
-                <Text style={text}>{property.description}</Text>
-              )}
-            </Section>
-          ))}
+            <Text className="text-gray-700 mb-6">
+              {message}
+            </Text>
 
-          <Text style={footer}>
-            Best regards,<br />
-            Your Real Estate Team
-          </Text>
-        </Container>
-      </Body>
+            {properties.map((property, index) => (
+              <Section key={index} className="border-t border-gray-200 pt-6 mb-6">
+                {property.images?.[0] && (
+                  <Img
+                    src={property.images[0]}
+                    alt={property.title}
+                    className="w-full h-48 object-cover rounded-lg mb-4"
+                  />
+                )}
+                <Heading className="text-xl font-bold text-gray-900 mb-2">
+                  {property.title}
+                </Heading>
+                <Text className="text-gray-600 mb-2">{property.address}</Text>
+                <Text className="text-lg font-bold text-gray-900 mb-2">
+                  ${property.price.toLocaleString()}
+                </Text>
+                {property.description && (
+                  <Text className="text-gray-700 mb-4">{property.description}</Text>
+                )}
+                {property.link && (
+                  <Link
+                    href={property.link}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    View Property Details →
+                  </Link>
+                )}
+              </Section>
+            ))}
+
+            <Text className="text-gray-700 mt-8">
+              Please let me know if you would like to schedule viewings for any of these properties.
+            </Text>
+
+            <Text className="text-gray-700">
+              Best regards,
+              <br />
+              Your Real Estate Agent
+            </Text>
+          </Container>
+        </Body>
+      </Tailwind>
     </Html>
   );
-}
-
-// Styles
-const main = {
-  backgroundColor: '#f6f9fc',
-  fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Ubuntu,sans-serif',
-};
-
-const container = {
-  backgroundColor: '#ffffff',
-  margin: '0 auto',
-  padding: '20px 0 48px',
-  marginBottom: '64px',
-};
-
-const h1 = {
-  color: '#333',
-  fontSize: '24px',
-  fontWeight: '600',
-  lineHeight: '1.4',
-  margin: '16px 0',
-};
-
-const h2 = {
-  color: '#333',
-  fontSize: '20px',
-  fontWeight: '600',
-  lineHeight: '1.4',
-  margin: '12px 0',
-};
-
-const text = {
-  color: '#333',
-  fontSize: '16px',
-  lineHeight: '1.6',
-  margin: '16px 0',
-};
-
-const propertySection = {
-  borderTop: '1px solid #e6ebf1',
-  margin: '32px 0',
-  padding: '32px 0',
-};
-
-const image = {
-  borderRadius: '8px',
-  marginBottom: '16px',
-};
-
-const price = {
-  color: '#0070f3',
-  fontSize: '20px',
-  fontWeight: '600',
-  margin: '8px 0',
-};
-
-const details = {
-  color: '#666',
-  fontSize: '14px',
-  margin: '8px 0',
-};
-
-const footer = {
-  color: '#666',
-  fontSize: '14px',
-  fontStyle: 'italic',
-  marginTop: '32px',
-}; 
+} 
