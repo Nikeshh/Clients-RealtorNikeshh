@@ -12,6 +12,72 @@ import RequirementList from '@/components/RequirementList';
 import ChecklistList from '@/components/ChecklistList';
 import { MessageSquare, CheckSquare, Clock, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 
+interface Process {
+  id: string;
+  title: string;
+  description: string | null;
+  type: string;
+  status: string;
+  dueDate: Date | null;
+  completedAt: Date | null;
+  notes: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  requestId: string | null;
+  tasks: Array<{
+    id: string;
+    type: string;
+    status: string;
+  }>;
+}
+
+interface Requirement {
+  id: string;
+  name: string;
+  type: string;
+  propertyType: string;
+  budgetMin: number;
+  budgetMax: number;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  preferredLocations: string[];
+  additionalRequirements?: string | null;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
+  requestId: string | null;
+  gatheredProperties: Array<{
+    id: string;
+    property: {
+      id: string;
+      title: string;
+      address: string;
+      price: number;
+      images?: string[];
+    };
+  }>;
+  rentalPreferences?: {
+    leaseTerm: string;
+    furnished: boolean;
+    petsAllowed: boolean;
+    maxRentalBudget: number;
+    preferredMoveInDate?: string;
+  };
+  purchasePreferences?: {
+    propertyAge?: string;
+    preferredStyle?: string;
+    parking?: number;
+    lotSize?: number;
+    basement?: boolean;
+    garage?: boolean;
+  };
+  checklist?: Array<{
+    id: string;
+    text: string;
+    completed: boolean;
+  }>;
+}
+
 interface Client {
   id: string;
   name: string;
@@ -25,46 +91,8 @@ interface Client {
     type: string;
     status: string;
     createdAt: string;
-    processes: Array<{
-      id: string;
-      title: string;
-      description?: string;
-      type: string;
-      status: string;
-      dueDate?: string;
-      tasks: Array<{
-        id: string;
-        type: string;
-        status: string;
-      }>;
-    }>;
-    requirements: Array<{
-      id: string;
-      name: string;
-      type: string;
-      propertyType: string;
-      budgetMin: number;
-      budgetMax: number;
-      bedrooms?: number;
-      bathrooms?: number;
-      preferredLocations: string[];
-      status: string;
-      gatheredProperties: Array<{
-        id: string;
-        property: {
-          id: string;
-          title: string;
-          address: string;
-          price: number;
-          images?: string[];
-        };
-      }>;
-    }>;
-    checklist: Array<{
-      id: string;
-      text: string;
-      completed: boolean;
-    }>;
+    processes: Process[];
+    requirements: Requirement[];
   }>;
   checklist: Array<{
     id: string;
@@ -200,15 +228,15 @@ export default function ClientPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'ACTIVE':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100';
       case 'COMPLETED':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100';
       case 'CANCELLED':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100';
       case 'ON_HOLD':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100';
     }
   };
 
@@ -290,13 +318,29 @@ export default function ClientPage() {
                           e.stopPropagation();
                           handleRequestStatusChange(request.id, e.target.value);
                         }}
-                        className={`rounded-full px-3 py-1 text-sm font-medium ${getStatusColor(request.status)}`}
+                        className={`
+                          ${getStatusColor(request.status)}
+                          inline-flex items-center px-3 py-1 
+                          rounded-full text-sm font-medium border
+                          transition-colors duration-150 ease-in-out
+                          focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
+                          disabled:opacity-50 disabled:cursor-not-allowed
+                        `}
                         disabled={isLoading(`requestStatus-${request.id}`)}
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        <option value="ACTIVE">Active</option>
-                        <option value="COMPLETED">Completed</option>
-                        <option value="CANCELLED">Cancelled</option>
-                        <option value="ON_HOLD">On Hold</option>
+                        <option value="ACTIVE" className="bg-white text-gray-700">
+                          🟢 Active
+                        </option>
+                        <option value="COMPLETED" className="bg-white text-blue-700">
+                          ✅ Completed
+                        </option>
+                        <option value="CANCELLED" className="bg-white text-red-700">
+                          ❌ Cancelled
+                        </option>
+                        <option value="ON_HOLD" className="bg-white text-yellow-700">
+                          ⏸️ On Hold
+                        </option>
                       </select>
                     </div>
                   </div>

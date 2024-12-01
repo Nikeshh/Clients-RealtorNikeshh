@@ -6,24 +6,51 @@ import { useLoadingStates } from '@/hooks/useLoadingStates';
 import Button from './Button';
 import Modal from './ui/Modal';
 
+interface Requirement {
+  id: string;
+  name: string;
+  type: string;
+  propertyType: string;
+  budgetMin: number;
+  budgetMax: number;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  preferredLocations: string[];
+  additionalRequirements?: string | null;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
+  requestId: string | null;
+}
+
 interface Props {
   clientId: string;
   requestId: string;
   onSubmit: (data: any) => Promise<void>;
   onCancel: () => void;
+  initialData?: Requirement;
+  isEditing?: boolean;
 }
 
-export default function RequirementForm({ clientId, requestId, onSubmit, onCancel }: Props) {
+export default function RequirementForm({ 
+  clientId, 
+  requestId, 
+  onSubmit, 
+  onCancel,
+  initialData,
+  isEditing = false 
+}: Props) {
   const [formData, setFormData] = useState({
-    name: '',
-    type: 'PURCHASE',
-    propertyType: 'HOUSE',
-    budgetMin: 0,
-    budgetMax: 0,
-    bedrooms: 0,
-    bathrooms: 0,
-    preferredLocations: [] as string[],
-    additionalRequirements: '',
+    name: initialData?.name || '',
+    type: initialData?.type || 'PURCHASE',
+    propertyType: initialData?.propertyType || 'HOUSE',
+    budgetMin: initialData?.budgetMin || 0,
+    budgetMax: initialData?.budgetMax || 0,
+    bedrooms: initialData?.bedrooms || 0,
+    bathrooms: initialData?.bathrooms || 0,
+    preferredLocations: initialData?.preferredLocations || [],
+    additionalRequirements: initialData?.additionalRequirements || '',
+    status: initialData?.status || 'Active',
   });
 
   const [location, setLocation] = useState('');
@@ -35,20 +62,30 @@ export default function RequirementForm({ clientId, requestId, onSubmit, onCance
     setLoading('submitRequirement', true);
 
     try {
-      const response = await fetch(`/api/clients/${clientId}/requests/${requestId}/requirements`, {
-        method: 'POST',
+      const url = isEditing 
+        ? `/api/clients/${clientId}/requests/${requestId}/requirements/${initialData?.id}`
+        : `/api/clients/${clientId}/requests/${requestId}/requirements`;
+
+      const response = await fetch(url, {
+        method: isEditing ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          budgetMin: Number(formData.budgetMin),
+          budgetMax: Number(formData.budgetMax),
+          bedrooms: Number(formData.bedrooms) || null,
+          bathrooms: Number(formData.bathrooms) || null,
+        }),
       });
 
-      if (!response.ok) throw new Error('Failed to create requirement');
+      if (!response.ok) throw new Error(`Failed to ${isEditing ? 'update' : 'create'} requirement`);
       
       const data = await response.json();
-      addToast('Requirement created successfully', 'success');
+      addToast(`Requirement ${isEditing ? 'updated' : 'created'} successfully`, 'success');
       onSubmit(data);
     } catch (error) {
       console.error('Error:', error);
-      addToast('Failed to create requirement', 'error');
+      addToast(`Failed to ${isEditing ? 'update' : 'create'} requirement`, 'error');
     } finally {
       setLoading('submitRequirement', false);
     }
@@ -72,7 +109,7 @@ export default function RequirementForm({ clientId, requestId, onSubmit, onCance
   };
 
   return (
-    <Modal isOpen={true} onClose={onCancel} title="Add Requirement">
+    <Modal isOpen={true} onClose={onCancel} title={isEditing ? "Edit Requirement" : "Add Requirement"}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700">
@@ -238,7 +275,7 @@ export default function RequirementForm({ clientId, requestId, onSubmit, onCance
             type="submit"
             isLoading={isLoading('submitRequirement')}
           >
-            Create Requirement
+            {isEditing ? 'Update' : 'Create'} Requirement
           </Button>
         </div>
       </form>

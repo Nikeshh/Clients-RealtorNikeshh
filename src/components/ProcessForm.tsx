@@ -7,19 +7,48 @@ import Button from './Button';
 import Modal from './ui/Modal';
 import { Calendar } from 'lucide-react';
 
+interface Process {
+  id: string;
+  title: string;
+  description: string | null;
+  type: string;
+  status: string;
+  dueDate: Date | null;
+  completedAt: Date | null;
+  notes: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  requestId: string | null;
+  tasks: Array<{
+    id: string;
+    type: string;
+    status: string;
+  }>;
+}
+
 interface Props {
   clientId: string;
   requestId: string;
   onSubmit: () => void;
   onCancel: () => void;
+  initialData?: Process;
+  isEditing?: boolean;
 }
 
-export default function ProcessForm({ clientId, requestId, onSubmit, onCancel }: Props) {
+export default function ProcessForm({ 
+  clientId, 
+  requestId, 
+  onSubmit, 
+  onCancel,
+  initialData,
+  isEditing = false 
+}: Props) {
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    type: 'TASK',
-    dueDate: '',
+    title: initialData?.title || '',
+    description: initialData?.description || '',
+    type: initialData?.type || 'TASK',
+    dueDate: initialData?.dueDate ? new Date(initialData.dueDate).toISOString().split('T')[0] : '',
+    notes: initialData?.notes || '',
   });
 
   const { addToast } = useToast();
@@ -30,28 +59,31 @@ export default function ProcessForm({ clientId, requestId, onSubmit, onCancel }:
     setLoading('submitProcess', true);
 
     try {
-      const response = await fetch(`/api/clients/${clientId}/requests/${requestId}/processes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-        }),
-      });
+      const response = await fetch(
+        isEditing 
+          ? `/api/clients/${clientId}/requests/${requestId}/processes/${initialData?.id}`
+          : `/api/clients/${clientId}/requests/${requestId}/processes`,
+        {
+          method: isEditing ? 'PATCH' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        }
+      );
 
-      if (!response.ok) throw new Error('Failed to create process');
+      if (!response.ok) throw new Error(`Failed to ${isEditing ? 'update' : 'create'} process`);
       
-      addToast('Process created successfully', 'success');
+      addToast(`Process ${isEditing ? 'updated' : 'created'} successfully`, 'success');
       onSubmit();
     } catch (error) {
       console.error('Error:', error);
-      addToast('Failed to create process', 'error');
+      addToast(`Failed to ${isEditing ? 'update' : 'create'} process`, 'error');
     } finally {
       setLoading('submitProcess', false);
     }
   };
 
   return (
-    <Modal isOpen={true} onClose={onCancel} title="Add Process">
+    <Modal isOpen={true} onClose={onCancel} title={isEditing ? "Edit Process" : "Add Process"}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700">

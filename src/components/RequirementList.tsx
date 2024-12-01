@@ -5,7 +5,7 @@ import { useToast } from '@/components/ui/toast-context';
 import { useLoadingStates } from '@/hooks/useLoadingStates';
 import Button from './Button';
 import Modal from './ui/Modal';
-import { Building2, Mail, Plus, Settings, CheckSquare } from 'lucide-react';
+import { Building2, Mail, Plus, Settings, CheckSquare, Edit, Trash2 } from 'lucide-react';
 import EmailTemplateModal from './EmailTemplateModal';
 import PropertySearch from './PropertySearch';
 import RentalPreferencesForm from './RentalPreferencesForm';
@@ -58,10 +58,14 @@ interface Requirement {
   propertyType: string;
   budgetMin: number;
   budgetMax: number;
-  bedrooms?: number;
-  bathrooms?: number;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
   preferredLocations: string[];
+  additionalRequirements?: string | null;
   status: string;
+  createdAt: Date;
+  updatedAt: Date;
+  requestId: string | null;
   gatheredProperties: GatheredProperty[];
   rentalPreferences?: RentalPreferences;
   purchasePreferences?: PurchasePreferences;
@@ -81,6 +85,7 @@ export default function RequirementList({ requirements, clientId, requestId, onU
   const [showPreferencesModal, setShowPreferencesModal] = useState(false);
   const [showChecklistModal, setShowChecklistModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [selectedRequirement, setSelectedRequirement] = useState<Requirement | null>(null);
   const { addToast } = useToast();
   const { setLoading, isLoading } = useLoadingStates();
@@ -190,6 +195,33 @@ export default function RequirementList({ requirements, clientId, requestId, onU
     }
   };
 
+  const formatPreferences = (requirement: Requirement) => {
+    const preferences = [];
+
+    if (requirement.type === 'RENTAL' && requirement.rentalPreferences) {
+      const { leaseTerm, furnished, petsAllowed, maxRentalBudget, preferredMoveInDate } = requirement.rentalPreferences;
+      preferences.push(
+        `Lease: ${leaseTerm.replace('_', ' ').toLowerCase()}`,
+        furnished ? 'Furnished' : 'Unfurnished',
+        petsAllowed ? 'Pets allowed' : 'No pets',
+        `Max rent: $${maxRentalBudget.toLocaleString()}`,
+        preferredMoveInDate ? `Move in: ${new Date(preferredMoveInDate).toLocaleDateString()}` : null
+      );
+    } else if (requirement.type === 'PURCHASE' && requirement.purchasePreferences) {
+      const { propertyAge, preferredStyle, parking, lotSize, basement, garage } = requirement.purchasePreferences;
+      preferences.push(
+        propertyAge ? `Age: ${propertyAge}` : null,
+        preferredStyle ? `Style: ${preferredStyle}` : null,
+        parking ? `Parking: ${parking} spaces` : null,
+        lotSize ? `Lot: ${lotSize.toLocaleString()} sq ft` : null,
+        basement ? 'Basement' : null,
+        garage ? 'Garage' : null
+      );
+    }
+
+    return preferences.filter(Boolean);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -207,8 +239,9 @@ export default function RequirementList({ requirements, clientId, requestId, onU
       {/* Requirements List */}
       {requirements.map((requirement) => (
         <div key={requirement.id} className="bg-white rounded-lg shadow p-4">
-          <div className="flex justify-between items-start mb-4">
-            <div>
+          <div className="flex justify-between items-start gap-4">
+            {/* Left side: Requirement details */}
+            <div className="flex-grow space-y-2">
               <h4 className="font-medium">{requirement.name}</h4>
               <p className="text-sm text-gray-500">
                 {requirement.propertyType} - {requirement.type}
@@ -221,7 +254,21 @@ export default function RequirementList({ requirements, clientId, requestId, onU
                   {requirement.bedrooms} beds, {requirement.bathrooms} baths
                 </p>
               )}
-              <div className="mt-2 flex flex-wrap gap-2">
+              
+              {/* Preferences */}
+              <div className="flex flex-wrap gap-2 mt-2">
+                {formatPreferences(requirement).map((pref, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
+                  >
+                    {pref}
+                  </span>
+                ))}
+              </div>
+
+              {/* Locations */}
+              <div className="flex flex-wrap gap-2 mt-2">
                 {requirement.preferredLocations.map((location) => (
                   <span
                     key={location}
@@ -231,8 +278,28 @@ export default function RequirementList({ requirements, clientId, requestId, onU
                   </span>
                 ))}
               </div>
+
+              {/* Additional Requirements */}
+              {requirement.additionalRequirements && (
+                <p className="text-sm text-gray-500 mt-2">
+                  Additional: {requirement.additionalRequirements}
+                </p>
+              )}
             </div>
-            <div className="flex gap-2">
+
+            {/* Right side: Action buttons */}
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="secondary"
+                size="small"
+                onClick={() => {
+                  setSelectedRequirement(requirement);
+                  setShowEditModal(true);
+                }}
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
               <Button
                 variant="secondary"
                 size="small"
@@ -278,6 +345,33 @@ export default function RequirementList({ requirements, clientId, requestId, onU
                 <CheckSquare className="h-4 w-4 mr-2" />
                 Checklist
               </Button>
+              <Button
+                variant="secondary"
+                size="small"
+                onClick={async () => {
+                  if (confirm('Are you sure you want to delete this requirement?')) {
+                    setLoading(`delete-${requirement.id}`, true);
+                    try {
+                      const response = await fetch(
+                        `/api/clients/${clientId}/requests/${requestId}/requirements/${requirement.id}`,
+                        { method: 'DELETE' }
+                      );
+                      if (!response.ok) throw new Error('Failed to delete requirement');
+                      addToast('Requirement deleted successfully', 'success');
+                      onUpdate();
+                    } catch (error) {
+                      console.error('Error:', error);
+                      addToast('Failed to delete requirement', 'error');
+                    } finally {
+                      setLoading(`delete-${requirement.id}`, false);
+                    }
+                  }
+                }}
+                isLoading={isLoading(`delete-${requirement.id}`)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
             </div>
           </div>
 
@@ -316,6 +410,21 @@ export default function RequirementList({ requirements, clientId, requestId, onU
         />
       )}
 
+      {/* Edit Requirement Modal */}
+      {showEditModal && selectedRequirement && (
+        <RequirementForm
+          clientId={clientId}
+          requestId={requestId}
+          initialData={selectedRequirement}
+          onSubmit={async (data) => {
+            setShowEditModal(false);
+            onUpdate();
+          }}
+          onCancel={() => setShowEditModal(false)}
+          isEditing={true}
+        />
+      )}
+
       {/* Property Search Modal */}
       {showGatherModal && selectedRequirement && (
         <Modal
@@ -329,8 +438,8 @@ export default function RequirementList({ requirements, clientId, requestId, onU
               type: selectedRequirement.propertyType,
               minPrice: selectedRequirement.budgetMin,
               maxPrice: selectedRequirement.budgetMax,
-              bedrooms: selectedRequirement.bedrooms,
-              bathrooms: selectedRequirement.bathrooms,
+              bedrooms: selectedRequirement.bedrooms || undefined,
+              bathrooms: selectedRequirement.bathrooms || undefined,
             }}
           />
         </Modal>

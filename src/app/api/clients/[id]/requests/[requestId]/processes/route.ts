@@ -15,6 +15,9 @@ export const POST = withAuth(async (request: NextRequest) => {
         type,
         status: 'PENDING',
         dueDate: dueDate ? new Date(dueDate) : undefined,
+        tasks: {
+          create: [],
+        },
       },
       include: {
         tasks: true,
