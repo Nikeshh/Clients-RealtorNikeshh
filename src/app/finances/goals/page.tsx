@@ -35,6 +35,7 @@ export default function GoalsPage(): React.ReactElement {
     endDate: '',
     notes: '',
   });
+  const [editingProgress, setEditingProgress] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
     loadGoals();
@@ -91,7 +92,10 @@ export default function GoalsPage(): React.ReactElement {
     }
   };
 
-  const handleUpdateProgress = async (goalId: string, newAmount: number) => {
+  const handleProgressUpdate = async (goalId: string) => {
+    const newAmount = parseFloat(editingProgress[goalId]);
+    if (isNaN(newAmount)) return;
+
     setLoading(`updateGoal-${goalId}`, true);
     try {
       const response = await fetch(`/api/finances/goals/${goalId}`, {
@@ -100,7 +104,7 @@ export default function GoalsPage(): React.ReactElement {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          currentAmount: newAmount,
+          currentAmount: newAmount
         }),
       });
 
@@ -108,6 +112,11 @@ export default function GoalsPage(): React.ReactElement {
 
       loadGoals();
       addToast('Progress updated successfully', 'success');
+      setEditingProgress(prev => {
+        const newState = { ...prev };
+        delete newState[goalId];
+        return newState;
+      });
     } catch (error) {
       console.error('Error:', error);
       addToast('Failed to update progress', 'error');
@@ -182,17 +191,23 @@ export default function GoalsPage(): React.ReactElement {
                     </div>
                     <input
                       type="number"
-                      defaultValue={goal.currentAmount}
-                      onChange={(e) => {
-                        const newAmount = parseFloat(e.target.value);
-                        if (!isNaN(newAmount)) {
-                          handleUpdateProgress(goal.id, newAmount);
-                        }
-                      }}
+                      value={editingProgress[goal.id] ?? goal.currentAmount}
+                      onChange={(e) => setEditingProgress({
+                        ...editingProgress,
+                        [goal.id]: e.target.value
+                      })}
                       className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-7 sm:text-sm border-gray-300 rounded-md"
                       placeholder="0.00"
                     />
                   </div>
+                  <Button
+                    className="ml-2"
+                    onClick={() => handleProgressUpdate(goal.id)}
+                    isLoading={isLoading(`updateGoal-${goal.id}`)}
+                    disabled={!editingProgress[goal.id] || editingProgress[goal.id] === goal.currentAmount.toString()}
+                  >
+                    Save
+                  </Button>
                 </div>
               </div>
 
