@@ -6,22 +6,21 @@ import { useLoadingStates } from '@/hooks/useLoadingStates';
 import Button from './Button';
 import Modal from './ui/Modal';
 
-interface Property {
+interface GatheredProperty {
   title: string;
-  address: string;
-  price: number;
+  address?: string;
+  price?: number;
   bedrooms?: number;
   bathrooms?: number;
   area?: number;
-  link?: string;
-  images?: string[];
+  link: string;
 }
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  properties: Property[];
   onSubmit: () => void;
+  properties: GatheredProperty[];
 }
 
 export default function EmailTemplateModal({ isOpen, onClose, properties, onSubmit }: Props) {
@@ -41,7 +40,15 @@ export default function EmailTemplateModal({ isOpen, onClose, properties, onSubm
         body: JSON.stringify({
           subject,
           message,
-          properties,
+          properties: properties.map(prop => ({
+            title: prop.title,
+            address: prop.address || 'Address not provided',
+            price: prop.price || 0,
+            bedrooms: prop.bedrooms,
+            bathrooms: prop.bathrooms,
+            area: prop.area,
+            link: prop.link,
+          })),
           template: 'PropertyEmail',
         }),
       });
@@ -92,21 +99,16 @@ export default function EmailTemplateModal({ isOpen, onClose, properties, onSubm
             Selected Properties ({properties.length})
           </h3>
           <div className="space-y-2 max-h-48 overflow-y-auto">
-            {properties.map((property, index) => (
+            {properties.map((property) => (
               <div
-                key={index}
+                key={property.title}
                 className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg"
               >
-                {property.images?.[0] && (
-                  <img
-                    src={property.images[0]}
-                    alt={property.title}
-                    className="w-12 h-12 object-cover rounded"
-                  />
-                )}
                 <div>
                   <div className="font-medium">{property.title}</div>
-                  <div className="text-sm text-gray-500">{property.address}</div>
+                  {property.address && (
+                    <div className="text-sm text-gray-500">{property.address}</div>
+                  )}
                 </div>
               </div>
             ))}

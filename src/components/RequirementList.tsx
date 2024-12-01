@@ -14,18 +14,15 @@ import RequirementForm from './RequirementForm';
 import ChecklistList from './ChecklistList';
 import ChecklistForm from './ChecklistForm';
 
-interface Property {
-  id: string;
-  title: string;
-  address: string;
-  price: number;
-  images?: string[];
-  link?: string;
-}
-
 interface GatheredProperty {
   id: string;
-  property: Property;
+  title: string;
+  address?: string;
+  price?: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  area?: number;
+  link: string;
 }
 
 interface RentalPreferences {
@@ -380,18 +377,23 @@ export default function RequirementList({ requirements, clientId, requestId, onU
             <div className="mt-4">
               <h5 className="text-sm font-medium mb-2">Gathered Properties</h5>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {requirement.gatheredProperties.map(({ property }) => (
+                {requirement.gatheredProperties.map((property) => (
                   <div key={property.id} className="border rounded-lg p-3">
-                    {property.images?.[0] && (
-                      <img
-                        src={property.images[0]}
-                        alt={property.title}
-                        className="w-full h-32 object-cover rounded-lg mb-2"
-                      />
-                    )}
                     <h6 className="font-medium">{property.title}</h6>
-                    <p className="text-sm text-gray-500">{property.address}</p>
-                    <p className="text-sm font-medium">${property.price.toLocaleString()}</p>
+                    {property.address && (
+                      <p className="text-sm text-gray-500">{property.address}</p>
+                    )}
+                    {property.price && (
+                      <p className="text-sm font-medium">${property.price.toLocaleString()}</p>
+                    )}
+                    <a 
+                      href={property.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-blue-600 hover:underline mt-1 inline-block"
+                    >
+                      View Property
+                    </a>
                   </div>
                 ))}
               </div>
@@ -433,7 +435,10 @@ export default function RequirementList({ requirements, clientId, requestId, onU
           title="Gather Properties"
         >
           <PropertySearch
-            onSelect={(propertyId) => handleGatherProperty(selectedRequirement.id, propertyId)}
+            clientId={clientId}
+            requirementId={selectedRequirement.id}
+            onUpdate={onUpdate}
+            onSelect={(propertyId: string) => handleGatherProperty(selectedRequirement.id, propertyId)}
           />
         </Modal>
       )}
@@ -443,9 +448,11 @@ export default function RequirementList({ requirements, clientId, requestId, onU
         <EmailTemplateModal
           isOpen={showEmailModal}
           onClose={() => setShowEmailModal(false)}
-          onSubmit={(emailData) => handleSendEmail(selectedRequirement.id, emailData)}
-          properties={selectedRequirement.gatheredProperties.map(gp => gp.property)}
-          isLoading={isLoading('sendEmail')}
+          onSubmit={() => {
+            setShowEmailModal(false);
+            onUpdate();
+          }}
+          properties={selectedRequirement.gatheredProperties}
         />
       )}
 

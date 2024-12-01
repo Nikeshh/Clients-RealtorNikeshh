@@ -1,15 +1,16 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useLoadingStates } from '@/hooks/useLoadingStates';
-import Button from './Button';
-import { Plus, Mail, X, Building2 } from 'lucide-react';
-import EmailTemplateModal from './EmailTemplateModal';
+import { useState } from "react";
+import { useLoadingStates } from "@/hooks/useLoadingStates";
+import { useToast } from "@/components/ui/toast-context";
+import Button from "./Button";
+import { Plus, Mail, X, Building2 } from "lucide-react";
+import EmailTemplateModal from "./EmailTemplateModal";
 
-interface Property {
+interface GatheredProperty {
   title: string;
-  address: string;
-  price: number;
+  address?: string;
+  price?: number;
   bedrooms?: number;
   bathrooms?: number;
   area?: number;
@@ -17,39 +18,77 @@ interface Property {
 }
 
 interface Props {
-  onSelect: (propertyId: string) => void;
+  clientId: string;
+  requirementId: string;
+  onUpdate: () => void;
+  onSelect?: (propertyId: string) => Promise<void>;
 }
 
-export default function PropertySearch({ onSelect }: Props) {
-  const [properties, setProperties] = useState<Property[]>([]);
+export default function PropertySearch({
+  clientId,
+  requirementId,
+  onUpdate,
+  onSelect,
+}: Props) {
+  const [properties, setProperties] = useState<GatheredProperty[]>([]);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [formData, setFormData] = useState<Property>({
-    title: '',
-    address: '',
+  const [formData, setFormData] = useState<GatheredProperty>({
+    title: "",
+    address: "",
     price: 0,
     bedrooms: undefined,
     bathrooms: undefined,
     area: undefined,
-    link: '',
+    link: "",
   });
 
   const { setLoading, isLoading } = useLoadingStates();
+  const { addToast } = useToast();
 
-  const handleAddProperty = () => {
+  const handleAddProperty = async () => {
     if (!formData.title || !formData.link) return;
-    
-    setProperties([...properties, formData]);
-    setFormData({
-      title: '',
-      address: '',
-      price: 0,
-      bedrooms: undefined,
-      bathrooms: undefined,
-      area: undefined,
-      link: '',
-    });
-    setShowAddForm(false);
+
+    setLoading("addProperty", true);
+    try {
+      const response = await fetch(
+        `/api/clients/${clientId}/requirements/${requirementId}/properties`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        }
+      );
+
+      if (!response.ok) throw new Error("Failed to save property");
+
+      const savedProperty = await response.json();
+
+      if (onSelect) {
+        await onSelect(savedProperty.id);
+      }
+
+      setProperties([...properties, savedProperty]);
+      setFormData({
+        title: "",
+        address: "",
+        price: 0,
+        bedrooms: undefined,
+        bathrooms: undefined,
+        area: undefined,
+        link: "",
+      });
+      setShowAddForm(false);
+      addToast("Property added successfully", "success");
+      onUpdate();
+    } catch (error) {
+      console.error("Error:", error);
+      addToast("Failed to add property", "error");
+    } finally {
+      setLoading("addProperty", false);
+    }
   };
 
   const handleRemoveProperty = (index: number) => {
@@ -59,9 +98,9 @@ export default function PropertySearch({ onSelect }: Props) {
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(price);
@@ -73,7 +112,9 @@ export default function PropertySearch({ onSelect }: Props) {
       {properties.length > 0 && (
         <div className="bg-gray-50 p-4 rounded-lg">
           <div className="flex justify-between items-center mb-2">
-            <h3 className="text-sm font-medium">Selected Properties ({properties.length})</h3>
+            <h3 className="text-sm font-medium">
+              Selected Properties ({properties.length})
+            </h3>
             <div className="flex gap-2">
               <Button
                 variant="secondary"
@@ -97,16 +138,15 @@ export default function PropertySearch({ onSelect }: Props) {
                     <p className="text-sm text-gray-500">{property.address}</p>
                   )}
                   <div className="flex gap-4 mt-1 text-sm">
-                    {property.price > 0 && (
-                      <span>{formatPrice(property.price)}</span>
-                    )}
                     {property.bedrooms && <span>{property.bedrooms} beds</span>}
-                    {property.bathrooms && <span>{property.bathrooms} baths</span>}
+                    {property.bathrooms && (
+                      <span>{property.bathrooms} baths</span>
+                    )}
                     {property.area && <span>{property.area} sqft</span>}
                   </div>
-                  <a 
-                    href={property.link} 
-                    target="_blank" 
+                  <a
+                    href={property.link}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm text-blue-600 hover:underline mt-1 inline-block"
                   >
@@ -139,7 +179,9 @@ export default function PropertySearch({ onSelect }: Props) {
                 type="text"
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, title: e.target.value })
+                }
                 required
               />
             </div>
@@ -152,7 +194,9 @@ export default function PropertySearch({ onSelect }: Props) {
                 type="text"
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, address: e.target.value })
+                }
               />
             </div>
 
@@ -164,8 +208,13 @@ export default function PropertySearch({ onSelect }: Props) {
                 <input
                   type="number"
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  value={formData.price || ''}
-                  onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+                  value={formData.price || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      price: parseFloat(e.target.value),
+                    })
+                  }
                 />
               </div>
               <div>
@@ -175,8 +224,13 @@ export default function PropertySearch({ onSelect }: Props) {
                 <input
                   type="number"
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  value={formData.area || ''}
-                  onChange={(e) => setFormData({ ...formData, area: parseFloat(e.target.value) })}
+                  value={formData.area || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      area: parseFloat(e.target.value),
+                    })
+                  }
                 />
               </div>
             </div>
@@ -189,8 +243,13 @@ export default function PropertySearch({ onSelect }: Props) {
                 <input
                   type="number"
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  value={formData.bedrooms || ''}
-                  onChange={(e) => setFormData({ ...formData, bedrooms: parseInt(e.target.value) })}
+                  value={formData.bedrooms || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      bedrooms: parseInt(e.target.value),
+                    })
+                  }
                 />
               </div>
               <div>
@@ -200,8 +259,13 @@ export default function PropertySearch({ onSelect }: Props) {
                 <input
                   type="number"
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  value={formData.bathrooms || ''}
-                  onChange={(e) => setFormData({ ...formData, bathrooms: parseInt(e.target.value) })}
+                  value={formData.bathrooms || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      bathrooms: parseInt(e.target.value),
+                    })
+                  }
                 />
               </div>
             </div>
@@ -214,16 +278,15 @@ export default function PropertySearch({ onSelect }: Props) {
                 type="url"
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 value={formData.link}
-                onChange={(e) => setFormData({ ...formData, link: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, link: e.target.value })
+                }
                 required
               />
             </div>
 
             <div className="flex justify-end gap-2">
-              <Button
-                variant="secondary"
-                onClick={() => setShowAddForm(false)}
-              >
+              <Button variant="secondary" onClick={() => setShowAddForm(false)}>
                 Cancel
               </Button>
               <Button
@@ -236,10 +299,7 @@ export default function PropertySearch({ onSelect }: Props) {
           </div>
         </div>
       ) : (
-        <Button
-          onClick={() => setShowAddForm(true)}
-          className="w-full"
-        >
+        <Button onClick={() => setShowAddForm(true)} className="w-full">
           <Plus className="h-4 w-4 mr-2" />
           Add Property
         </Button>
@@ -259,4 +319,4 @@ export default function PropertySearch({ onSelect }: Props) {
       )}
     </div>
   );
-} 
+}

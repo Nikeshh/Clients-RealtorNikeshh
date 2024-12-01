@@ -12,8 +12,13 @@ export const POST = withAuth(async (request: NextRequest) => {
     const gatheredProperty = await prisma.gatheredProperty.create({
       data: {
         requirementId,
-        status: 'Pending',
-        notes: `Title: ${title}\nAddress: ${address}\nPrice: $${price}\nBedrooms: ${bedrooms || 'N/A'}\nBathrooms: ${bathrooms || 'N/A'}\nArea: ${area || 'N/A'} sqft\nLink: ${link}`,
+        title,
+        address,
+        price,
+        bedrooms,
+        bathrooms,
+        area,
+        link,
       },
     });
 

@@ -56,13 +56,13 @@ interface Requirement {
   requestId: string | null;
   gatheredProperties: Array<{
     id: string;
-    property: {
-      id: string;
-      title: string;
-      address: string;
-      price: number;
-      images?: string[];
-    };
+    title: string;
+    address?: string;
+    price?: number;
+    bedrooms?: number;
+    bathrooms?: number;
+    area?: number;
+    link: string;
   }>;
   rentalPreferences?: {
     leaseTerm: string;
