@@ -20,7 +20,7 @@ interface Commission {
   id: string;
   amount: number;
   percentage: number;
-  status: 'PENDING' | 'RECEIVED' | 'OVERDUE';
+  status: 'PENDING' | 'RECEIVED' | 'OVERDUE' | 'CANCELLED';
   propertyTitle: string;
   dueDate: string;
   receivedDate?: string;
@@ -158,6 +158,8 @@ export default function CommissionsPage() {
         return 'bg-yellow-100 text-yellow-800';
       case 'OVERDUE':
         return 'bg-red-100 text-red-800';
+      case 'CANCELLED':
+        return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -172,12 +174,15 @@ export default function CommissionsPage() {
     return true;
   });
 
-  const totalCommissions = filteredCommissions.reduce((sum, c) => sum + c.amount, 0);
+  const totalCommissions = filteredCommissions.filter(c => c.status !== 'CANCELLED').reduce((sum, c) => sum + c.amount, 0);
   const pendingCommissions = filteredCommissions
     .filter(c => c.status === 'PENDING')
     .reduce((sum, c) => sum + c.amount, 0);
   const overdueCommissions = filteredCommissions
     .filter(c => c.status === 'OVERDUE')
+    .reduce((sum, c) => sum + c.amount, 0);
+  const cancelledCommissions = filteredCommissions
+    .filter(c => c.status === 'CANCELLED')
     .reduce((sum, c) => sum + c.amount, 0);
 
   const handleAmountChange = (amount: string) => {
@@ -324,6 +329,20 @@ export default function CommissionsPage() {
             </div>
           </div>
         </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center">
+            <div className="flex-shrink-0 bg-gray-100 rounded-full p-3">
+              <DollarSign className="h-6 w-6 text-gray-600" />
+            </div>
+            <div className="ml-5">
+              <p className="text-sm font-medium text-gray-500">Cancelled</p>
+              <p className="text-xl font-semibold text-gray-900">
+                {formatCurrency(cancelledCommissions)}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Filters */}
@@ -403,6 +422,9 @@ export default function CommissionsPage() {
                 Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Notes
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Due Date
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -439,6 +461,9 @@ export default function CommissionsPage() {
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(commission.status)}`}>
                     {commission.status}
                   </span>
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-500">
+                  {commission.notes}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-500">
                   {new Date(commission.dueDate).toLocaleDateString()}
@@ -676,13 +701,14 @@ export default function CommissionsPage() {
                 value={editingCommission.status}
                 onChange={(e) => setEditingCommission({
                   ...editingCommission,
-                  status: e.target.value as 'PENDING' | 'RECEIVED' | 'OVERDUE'
+                  status: e.target.value as 'PENDING' | 'RECEIVED' | 'OVERDUE' | 'CANCELLED'
                 })}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               >
                 <option value="PENDING">Pending</option>
                 <option value="RECEIVED">Received</option>
                 <option value="OVERDUE">Overdue</option>
+                <option value="CANCELLED">Cancelled</option>
               </select>
             </div>
 

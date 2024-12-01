@@ -216,6 +216,7 @@ enum CommissionStatus {
   PENDING
   RECEIVED
   OVERDUE
+  CANCELLED
 }
 
 enum TransactionType {
