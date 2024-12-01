@@ -144,6 +144,12 @@ export default function ProcessList({ processes, clientId, requestId, onUpdate }
     }
   };
 
+  const getTaskStatusCount = (tasks: Array<{ status: string }>) => {
+    const total = tasks.length;
+    const completed = tasks.filter(task => task.status === 'COMPLETED').length;
+    return { total, completed };
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -169,7 +175,12 @@ export default function ProcessList({ processes, clientId, requestId, onUpdate }
                 <div className="flex items-start space-x-3">
                   {getProcessIcon(process.type)}
                   <div>
-                    <h4 className="font-medium">{process.title}</h4>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-medium">{process.title}</h4>
+                      <span className="text-sm text-gray-500">
+                        ({getTaskStatusCount(process.tasks).completed}/{getTaskStatusCount(process.tasks).total} tasks)
+                      </span>
+                    </div>
                     {process.description && (
                       <p className="text-sm text-gray-500">{process.description}</p>
                     )}

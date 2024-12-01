@@ -3,17 +3,66 @@ import { withAuth } from '@/lib/api-middleware';
 import prisma from '@/lib/prisma';
 
 // GET /api/properties - Get all properties
-export const GET = withAuth(async (req: NextRequest) => {
+export const GET = withAuth(async (request: NextRequest) => {
   try {
+    const { searchParams } = new URL(request.url);
+    const q = searchParams.get('q');
+    const type = searchParams.get('type');
+    const minPrice = searchParams.get('minPrice');
+    const maxPrice = searchParams.get('maxPrice');
+    const bedrooms = searchParams.get('bedrooms');
+    const bathrooms = searchParams.get('bathrooms');
+
+    // Build the where clause based on filters
+    const where: any = {
+      status: 'Available',
+    };
+
+    if (q) {
+      where.OR = [
+        { title: { contains: q, mode: 'insensitive' } },
+        { address: { contains: q, mode: 'insensitive' } },
+        { location: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+
+    if (type) {
+      where.type = type;
+    }
+
+    if (minPrice) {
+      where.price = {
+        ...where.price,
+        gte: parseFloat(minPrice),
+      };
+    }
+
+    if (maxPrice) {
+      where.price = {
+        ...where.price,
+        lte: parseFloat(maxPrice),
+      };
+    }
+
+    if (bedrooms) {
+      where.bedrooms = parseInt(bedrooms);
+    }
+
+    if (bathrooms) {
+      where.bathrooms = parseInt(bathrooms);
+    }
+
     const properties = await prisma.property.findMany({
+      where,
       orderBy: {
-        createdAt: 'desc'
-      }
+        createdAt: 'desc',
+      },
+      take: 50, // Limit to 50 properties at a time
     });
-    
+
     return NextResponse.json(properties);
   } catch (error) {
-    console.error('Error fetching properties:', error);
+    console.error('Error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch properties' },
       { status: 500 }
@@ -22,57 +71,41 @@ export const GET = withAuth(async (req: NextRequest) => {
 });
 
 // POST /api/properties - Create a new property
-export const POST = withAuth(async (req: NextRequest) => {
+export const POST = withAuth(async (request: NextRequest) => {
   try {
-    const data = await req.json();
-    
-    // Create base property data
-    const propertyData = {
-      title: data.title,
-      address: data.address,
-      price: parseFloat(data.price),
-      type: data.type,
-      listingType: data.listingType,
-      bedrooms: data.bedrooms ? parseInt(data.bedrooms) : null,
-      bathrooms: data.bathrooms ? parseInt(data.bathrooms) : null,
-      area: parseFloat(data.area),
-      status: data.status || "Available",
-      description: data.description,
-      features: data.features || [],
-      images: data.images || [],
-      source: data.source,
-      location: data.location,
-      yearBuilt: data.yearBuilt ? parseInt(data.yearBuilt) : null,
-      link: data.link || null,
-    };
-
-    // Add rental specific fields if it's a rental
-    if (data.listingType === 'RENTAL') {
-      Object.assign(propertyData, {
-        furnished: data.furnished || false,
-        petsAllowed: data.petsAllowed || false,
-        leaseTerm: data.leaseTerm || null,
-      });
-    }
-
-    // Add purchase specific fields if it's a sale
-    if (data.listingType === 'SALE') {
-      Object.assign(propertyData, {
-        lotSize: data.lotSize ? parseFloat(data.lotSize) : null,
-        basement: data.basement || false,
-        garage: data.garage || false,
-        parkingSpaces: data.parkingSpaces ? parseInt(data.parkingSpaces) : null,
-        propertyStyle: data.propertyStyle || null,
-      });
-    }
+    const data = await request.json();
 
     const property = await prisma.property.create({
-      data: propertyData
+      data: {
+        title: data.title,
+        address: data.address,
+        price: data.price,
+        type: data.type,
+        listingType: data.listingType || 'SALE',
+        bedrooms: data.bedrooms,
+        bathrooms: data.bathrooms,
+        area: data.area,
+        description: data.description,
+        features: data.features || [],
+        images: data.images || [],
+        source: data.source,
+        location: data.location,
+        yearBuilt: data.yearBuilt,
+        link: data.link,
+        furnished: data.furnished,
+        petsAllowed: data.petsAllowed,
+        leaseTerm: data.leaseTerm,
+        lotSize: data.lotSize,
+        basement: data.basement,
+        garage: data.garage,
+        parkingSpaces: data.parkingSpaces,
+        propertyStyle: data.propertyStyle,
+      },
     });
-    
+
     return NextResponse.json(property);
   } catch (error) {
-    console.error('Error creating property:', error);
+    console.error('Error:', error);
     return NextResponse.json(
       { error: 'Failed to create property' },
       { status: 500 }

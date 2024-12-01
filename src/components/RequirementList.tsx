@@ -434,13 +434,6 @@ export default function RequirementList({ requirements, clientId, requestId, onU
         >
           <PropertySearch
             onSelect={(propertyId) => handleGatherProperty(selectedRequirement.id, propertyId)}
-            filters={{
-              type: selectedRequirement.propertyType,
-              minPrice: selectedRequirement.budgetMin,
-              maxPrice: selectedRequirement.budgetMax,
-              bedrooms: selectedRequirement.bedrooms || undefined,
-              bathrooms: selectedRequirement.bathrooms || undefined,
-            }}
           />
         </Modal>
       )}
