@@ -102,6 +102,8 @@ model GatheredProperty {
   updatedAt       DateTime @updatedAt
 
   requirement     ClientRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+
+  Transaction Transaction[]
 }
 
 model Interaction {
@@ -232,13 +234,17 @@ model Transaction {
   description   String
   category      String
   notes         String?
-  propertyTitle String?   // Just store the property title as a string
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   // Only client relation
   clientId      String?   @db.ObjectId
   client        Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  // Only gathered property relation
+  propertyTitle String?
+  gatheredPropertyId String? @db.ObjectId
+  gatheredProperty   GatheredProperty? @relation(fields: [gatheredPropertyId], references: [id], onDelete: SetNull)
 
   @@index([clientId])
   @@index([type])

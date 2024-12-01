@@ -37,6 +37,8 @@ export const PATCH = withAuth(async (request: NextRequest) => {
         date: data.date ? new Date(data.date) : undefined,
         notes: data.notes,
         clientId: data.clientId || null,
+        propertyTitle: data.propertyTitle || 'N/A',
+        gatheredPropertyId: data.gatheredPropertyId || null
       },
       include: {
         client: {

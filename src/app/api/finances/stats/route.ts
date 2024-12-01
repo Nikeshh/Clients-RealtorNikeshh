@@ -60,10 +60,18 @@ export const GET = withAuth(async (request: NextRequest) => {
       : ((currentMonthAmount - lastMonthAmount) / lastMonthAmount) * 100;
 
     // Get pending commissions and active deals
-    const [pendingCommissions, activeDeals] = await Promise.all([
+    const [pendingCommissions, overdueCommissions, activeDeals] = await Promise.all([
       prisma.commission.aggregate({
         where: {
           status: 'PENDING'
+        },
+        _sum: {
+          amount: true
+        }
+      }),
+      prisma.commission.aggregate({
+        where: {
+          status: 'OVERDUE'
         },
         _sum: {
           amount: true
@@ -114,7 +122,7 @@ export const GET = withAuth(async (request: NextRequest) => {
     const response = {
       totalRevenue: totalRevenue._sum.amount || 0,
       totalCommissions: totalCommissions._sum.amount || 0,
-      pendingCommissions: pendingCommissions._sum.amount || 0,
+      pendingOverdueCommissions: (pendingCommissions._sum.amount || 0) + (overdueCommissions._sum.amount || 0),
       monthlyRevenue: currentMonthAmount,
       monthlyGrowth: parseFloat(monthlyGrowth.toFixed(2)),
       activeDeals,
@@ -122,7 +130,7 @@ export const GET = withAuth(async (request: NextRequest) => {
         ...t,
         date: t.date.toISOString()
       })),
-      topProperties: topCommissions.map(commission => ({
+      topPropertyCommissions: topCommissions.map(commission => ({
         id: commission.id,
         title: commission.propertyTitle || 'Unnamed Property',
         commission: commission.amount,

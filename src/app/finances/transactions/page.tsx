@@ -65,7 +65,7 @@ export default function TransactionsPage() {
     date: new Date().toISOString().split('T')[0],
     notes: '',
     clientId: '',
-    propertyTitle: '',
+    propertyTitle: 'N/A',
     gatheredPropertyId: ''
   });
   const [clients, setClients] = useState<Client[]>([]);
@@ -405,7 +405,7 @@ export default function TransactionsPage() {
                   )}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-500">
-                  {transaction.propertyTitle}
+                  {transaction.propertyTitle ?? "N/A"}
                 </td>
                 <td className="px-6 py-4">
                   <div className={`text-sm font-medium ${
@@ -601,7 +601,7 @@ export default function TransactionsPage() {
                   setNewTransaction({
                     ...newTransaction,
                     gatheredPropertyId: e.target.value,
-                    propertyTitle: property ? property.title : ''
+                    propertyTitle: property ? property.title : 'N/A'
                   });
                 }}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"

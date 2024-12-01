@@ -11,7 +11,7 @@ import { TrendingUp, TrendingDown, DollarSign, Building2, Users } from 'lucide-r
 interface FinancialStats {
   totalRevenue: number;
   totalCommissions: number;
-  pendingCommissions: number;
+  pendingOverdueCommissions: number;
   monthlyRevenue: number;
   monthlyGrowth: number;
   activeDeals: number;
@@ -23,7 +23,7 @@ interface FinancialStats {
     description: string;
     category: string;
   }>;
-  topProperties: Array<{
+  topPropertyCommissions: Array<{
     id: string;
     title: string;
     commission: number;
@@ -58,7 +58,7 @@ export default function FinancesPage() {
     }
   };
 
-  if (isLoading('loadStats')) {
+  if (isLoading('loadStats') && !stats) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <LoadingSpinner size="large" />
@@ -66,12 +66,12 @@ export default function FinancesPage() {
     );
   }
 
-  if (error || !stats) {
+  if (error && !stats) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900">Error</h2>
-          <p className="mt-2 text-gray-600">{error || 'Failed to load financial dashboard'}</p>
+          <p className="mt-2 text-gray-600">{error}</p>
           <button
             onClick={loadFinancialStats}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
@@ -81,6 +81,10 @@ export default function FinancesPage() {
         </div>
       </div>
     );
+  }
+
+  if (!stats) {
+    return null;
   }
 
   return (
@@ -148,7 +152,7 @@ export default function FinancesPage() {
               <p className="text-sm font-medium text-gray-600">Active Deals</p>
               <p className="text-2xl font-bold text-gray-900">{stats.activeDeals}</p>
               <p className="text-sm text-gray-500 mt-2">
-                {formatCurrency(stats.pendingCommissions)} in pending commissions
+                {formatCurrency(stats.pendingOverdueCommissions)} in pending/overdue commissions
               </p>
             </div>
             <div className="bg-orange-100 p-3 rounded-full">
@@ -201,9 +205,9 @@ export default function FinancesPage() {
         {/* Top Properties */}
         <div className="bg-white rounded-lg shadow">
           <div className="p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Top Properties</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Top Commissions</h2>
             <div className="space-y-4">
-              {stats.topProperties.map((property) => (
+              {stats.topPropertyCommissions.map((property) => (
                 <div key={property.id} className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-900">{property.title}</p>

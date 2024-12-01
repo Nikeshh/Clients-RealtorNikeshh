@@ -97,6 +97,8 @@ export const POST = withAuth(async (request: NextRequest) => {
         date: new Date(data.date),
         notes: data.notes || null,
         clientId: data.clientId || null,
+        propertyTitle: data.propertyTitle || 'N/A',
+        gatheredPropertyId: data.gatheredPropertyId || null
       },
       include: {
         client: {
