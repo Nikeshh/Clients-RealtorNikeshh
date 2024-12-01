@@ -21,14 +21,12 @@ interface Props {
   clientId: string;
   requirementId: string;
   onUpdate: () => void;
-  onSelect?: (propertyId: string) => Promise<void>;
 }
 
 export default function PropertySearch({
   clientId,
   requirementId,
   onUpdate,
-  onSelect,
 }: Props) {
   const [properties, setProperties] = useState<GatheredProperty[]>([]);
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -65,10 +63,6 @@ export default function PropertySearch({
       if (!response.ok) throw new Error("Failed to save property");
 
       const savedProperty = await response.json();
-
-      if (onSelect) {
-        await onSelect(savedProperty.id);
-      }
 
       setProperties([...properties, savedProperty]);
       setFormData({

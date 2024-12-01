@@ -36,7 +36,7 @@ export const POST = withAuth(async (request: NextRequest) => {
   } catch (error) {
     console.error('Error:', error);
     return NextResponse.json(
-      { error: 'Failed to gather property' },
+      { error: 'Failed to create property' },
       { status: 500 }
     );
   }

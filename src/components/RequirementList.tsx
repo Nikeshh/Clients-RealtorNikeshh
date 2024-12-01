@@ -100,27 +100,6 @@ export default function RequirementList({ requirements, clientId, requestId, onU
     }
   };
 
-  const handleGatherProperty = async (requirementId: string, propertyId: string) => {
-    setLoading(`gather-${propertyId}`, true);
-    try {
-      const response = await fetch(`/api/clients/${clientId}/requests/${requestId}/requirements/${requirementId}/properties`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ propertyId }),
-      });
-
-      if (!response.ok) throw new Error('Failed to gather property');
-      
-      addToast('Property gathered successfully', 'success');
-      onUpdate();
-    } catch (error) {
-      console.error('Error:', error);
-      addToast('Failed to gather property', 'error');
-    } finally {
-      setLoading(`gather-${propertyId}`, false);
-    }
-  };
-
   const handleAddChecklist = async (requirementId: string, text: string) => {
     setLoading('addChecklist', true);
     try {
@@ -401,7 +380,6 @@ export default function RequirementList({ requirements, clientId, requestId, onU
             clientId={clientId}
             requirementId={selectedRequirement.id}
             onUpdate={onUpdate}
-            onSelect={(propertyId: string) => handleGatherProperty(selectedRequirement.id, propertyId)}
           />
         </Modal>
       )}
