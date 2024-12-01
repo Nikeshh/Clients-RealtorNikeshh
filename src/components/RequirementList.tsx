@@ -12,6 +12,7 @@ import RentalPreferencesForm from './RentalPreferencesForm';
 import PurchasePreferencesForm from './PurchasePreferencesForm';
 import RequirementForm from './RequirementForm';
 import ChecklistList from './ChecklistList';
+import ChecklistForm from './ChecklistForm';
 
 interface Property {
   id: string;
@@ -87,15 +88,6 @@ export default function RequirementList({ requirements, clientId, requestId, onU
   const handleAddRequirement = async (data: any) => {
     setLoading('addRequirement', true);
     try {
-      const response = await fetch(`/api/clients/${clientId}/requests/${requestId}/requirements`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) throw new Error('Failed to add requirement');
-      
-      addToast('Requirement added successfully', 'success');
       setShowAddModal(false);
       onUpdate();
     } catch (error) {
@@ -161,6 +153,40 @@ export default function RequirementList({ requirements, clientId, requestId, onU
       addToast('Failed to send email', 'error');
     } finally {
       setLoading('sendEmail', false);
+    }
+  };
+
+  const handleAddChecklist = async (requirementId: string, text: string) => {
+    setLoading('addChecklist', true);
+    try {
+      const response = await fetch(`/api/clients/${clientId}/requests/${requestId}/requirements/${requirementId}/checklist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!response.ok) throw new Error('Failed to add checklist item');
+      
+      const newChecklistItem = await response.json();
+      
+      // Update the local state immediately
+      setSelectedRequirement(prev => {
+        if (prev && prev.id === requirementId) {
+          return {
+            ...prev,
+            checklist: [...(prev.checklist || []), newChecklistItem]
+          };
+        }
+        return prev;
+      });
+      
+      addToast('Checklist item added', 'success');
+      onUpdate(); // Still call onUpdate to sync with server
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to add checklist item', 'error');
+    } finally {
+      setLoading('addChecklist', false);
     }
   };
 
@@ -361,18 +387,25 @@ export default function RequirementList({ requirements, clientId, requestId, onU
         <Modal
           isOpen={showChecklistModal}
           onClose={() => setShowChecklistModal(false)}
-          title="Requirement Checklist"
+          title={`Checklist for ${selectedRequirement.name}`}
         >
-          <ChecklistList
-            checklist={selectedRequirement.checklist || []}
-            clientId={clientId}
-            requestId={requestId}
-            requirementId={selectedRequirement.id}
-            onUpdate={() => {
-              onUpdate();
-              setShowChecklistModal(false);
-            }}
-          />
+          <div className="space-y-4">
+            <ChecklistForm
+              onSubmit={(text) => handleAddChecklist(selectedRequirement.id, text)}
+              onCancel={() => setShowChecklistModal(false)}
+              isLoading={isLoading('addChecklist')}
+            />
+            <div className="mt-4">
+              <ChecklistList
+                checklist={selectedRequirement.checklist || []}
+                clientId={clientId}
+                requestId={requestId}
+                requirementId={selectedRequirement.id}
+                onUpdate={onUpdate}
+                hideAddButton={true}
+              />
+            </div>
+          </div>
         </Modal>
       )}
     </div>

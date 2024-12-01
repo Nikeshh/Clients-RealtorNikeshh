@@ -4,10 +4,10 @@ import prisma from '@/lib/prisma';
 
 export const PATCH = withAuth(async (request: NextRequest) => {
   try {
-    const itemId = request.url.split('/checklist/')[1].split('/')[0];
+    const itemId = request.url.split('/checklist/')[1];
     const { completed } = await request.json();
 
-    const checklistItem = await prisma.requestChecklist.update({
+    const checklistItem = await prisma.requirementChecklist.update({
       where: { id: itemId },
       data: { completed },
     });
@@ -24,9 +24,9 @@ export const PATCH = withAuth(async (request: NextRequest) => {
 
 export const DELETE = withAuth(async (request: NextRequest) => {
   try {
-    const itemId = request.url.split('/checklist/')[1].split('/')[0];
+    const itemId = request.url.split('/checklist/')[1];
 
-    await prisma.requestChecklist.delete({
+    await prisma.requirementChecklist.delete({
       where: { id: itemId },
     });
 

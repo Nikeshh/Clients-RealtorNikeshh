@@ -83,7 +83,7 @@ model ClientRequirement {
   // Add these relation fields
   rentalPreferences    RentalPreferences?
   purchasePreferences  PurchasePreferences?
-  checklist           RequirementChecklist?
+  checklist           RequirementChecklist[]
   requestId           String?  @db.ObjectId
   request             Request? @relation(fields: [requestId], references: [id], onDelete: Cascade)
 }
@@ -242,12 +242,15 @@ model PurchasePreferences {
 
 model RequirementChecklist {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  requirementId String   @db.ObjectId @unique
+  requirementId String   @db.ObjectId
+  text          String
   completed     Boolean  @default(false)
-  notes         String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
   requirement   ClientRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+
+  @@index([requirementId])
 }
 
 model ClientChecklist {
@@ -386,17 +389,5 @@ model Request {
   client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   processes   Process[]
   requirements ClientRequirement[]
-  checklist   RequestChecklist[]
   interactions Interaction[]
-}
-
-model RequestChecklist {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  requestId   String   @db.ObjectId
-  text        String
-  completed   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  request     Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
 }

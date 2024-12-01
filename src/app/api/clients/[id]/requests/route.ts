@@ -26,7 +26,6 @@ export const GET = withAuth(async (request: NextRequest) => {
             purchasePreferences: true,
           },
         },
-        checklist: true,
       },
       orderBy: {
         createdAt: 'desc',
@@ -118,7 +117,6 @@ export const POST = withAuth(async (request: NextRequest) => {
               purchasePreferences: true,
             },
           },
-          checklist: true,
         },
       });
     });
@@ -158,7 +156,6 @@ export const PATCH = withAuth(async (request: NextRequest) => {
             purchasePreferences: true,
           },
         },
-        checklist: true,
       },
     });
 

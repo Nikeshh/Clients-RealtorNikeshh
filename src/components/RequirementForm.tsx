@@ -44,8 +44,8 @@ export default function RequirementForm({ clientId, requestId, onSubmit, onCance
       if (!response.ok) throw new Error('Failed to create requirement');
       
       const data = await response.json();
-      await onSubmit(data);
       addToast('Requirement created successfully', 'success');
+      onSubmit(data);
     } catch (error) {
       console.error('Error:', error);
       addToast('Failed to create requirement', 'error');

@@ -1,88 +1,51 @@
 'use client';
 
 import { useState } from 'react';
-import { useToast } from '@/components/ui/toast-context';
-import { useLoadingStates } from '@/hooks/useLoadingStates';
 import Button from './Button';
-import Modal from './ui/Modal';
 
 interface Props {
-  clientId: string;
-  requestId?: string;
-  onSubmit: () => void;
+  onSubmit: (text: string) => Promise<void>;
   onCancel: () => void;
+  isLoading?: boolean;
 }
 
-export default function ChecklistForm({ clientId, requestId, onSubmit, onCancel }: Props) {
+export default function ChecklistForm({ onSubmit, onCancel, isLoading }: Props) {
   const [text, setText] = useState('');
-  const { addToast } = useToast();
-  const { setLoading, isLoading } = useLoadingStates();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading('submitChecklist', true);
-
-    try {
-      const endpoint = requestId 
-        ? `/api/clients/${clientId}/requests/${requestId}/checklist`
-        : `/api/clients/${clientId}/checklist`;
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-      });
-
-      if (!response.ok) throw new Error('Failed to create checklist item');
-      
-      addToast('Checklist item created', 'success');
-      onSubmit();
-    } catch (error) {
-      console.error('Error:', error);
-      addToast('Failed to create checklist item', 'error');
-    } finally {
-      setLoading('submitChecklist', false);
-    }
+    if (!text.trim()) return;
+    
+    await onSubmit(text);
+    setText('');
   };
 
   return (
-    <Modal
-      isOpen={true}
-      onClose={onCancel}
-      title="Add Checklist Item"
-    >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Item Text
-          </label>
-          <textarea
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            rows={3}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Enter checklist item..."
-            required
-          />
-        </div>
-
-        <div className="flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={onCancel}
-            disabled={isLoading('submitChecklist')}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            isLoading={isLoading('submitChecklist')}
-          >
-            Add Item
-          </Button>
-        </div>
-      </form>
-    </Modal>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <input
+        type="text"
+        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+        placeholder="Enter checklist item..."
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        required
+      />
+      <div className="flex justify-end gap-2">
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={onCancel}
+          disabled={isLoading}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          isLoading={isLoading}
+        >
+          Add
+        </Button>
+      </div>
+    </form>
   );
 } 

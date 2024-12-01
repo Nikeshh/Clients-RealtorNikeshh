@@ -90,11 +90,26 @@ export default function ClientPage() {
   const [newRequestType, setNewRequestType] = useState('RENTAL');
   const { addToast } = useToast();
   const { setLoading, isLoading } = useLoadingStates();
-  const [collapsedRequests, setCollapsedRequests] = useState<Set<string>>(new Set());
+  const [collapsedRequests, setCollapsedRequests] = useState<Set<string>>(() => {
+    const collapsed = new Set<string>();
+    return collapsed;
+  });
 
   useEffect(() => {
     loadClient();
   }, [clientId]);
+
+  useEffect(() => {
+    if (client) {
+      const collapsed = new Set<string>();
+      client.requests.forEach(request => {
+        if (request.status !== 'ACTIVE') {
+          collapsed.add(request.id);
+        }
+      });
+      setCollapsedRequests(collapsed);
+    }
+  }, [client]);
 
   const loadClient = async () => {
     setLoading('loadClient', true);
@@ -342,7 +357,7 @@ export default function ClientPage() {
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h2>
             <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="space-y-4">
+              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
                 {client.interactions.map((interaction) => (
                   <div key={interaction.id} className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
                     <Clock className="h-5 w-5 text-gray-400 mt-1 flex-shrink-0" />

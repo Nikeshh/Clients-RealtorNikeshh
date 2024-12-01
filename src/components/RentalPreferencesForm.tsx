@@ -71,7 +71,6 @@ export default function RentalPreferencesForm({
   };
 
   return (
-    <Modal isOpen={true} onClose={onCancel} title="Rental Preferences">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700">
@@ -160,6 +159,5 @@ export default function RentalPreferencesForm({
           </Button>
         </div>
       </form>
-    </Modal>
   );
 } 

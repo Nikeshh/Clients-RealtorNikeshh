@@ -19,9 +19,10 @@ interface Props {
   requestId?: string;
   requirementId?: string;
   onUpdate: () => void;
+  hideAddButton?: boolean;
 }
 
-export default function ChecklistList({ checklist, clientId, requestId, requirementId, onUpdate }: Props) {
+export default function ChecklistList({ checklist, clientId, requestId, requirementId, onUpdate, hideAddButton = false }: Props) {
   const [showAddForm, setShowAddForm] = useState(false);
   const { addToast } = useToast();
   const { setLoading, isLoading } = useLoadingStates();
@@ -56,7 +57,7 @@ export default function ChecklistList({ checklist, clientId, requestId, requirem
     }
   };
 
-  const handleAdd = async (text: string) => {
+  const handleAdd = async (text: string): Promise<void> => {
     setLoading('addChecklist', true);
     try {
       let url = '';
@@ -91,14 +92,16 @@ export default function ChecklistList({ checklist, clientId, requestId, requirem
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-sm font-medium text-gray-700">Checklist</h3>
-        <Button
-          variant="ghost"
-          size="small"
-          onClick={() => setShowAddForm(true)}
-        >
-          <Plus className="h-4 w-4 mr-1" />
-          Add Item
-        </Button>
+        {!hideAddButton && (
+          <Button
+            variant="ghost"
+            size="small"
+            onClick={() => setShowAddForm(true)}
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Add Item
+          </Button>
+        )}
       </div>
 
       {showAddForm && (
