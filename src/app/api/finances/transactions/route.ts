@@ -1,75 +1,74 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/api-middleware';
 import prisma from '@/lib/prisma';
-import { formatCurrency } from '@/lib/utils';
 
-// GET /api/finances/transactions - Get all transactions
 export const GET = withAuth(async (request: NextRequest) => {
   try {
-    // Get query parameters for filtering
     const { searchParams } = new URL(request.url);
-    const type = searchParams.get('type');
-    const category = searchParams.get('category');
-    const startDate = searchParams.get('startDate');
-    const endDate = searchParams.get('endDate');
-    const minAmount = searchParams.get('minAmount');
-    const maxAmount = searchParams.get('maxAmount');
+    const clientId = searchParams.get('clientId');
 
-    // Build where clause based on filters
-    const where: any = {};
-    
-    if (type) where.type = type;
-    if (category) where.category = category;
-    if (startDate) where.date = { ...where.date, gte: new Date(startDate) };
-    if (endDate) where.date = { ...where.date, lte: new Date(endDate) };
-    if (minAmount) where.amount = { ...where.amount, gte: parseFloat(minAmount) };
-    if (maxAmount) where.amount = { ...where.amount, lte: parseFloat(maxAmount) };
+    // Get transactions with their relations
+    const transactions = await prisma.transaction.findMany({
+      orderBy: {
+        date: 'desc'
+      },
+      include: {
+        client: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
+      }
+    });
 
-    // Get transactions and total
-    const [transactions, total] = await Promise.all([
-      prisma.transaction.findMany({
-        where,
-        orderBy: {
-          date: 'desc'
+    // Get client's gathered properties if clientId is provided
+    let clientProperties: { id: string; title: string; requirementId: string; }[] = [];
+    if (clientId) {
+      const requirements = await prisma.clientRequirement.findMany({
+        where: {
+          request: {
+            clientId
+          }
         },
-        include: {
-          client: {
+        select: {
+          id: true,
+          gatheredProperties: {
             select: {
               id: true,
-              name: true,
-              email: true
-            }
-          },
-          property: {
-            select: {
-              id: true,
-              title: true,
-              address: true
-            }
-          },
-          commission: {
-            select: {
-              id: true,
-              amount: true,
-              status: true
+              title: true
             }
           }
         }
-      }),
-      prisma.transaction.aggregate({
-        where,
-        _sum: {
-          amount: true
-        }
-      })
-    ]);
-    
+      });
+
+      clientProperties = requirements.flatMap(req => 
+        req.gatheredProperties.map(prop => ({
+          id: prop.id,
+          title: prop.title,
+          requirementId: req.id
+        }))
+      );
+    }
+
     return NextResponse.json({
       transactions,
-      total: total._sum.amount || 0
+      total: transactions.reduce((sum, t) => sum + t.amount, 0),
+      clients: await prisma.client.findMany({
+        select: {
+          id: true,
+          name: true,
+          email: true
+        },
+        orderBy: {
+          name: 'asc'
+        }
+      }),
+      clientProperties
     });
   } catch (error) {
-    console.error('Error fetching transactions:', error);
+    console.error('Error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch transactions' },
       { status: 500 }
@@ -82,7 +81,6 @@ export const POST = withAuth(async (request: NextRequest) => {
   try {
     const data = await request.json();
     
-    // Validate required fields
     if (!data.amount || !data.type || !data.description || !data.category || !data.date) {
       return NextResponse.json(
         { error: 'Missing required fields' },
@@ -90,57 +88,30 @@ export const POST = withAuth(async (request: NextRequest) => {
       );
     }
 
-    // Create transaction and update related records
-    const transaction = await prisma.$transaction(async (tx) => {
-      const newTransaction = await tx.transaction.create({
-        data: {
-          type: data.type,
-          amount: parseFloat(data.amount),
-          description: data.description,
-          category: data.category,
-          date: new Date(data.date),
-          notes: data.notes || null,
-          clientId: data.clientId || null,
-          propertyId: data.propertyId || null,
-          commissionId: data.commissionId || null,
-        },
-        include: {
-          client: {
-            select: {
-              id: true,
-              name: true,
-              email: true
-            }
-          },
-          property: {
-            select: {
-              id: true,
-              title: true,
-              address: true
-            }
+    const transaction = await prisma.transaction.create({
+      data: {
+        type: data.type,
+        amount: parseFloat(data.amount),
+        description: data.description,
+        category: data.category,
+        date: new Date(data.date),
+        notes: data.notes || null,
+        clientId: data.clientId || null,
+      },
+      include: {
+        client: {
+          select: {
+            id: true,
+            name: true,
+            email: true
           }
         }
-      });
-
-      // Create interaction if client is associated
-      if (data.clientId) {
-        await tx.interaction.create({
-          data: {
-            clientId: data.clientId,
-            type: 'Financial',
-            description: `${data.type === 'INCOME' ? 'Received' : 'Paid'} ${formatCurrency(parseFloat(data.amount))} - ${data.description}`,
-            date: new Date(),
-            notes: data.notes
-          }
-        });
       }
-
-      return newTransaction;
     });
 
     return NextResponse.json(transaction);
   } catch (error) {
-    console.error('Error creating transaction:', error);
+    console.error('Error:', error);
     return NextResponse.json(
       { error: 'Failed to create transaction' },
       { status: 500 }
@@ -171,8 +142,6 @@ export const PATCH = withAuth(async (request: NextRequest) => {
         date: data.date ? new Date(data.date) : undefined,
         notes: data.notes,
         clientId: data.clientId,
-        propertyId: data.propertyId,
-        commissionId: data.commissionId,
       },
       include: {
         client: {
@@ -182,13 +151,6 @@ export const PATCH = withAuth(async (request: NextRequest) => {
             email: true
           }
         },
-        property: {
-          select: {
-            id: true,
-            title: true,
-            address: true
-          }
-        }
       }
     });
 

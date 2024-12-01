@@ -2,13 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/api-middleware';
 import prisma from '@/lib/prisma';
 
-interface TopProperty {
-  id: string;
-  title: string;
-  commission: number;
-  status: string;
-}
-
 export const GET = withAuth(async (request: NextRequest) => {
   try {
     const now = new Date();
@@ -99,38 +92,46 @@ export const GET = withAuth(async (request: NextRequest) => {
       }
     });
 
-    // Get top properties by commission
-    const topProperties = await prisma.commission.findMany({
+    // Get top commissions
+    const topCommissions = await prisma.commission.findMany({
       take: 5,
       orderBy: {
         amount: 'desc'
       },
-      include: {
-        property: {
+      select: {
+        id: true,
+        amount: true,
+        propertyTitle: true,
+        status: true,
+        client: {
           select: {
-            id: true,
-            title: true,
-            status: true
+            name: true
           }
         }
       }
     });
 
-    return NextResponse.json({
+    const response = {
       totalRevenue: totalRevenue._sum.amount || 0,
       totalCommissions: totalCommissions._sum.amount || 0,
       pendingCommissions: pendingCommissions._sum.amount || 0,
       monthlyRevenue: currentMonthAmount,
       monthlyGrowth: parseFloat(monthlyGrowth.toFixed(2)),
       activeDeals,
-      recentTransactions,
-      topProperties: topProperties.map(commission => ({
-        id: commission.property.id,
-        title: commission.property.title,
+      recentTransactions: recentTransactions.map(t => ({
+        ...t,
+        date: t.date.toISOString()
+      })),
+      topProperties: topCommissions.map(commission => ({
+        id: commission.id,
+        title: commission.propertyTitle || 'Unnamed Property',
         commission: commission.amount,
-        status: commission.property.status
+        status: commission.status,
+        clientName: commission.client?.name || 'Unknown Client'
       }))
-    });
+    };
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error('Error fetching financial stats:', error);
     return NextResponse.json(

@@ -9,6 +9,18 @@ import Button from '@/components/Button';
 import Modal from '@/components/ui/Modal';
 import { Plus, Filter, TrendingUp, TrendingDown } from 'lucide-react';
 
+interface Client {
+  id: string;
+  name: string;
+  email: string;
+}
+
+interface GatheredProperty {
+  id: string;
+  title: string;
+  requirementId: string;
+}
+
 interface Transaction {
   id: string;
   date: string;
@@ -19,16 +31,11 @@ interface Transaction {
   notes?: string;
   clientId?: string;
   client?: {
-    id: string;
     name: string;
     email: string;
   };
-  propertyId?: string;
-  property?: {
-    id: string;
-    title: string;
-    address: string;
-  };
+  propertyTitle?: string;
+  gatheredPropertyId?: string;
 }
 
 interface TransactionsResponse {
@@ -58,12 +65,23 @@ export default function TransactionsPage() {
     date: new Date().toISOString().split('T')[0],
     notes: '',
     clientId: '',
-    propertyId: '',
+    propertyTitle: '',
+    gatheredPropertyId: ''
   });
+  const [clients, setClients] = useState<Client[]>([]);
+  const [clientProperties, setClientProperties] = useState<GatheredProperty[]>([]);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => {
     loadTransactions();
   }, []);
+
+  useEffect(() => {
+    if (showAddModal) {
+      loadClients();
+    }
+  }, [showAddModal]);
 
   const loadTransactions = async () => {
     setLoading('loadTransactions', true);
@@ -104,7 +122,8 @@ export default function TransactionsPage() {
         date: new Date().toISOString().split('T')[0],
         notes: '',
         clientId: '',
-        propertyId: '',
+        propertyTitle: '',
+        gatheredPropertyId: ''
       });
     } catch (error) {
       console.error('Error:', error);
@@ -123,6 +142,95 @@ export default function TransactionsPage() {
     if (filters.maxAmount && transaction.amount > parseFloat(filters.maxAmount)) return false;
     return true;
   }) ?? [];
+
+  const loadClientProperties = async (clientId: string) => {
+    try {
+      const response = await fetch(`/api/finances/transactions?clientId=${clientId}`);
+      if (!response.ok) throw new Error('Failed to fetch client data');
+      const data = await response.json();
+      setClientProperties(data.clientProperties);
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to load client properties', 'error');
+    }
+  };
+
+  const handleClientChange = (clientId: string) => {
+    setNewTransaction({ ...newTransaction, clientId });
+    if (clientId) {
+      loadClientProperties(clientId);
+    } else {
+      setClientProperties([]);
+    }
+  };
+
+  const loadClients = async () => {
+    try {
+      const response = await fetch('/api/clients');
+      if (!response.ok) throw new Error('Failed to fetch clients');
+      const data = await response.json();
+      setClients(data);
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to load clients', 'error');
+    }
+  };
+
+  const handleEdit = async () => {
+    if (!editingTransaction) return;
+    
+    setLoading('editTransaction', true);
+    try {
+      const response = await fetch(`/api/finances/transactions/${editingTransaction.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: editingTransaction.type,
+          amount: editingTransaction.amount,
+          description: editingTransaction.description,
+          category: editingTransaction.category,
+          date: editingTransaction.date,
+          notes: editingTransaction.notes,
+          clientId: editingTransaction.clientId,
+          propertyTitle: editingTransaction.propertyTitle,
+          gatheredPropertyId: editingTransaction.gatheredPropertyId,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update transaction');
+
+      addToast('Transaction updated successfully', 'success');
+      loadTransactions();
+      setShowEditModal(false);
+      setEditingTransaction(null);
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to update transaction', 'error');
+    } finally {
+      setLoading('editTransaction', false);
+    }
+  };
+
+  const handleDeleteTransaction = async (id: string) => {
+    setLoading(`deleteTransaction-${id}`, true);
+    try {
+      const response = await fetch(`/api/finances/transactions/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete transaction');
+
+      addToast('Transaction deleted successfully', 'success');
+      loadTransactions();
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to delete transaction', 'error');
+    } finally {
+      setLoading(`deleteTransaction-${id}`, false);
+    }
+  };
 
   if (isLoading('loadTransactions')) {
     return <LoadingSpinner size="large" />;
@@ -154,61 +262,210 @@ export default function TransactionsPage() {
       {showFilters && (
         <div className="bg-white shadow rounded-lg p-6 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* ... Filter inputs ... */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Type</label>
+              <select
+                value={filters.type}
+                onChange={(e) => setFilters({ ...filters, type: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              >
+                <option value="all">All</option>
+                <option value="INCOME">Income</option>
+                <option value="EXPENSE">Expense</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Category</label>
+              <select
+                value={filters.category}
+                onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              >
+                <option value="all">All Categories</option>
+                <option value="Referral Fee">Referral Fee</option>
+                <option value="Consulting">Consulting</option>
+                <option value="Marketing">Marketing</option>
+                <option value="Office Supplies">Office Supplies</option>
+                <option value="Travel">Travel</option>
+                <option value="Professional Services">Professional Services</option>
+                <option value="Software">Software</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Date Range</label>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="date"
+                  value={filters.dateFrom}
+                  onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+                <input
+                  type="date"
+                  value={filters.dateTo}
+                  onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Amount Range</label>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="number"
+                  value={filters.minAmount}
+                  onChange={(e) => setFilters({ ...filters, minAmount: e.target.value })}
+                  placeholder="Min"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+                <input
+                  type="number"
+                  value={filters.maxAmount}
+                  onChange={(e) => setFilters({ ...filters, maxAmount: e.target.value })}
+                  placeholder="Max"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Transactions List */}
+      {/* Transactions Table */}
       <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="divide-y divide-gray-200">
-          {filteredTransactions.map((transaction) => (
-            <div key={transaction.id} className="p-6 hover:bg-gray-50">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className={`p-2 rounded-full ${
-                    transaction.type === 'INCOME' ? 'bg-green-100' : 'bg-red-100'
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Type
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Description
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Category
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Client
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Property
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Amount
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Date
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {filteredTransactions.map((transaction) => (
+              <tr key={transaction.id} className="hover:bg-gray-50">
+                <td className="px-6 py-4">
+                  <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    transaction.type === 'INCOME' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                   }`}>
                     {transaction.type === 'INCOME' ? (
-                      <TrendingUp className="h-5 w-5 text-green-600" />
+                      <TrendingUp className="h-4 w-4 mr-1" />
                     ) : (
-                      <TrendingDown className="h-5 w-5 text-red-600" />
+                      <TrendingDown className="h-4 w-4 mr-1" />
                     )}
+                    {transaction.type}
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{transaction.description}</p>
-                    <p className="text-sm text-gray-500">{transaction.category}</p>
-                    {transaction.client && (
-                      <p className="text-sm text-gray-500">Client: {transaction.client.name}</p>
-                    )}
-                    {transaction.property && (
-                      <p className="text-sm text-gray-500">Property: {transaction.property.title}</p>
-                    )}
+                </td>
+                <td className="px-6 py-4">
+                  <div className="text-sm font-medium text-gray-900">
+                    {transaction.description}
                   </div>
-                </div>
-                <div className="text-right">
-                  <p className={`text-sm font-medium ${
+                  {transaction.notes && (
+                    <div className="text-sm text-gray-500">{transaction.notes}</div>
+                  )}
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-500">
+                  {transaction.category}
+                </td>
+                <td className="px-6 py-4">
+                  {transaction.client && (
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {transaction.client.name}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {transaction.client.email}
+                      </div>
+                    </div>
+                  )}
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-500">
+                  {transaction.propertyTitle}
+                </td>
+                <td className="px-6 py-4">
+                  <div className={`text-sm font-medium ${
                     transaction.type === 'INCOME' ? 'text-green-600' : 'text-red-600'
                   }`}>
                     {transaction.type === 'INCOME' ? '+' : '-'}{formatCurrency(transaction.amount)}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {new Date(transaction.date).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-              {transaction.notes && (
-                <p className="mt-2 text-sm text-gray-500">{transaction.notes}</p>
-              )}
-            </div>
-          ))}
-        </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-500">
+                  {new Date(transaction.date).toLocaleDateString()}
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-500">
+                  <div className="flex gap-2">
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      onClick={() => {
+                        setEditingTransaction(transaction);
+                        setShowEditModal(true);
+                      }}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="small"
+                      onClick={() => {
+                        if (confirm('Are you sure you want to delete this transaction?')) {
+                          handleDeleteTransaction(transaction.id);
+                        }
+                      }}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {/* Add Transaction Modal */}
       <Modal
         isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
+        onClose={() => {
+          setShowAddModal(false);
+          setNewTransaction({
+            type: 'INCOME',
+            amount: '',
+            description: '',
+            category: '',
+            date: new Date().toISOString().split('T')[0],
+            notes: '',
+            clientId: '',
+            propertyTitle: '',
+            gatheredPropertyId: ''
+          });
+          setClientProperties([]);
+        }}
         title="Add Transaction"
       >
         <div className="space-y-4">
@@ -277,7 +534,6 @@ export default function TransactionsPage() {
               <option value="">Select category</option>
               {newTransaction.type === 'INCOME' ? (
                 <>
-                  <option value="Commission">Commission</option>
                   <option value="Referral Fee">Referral Fee</option>
                   <option value="Consulting">Consulting</option>
                   <option value="Other Income">Other Income</option>
@@ -321,27 +577,44 @@ export default function TransactionsPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700">Related Client</label>
             <select
-              value={newTransaction.clientId}
-              onChange={(e) => setNewTransaction({ ...newTransaction, clientId: e.target.value })}
+              value={newTransaction.clientId || ''}
+              onChange={(e) => handleClientChange(e.target.value)}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             >
               <option value="">None</option>
-              {/* We'll need to fetch and map clients here */}
+              {clients.map(client => (
+                <option key={client.id} value={client.id}>
+                  {client.name} ({client.email})
+                </option>
+              ))}
             </select>
           </div>
 
-          {/* Related Property */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Related Property</label>
-            <select
-              value={newTransaction.propertyId}
-              onChange={(e) => setNewTransaction({ ...newTransaction, propertyId: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            >
-              <option value="">None</option>
-              {/* We'll need to fetch and map properties here */}
-            </select>
-          </div>
+          {/* Property Selection */}
+          {newTransaction.clientId && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Property</label>
+              <select
+                value={newTransaction.gatheredPropertyId}
+                onChange={(e) => {
+                  const property = clientProperties.find(p => p.id === e.target.value);
+                  setNewTransaction({
+                    ...newTransaction,
+                    gatheredPropertyId: e.target.value,
+                    propertyTitle: property ? property.title : ''
+                  });
+                }}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              >
+                <option value="">Select property</option>
+                {clientProperties.map(property => (
+                  <option key={property.id} value={property.id}>
+                    {property.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex justify-end gap-3 mt-6">
@@ -356,7 +629,8 @@ export default function TransactionsPage() {
                   date: new Date().toISOString().split('T')[0],
                   notes: '',
                   clientId: '',
-                  propertyId: '',
+                  propertyTitle: '',
+                  gatheredPropertyId: ''
                 });
               }}
               variant="secondary"
@@ -375,6 +649,197 @@ export default function TransactionsPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Edit Transaction Modal */}
+      {showEditModal && editingTransaction && (
+        <Modal
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingTransaction(null);
+          }}
+          title="Edit Transaction"
+        >
+          <div className="space-y-4">
+            {/* Transaction Type */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Type</label>
+              <div className="mt-1 flex gap-4">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    checked={editingTransaction.type === 'INCOME'}
+                    onChange={() => setEditingTransaction({ ...editingTransaction, type: 'INCOME' })}
+                    className="mr-2 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span>Income</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    checked={editingTransaction.type === 'EXPENSE'}
+                    onChange={() => setEditingTransaction({ ...editingTransaction, type: 'EXPENSE' })}
+                    className="mr-2 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span>Expense</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Amount */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Amount</label>
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <span className="text-gray-500 sm:text-sm">$</span>
+                </div>
+                <input
+                  type="number"
+                  value={editingTransaction.amount}
+                  onChange={(e) => setEditingTransaction({ ...editingTransaction, amount: Number(e.target.value) })}
+                  className="pl-7 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  placeholder="0.00"
+                  step="0.01"
+                />
+              </div>
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Description</label>
+              <input
+                type="text"
+                value={editingTransaction.description}
+                onChange={(e) => setEditingTransaction({ ...editingTransaction, description: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Category */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Category</label>
+              <select
+                value={editingTransaction.category}
+                onChange={(e) => setEditingTransaction({ ...editingTransaction, category: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              >
+                <option value="">Select category</option>
+                {editingTransaction.type === 'INCOME' ? (
+                  <>
+                    <option value="Referral Fee">Referral Fee</option>
+                    <option value="Consulting">Consulting</option>
+                    <option value="Other Income">Other Income</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="Marketing">Marketing</option>
+                    <option value="Office Supplies">Office Supplies</option>
+                    <option value="Travel">Travel</option>
+                    <option value="Professional Services">Professional Services</option>
+                    <option value="Software">Software</option>
+                    <option value="Other Expense">Other Expense</option>
+                  </>
+                )}
+              </select>
+            </div>
+
+            {/* Date */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Date</label>
+              <input
+                type="date"
+                value={editingTransaction.date}
+                onChange={(e) => setEditingTransaction({ ...editingTransaction, date: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Notes</label>
+              <textarea
+                value={editingTransaction.notes || ''}
+                onChange={(e) => setEditingTransaction({
+                  ...editingTransaction,
+                  notes: e.target.value
+                })}
+                rows={3}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Related Client */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Related Client</label>
+              <select
+                value={editingTransaction.clientId || ''}
+                onChange={(e) => {
+                  setEditingTransaction({ ...editingTransaction, clientId: e.target.value, propertyTitle: undefined, gatheredPropertyId: undefined });
+                  if (e.target.value) {
+                    loadClientProperties(e.target.value);
+                  }
+                }}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              >
+                <option value="">None</option>
+                {clients.map(client => (
+                  <option key={client.id} value={client.id}>
+                    {client.name} ({client.email})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Property Selection */}
+            {editingTransaction.clientId && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Property</label>
+                <select
+                  value={editingTransaction.gatheredPropertyId}
+                  onChange={(e) => {
+                    const property = clientProperties.find(p => p.id === e.target.value);
+                    setEditingTransaction({
+                      ...editingTransaction,
+                      gatheredPropertyId: e.target.value,
+                      propertyTitle: property ? property.title : ''
+                    });
+                  }}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                >
+                  <option value="">Select property</option>
+                  {clientProperties.map(property => (
+                    <option key={property.id} value={property.id}>
+                      {property.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 mt-6">
+              <Button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingTransaction(null);
+                }}
+                variant="secondary"
+                disabled={isLoading('editTransaction')}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleEdit}
+                variant="primary"
+                isLoading={isLoading('editTransaction')}
+                disabled={!editingTransaction.amount || !editingTransaction.description || !editingTransaction.category}
+              >
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 } 

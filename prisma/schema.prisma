@@ -79,7 +79,6 @@ model ClientRequirement {
 
   gatheredProperties   GatheredProperty[]
   interactions         Interaction[]
-  commissions          Commission[]
   
   // Add these relation fields
   rentalPreferences    RentalPreferences?
@@ -213,33 +212,36 @@ model ClientChecklist {
   client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 }
 
-enum TransactionType {
-  INCOME
-  EXPENSE
-}
-
 enum CommissionStatus {
   PENDING
   RECEIVED
   OVERDUE
 }
 
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
 model Transaction {
-  id          String         @id @default(auto()) @map("_id") @db.ObjectId
-  date        DateTime
-  type        TransactionType
-  amount      Float
-  description String
-  category    String
-  notes       String?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  
-  // Relations
-  clientId    String?        @db.ObjectId
-  client      Client?        @relation(fields: [clientId], references: [id])
-  commissionId String?       @db.ObjectId
-  commission  Commission?    @relation(fields: [commissionId], references: [id])
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  date          DateTime
+  type          TransactionType
+  amount        Float
+  description   String
+  category      String
+  notes         String?
+  propertyTitle String?   // Just store the property title as a string
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Only client relation
+  clientId      String?   @db.ObjectId
+  client        Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@index([clientId])
+  @@index([type])
+  @@index([date])
 }
 
 model Commission {
@@ -247,18 +249,19 @@ model Commission {
   amount        Float
   percentage    Float
   status        CommissionStatus
+  propertyTitle String          // Property title as a string field
   dueDate       DateTime
   receivedDate  DateTime?
   notes         String?
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
-  // Relations
+  // Only client relation
   clientId      String          @db.ObjectId
-  client        Client          @relation(fields: [clientId], references: [id])
-  requirementId String?         @db.ObjectId
-  requirement   ClientRequirement? @relation(fields: [requirementId], references: [id])
-  transactions  Transaction[]
+  client        Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([status])
 }
 
 model FinancialGoal {

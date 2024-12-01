@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/api-middleware';
 import prisma from '@/lib/prisma';
+import { formatCurrency } from '@/lib/utils';
 
 // GET /api/finances/commissions - Get all commissions
 export const GET = withAuth(async (request: NextRequest) => {
@@ -11,6 +12,7 @@ export const GET = withAuth(async (request: NextRequest) => {
     const endDate = searchParams.get('endDate');
     const minAmount = searchParams.get('minAmount');
     const maxAmount = searchParams.get('maxAmount');
+    const clientId = searchParams.get('clientId');
 
     // Build where clause based on filters
     const where: any = {};
@@ -21,6 +23,7 @@ export const GET = withAuth(async (request: NextRequest) => {
     if (minAmount) where.amount = { ...where.amount, gte: parseFloat(minAmount) };
     if (maxAmount) where.amount = { ...where.amount, lte: parseFloat(maxAmount) };
 
+    // Get commissions
     const commissions = await prisma.commission.findMany({
       where,
       orderBy: {
@@ -34,32 +37,49 @@ export const GET = withAuth(async (request: NextRequest) => {
             email: true
           }
         },
-        property: {
-          select: {
-            id: true,
-            title: true,
-            price: true,
-            status: true
-          }
-        },
-        requirement: {
-          select: {
-            id: true,
-            name: true,
-            type: true
-          }
-        },
-        transactions: {
-          select: {
-            id: true,
-            date: true,
-            amount: true
-          }
-        }
       }
     });
+
+    // Get all clients for dropdown
+    const clients = await prisma.client.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true
+      },
+      orderBy: {
+        name: 'asc'
+      }
+    });
+
+    // Get client's gathered properties if clientId is provided
+    let clientProperties: any[] = [];
+    if (clientId) {
+      const requirements = await prisma.clientRequirement.findMany({
+        where: {
+          request: {
+            clientId
+          }
+        },
+        include: {
+          gatheredProperties: true
+        }
+      });
+
+      clientProperties = requirements.flatMap(req => 
+        req.gatheredProperties.map(prop => ({
+          id: prop.id,
+          title: prop.title,
+          requirementId: req.id
+        }))
+      );
+    }
     
-    return NextResponse.json(commissions);
+    return NextResponse.json({
+      commissions,
+      clients,
+      clientProperties: clientId ? clientProperties : []
+    });
   } catch (error) {
     console.error('Error fetching commissions:', error);
     return NextResponse.json(
@@ -75,7 +95,7 @@ export const POST = withAuth(async (request: NextRequest) => {
     const data = await request.json();
     
     // Validate required fields
-    if (!data.amount || !data.propertyId || !data.clientId || !data.dueDate) {
+    if (!data.amount || !data.clientId || !data.propertyTitle || !data.dueDate) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -89,11 +109,10 @@ export const POST = withAuth(async (request: NextRequest) => {
           amount: parseFloat(data.amount),
           percentage: parseFloat(data.percentage),
           status: 'PENDING',
+          propertyTitle: data.propertyTitle,
           dueDate: new Date(data.dueDate),
           notes: data.notes,
-          propertyId: data.propertyId,
           clientId: data.clientId,
-          requirementId: data.requirementId || null,
         },
         include: {
           client: {
@@ -101,14 +120,6 @@ export const POST = withAuth(async (request: NextRequest) => {
               id: true,
               name: true,
               email: true
-            }
-          },
-          property: {
-            select: {
-              id: true,
-              title: true,
-              price: true,
-              status: true
             }
           }
         }
@@ -119,7 +130,7 @@ export const POST = withAuth(async (request: NextRequest) => {
         data: {
           clientId: data.clientId,
           type: 'Commission',
-          description: `Commission of ${data.amount} set for ${newCommission.property.title}`,
+          description: `Commission of ${data.amount} set for ${data.propertyTitle}`,
           date: new Date(),
           notes: data.notes
         }
@@ -133,84 +144,6 @@ export const POST = withAuth(async (request: NextRequest) => {
     console.error('Error creating commission:', error);
     return NextResponse.json(
       { error: 'Failed to create commission' },
-      { status: 500 }
-    );
-  }
-});
-
-// PATCH /api/finances/commissions/[id] - Update a commission
-export const PATCH = withAuth(async (request: NextRequest) => {
-  try {
-    const id = request.url.split('/').pop();
-    const data = await request.json();
-
-    if (!id) {
-      return NextResponse.json(
-        { error: 'Commission ID is required' },
-        { status: 400 }
-      );
-    }
-
-    const commission = await prisma.commission.update({
-      where: { id },
-      data: {
-        amount: data.amount ? parseFloat(data.amount) : undefined,
-        percentage: data.percentage ? parseFloat(data.percentage) : undefined,
-        status: data.status,
-        dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
-        receivedDate: data.receivedDate ? new Date(data.receivedDate) : undefined,
-        notes: data.notes,
-      },
-      include: {
-        client: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        property: {
-          select: {
-            id: true,
-            title: true,
-            price: true,
-            status: true
-          }
-        }
-      }
-    });
-
-    return NextResponse.json(commission);
-  } catch (error) {
-    console.error('Error updating commission:', error);
-    return NextResponse.json(
-      { error: 'Failed to update commission' },
-      { status: 500 }
-    );
-  }
-});
-
-// DELETE /api/finances/commissions/[id] - Delete a commission
-export const DELETE = withAuth(async (request: NextRequest) => {
-  try {
-    const id = request.url.split('/').pop();
-
-    if (!id) {
-      return NextResponse.json(
-        { error: 'Commission ID is required' },
-        { status: 400 }
-      );
-    }
-
-    await prisma.commission.delete({
-      where: { id }
-    });
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error deleting commission:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete commission' },
       { status: 500 }
     );
   }

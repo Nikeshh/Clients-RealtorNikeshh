@@ -7,23 +7,24 @@ import { useLoadingStates } from '@/hooks/useLoadingStates';
 import { formatCurrency } from '@/lib/utils';
 import Button from '@/components/Button';
 import Modal from '@/components/ui/Modal';
-import { Plus, Filter, DollarSign } from 'lucide-react';
+import { Plus, Filter, DollarSign, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+
+interface Client {
+  id: string;
+  name: string;
+  email: string;
+}
 
 interface Commission {
   id: string;
   amount: number;
   percentage: number;
   status: 'PENDING' | 'RECEIVED' | 'OVERDUE';
+  propertyTitle: string;
   dueDate: string;
   receivedDate?: string;
   notes?: string;
-  property: {
-    id: string;
-    title: string;
-    price: number;
-    status: string;
-  };
   client: {
     id: string;
     name: string;
@@ -36,12 +37,19 @@ interface Commission {
   }>;
 }
 
+interface GatheredProperty {
+  id: string;
+  title: string;
+  requirementId: string;
+}
+
 export default function CommissionsPage() {
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const { addToast } = useToast();
   const { setLoading, isLoading } = useLoadingStates();
-  const [showFilters, setShowFilters] = useState(false);
+  const [clients, setClients] = useState<Client[]>([]);
   const [filters, setFilters] = useState({
     status: 'all',
     dateFrom: '',
@@ -49,16 +57,17 @@ export default function CommissionsPage() {
     minAmount: '',
     maxAmount: '',
   });
-  const [clients, setClients] = useState<Array<{ id: string; name: string; email: string }>>([]);
-  const [properties, setProperties] = useState<Array<{ id: string; title: string; price: number }>>([]);
   const [newCommission, setNewCommission] = useState({
-    propertyId: '',
     clientId: '',
+    propertyTitle: '',
     amount: '',
     percentage: '',
     dueDate: '',
     notes: '',
   });
+  const [clientProperties, setClientProperties] = useState<GatheredProperty[]>([]);
+  const [editingCommission, setEditingCommission] = useState<Commission | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => {
     loadCommissions();
@@ -66,7 +75,7 @@ export default function CommissionsPage() {
 
   useEffect(() => {
     if (showAddModal) {
-      loadClientsAndProperties();
+      loadClients();
     }
   }, [showAddModal]);
 
@@ -76,7 +85,7 @@ export default function CommissionsPage() {
       const response = await fetch('/api/finances/commissions');
       if (!response.ok) throw new Error('Failed to fetch commissions');
       const data = await response.json();
-      setCommissions(data);
+      setCommissions(data.commissions);
     } catch (error) {
       console.error('Error:', error);
       addToast('Failed to load commissions', 'error');
@@ -85,30 +94,27 @@ export default function CommissionsPage() {
     }
   };
 
-  const loadClientsAndProperties = async () => {
-    setLoading('loadData', true);
+  const loadClients = async () => {
     try {
-      const [clientsResponse, propertiesResponse] = await Promise.all([
-        fetch('/api/clients'),
-        fetch('/api/properties')
-      ]);
-
-      if (!clientsResponse.ok || !propertiesResponse.ok) {
-        throw new Error('Failed to fetch data');
-      }
-
-      const [clientsData, propertiesData] = await Promise.all([
-        clientsResponse.json(),
-        propertiesResponse.json()
-      ]);
-
-      setClients(clientsData);
-      setProperties(propertiesData);
+      const response = await fetch('/api/clients');
+      if (!response.ok) throw new Error('Failed to fetch clients');
+      const data = await response.json();
+      setClients(data);
     } catch (error) {
       console.error('Error:', error);
-      addToast('Failed to load data', 'error');
-    } finally {
-      setLoading('loadData', false);
+      addToast('Failed to load clients', 'error');
+    }
+  };
+
+  const loadClientProperties = async (clientId: string) => {
+    try {
+      const response = await fetch(`/api/finances/commissions?clientId=${clientId}`);
+      if (!response.ok) throw new Error('Failed to fetch client data');
+      const data = await response.json();
+      setClientProperties(data.clientProperties);
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to load client properties', 'error');
     }
   };
 
@@ -120,12 +126,7 @@ export default function CommissionsPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...newCommission,
-          amount: parseFloat(newCommission.amount),
-          percentage: parseFloat(newCommission.percentage),
-          status: 'PENDING'
-        }),
+        body: JSON.stringify(newCommission),
       });
 
       if (!response.ok) throw new Error('Failed to add commission');
@@ -134,8 +135,8 @@ export default function CommissionsPage() {
       loadCommissions();
       setShowAddModal(false);
       setNewCommission({
-        propertyId: '',
         clientId: '',
+        propertyTitle: '',
         amount: '',
         percentage: '',
         dueDate: '',
@@ -178,6 +179,81 @@ export default function CommissionsPage() {
   const overdueCommissions = filteredCommissions
     .filter(c => c.status === 'OVERDUE')
     .reduce((sum, c) => sum + c.amount, 0);
+
+  const handleAmountChange = (amount: string) => {
+    setNewCommission({
+      ...newCommission,
+      amount,
+    });
+  };
+
+  const handlePercentageChange = (percentage: string) => {
+    setNewCommission({
+      ...newCommission,
+      percentage,
+    });
+  };
+
+  const handleClientChange = (clientId: string) => {
+    setNewCommission({ ...newCommission, clientId, propertyTitle: '' });
+    if (clientId) {
+      loadClientProperties(clientId);
+    } else {
+      setClientProperties([]);
+    }
+  };
+
+  const handleEdit = async () => {
+    if (!editingCommission) return;
+    
+    setLoading('editCommission', true);
+    try {
+      const response = await fetch(`/api/finances/commissions/${editingCommission.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: parseFloat(editingCommission.amount.toString()),
+          percentage: parseFloat(editingCommission.percentage.toString()),
+          status: editingCommission.status,
+          dueDate: editingCommission.dueDate,
+          notes: editingCommission.notes,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update commission');
+
+      addToast('Commission updated successfully', 'success');
+      loadCommissions();
+      setShowEditModal(false);
+      setEditingCommission(null);
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to update commission', 'error');
+    } finally {
+      setLoading('editCommission', false);
+    }
+  };
+
+  const handleDeleteCommission = async (id: string) => {
+    setLoading(`deleteCommission-${id}`, true);
+    try {
+      const response = await fetch(`/api/finances/commissions/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete commission');
+
+      addToast('Commission deleted successfully', 'success');
+      loadCommissions();
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to delete commission', 'error');
+    } finally {
+      setLoading(`deleteCommission-${id}`, false);
+    }
+  };
 
   if (isLoading('loadCommissions')) {
     return <LoadingSpinner size="large" />;
@@ -338,15 +414,9 @@ export default function CommissionsPage() {
             {filteredCommissions.map((commission) => (
               <tr key={commission.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4">
-                  <Link 
-                    href={`/properties/${commission.property.id}`}
-                    className="text-blue-600 hover:text-blue-900"
-                  >
-                    {commission.property.title}
-                  </Link>
-                  <p className="text-sm text-gray-500">
-                    {formatCurrency(commission.property.price)}
-                  </p>
+                  <div className="text-sm font-medium text-gray-900">
+                    {commission.propertyTitle}
+                  </div>
                 </td>
                 <td className="px-6 py-4">
                   <Link
@@ -379,13 +449,29 @@ export default function CommissionsPage() {
                   )}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-500">
-                  <Button
-                    variant="secondary"
-                    size="small"
-                    onClick={() => {/* Handle edit */}}
-                  >
-                    Edit
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      onClick={() => {
+                        setEditingCommission(commission);
+                        setShowEditModal(true);
+                      }}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="small"
+                      onClick={() => {
+                        if (confirm('Are you sure you want to delete this commission?')) {
+                          handleDeleteCommission(commission.id);
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -400,38 +486,12 @@ export default function CommissionsPage() {
         title="Add Commission"
       >
         <div className="space-y-4">
-          {/* Property Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Property</label>
-            <select
-              value={newCommission.propertyId}
-              onChange={(e) => {
-                const property = properties.find(p => p.id === e.target.value);
-                setNewCommission({
-                  ...newCommission,
-                  propertyId: e.target.value,
-                  amount: property ? (property.price * 0.025).toString() : '',
-                  percentage: '2.5'
-                });
-              }}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              required
-            >
-              <option value="">Select property</option>
-              {properties.map(property => (
-                <option key={property.id} value={property.id}>
-                  {property.title} - {formatCurrency(property.price)}
-                </option>
-              ))}
-            </select>
-          </div>
-
           {/* Client Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700">Client</label>
             <select
               value={newCommission.clientId}
-              onChange={(e) => setNewCommission({ ...newCommission, clientId: e.target.value })}
+              onChange={(e) => handleClientChange(e.target.value)}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               required
             >
@@ -439,6 +499,24 @@ export default function CommissionsPage() {
               {clients.map(client => (
                 <option key={client.id} value={client.id}>
                   {client.name} ({client.email})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Property Title Dropdown */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Property Title</label>
+            <select
+              value={newCommission.propertyTitle}
+              onChange={(e) => setNewCommission({ ...newCommission, propertyTitle: e.target.value })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              required
+            >
+              <option value="">Select property</option>
+              {clientProperties.map(property => (
+                <option key={property.id} value={property.title}>
+                  {property.title}
                 </option>
               ))}
             </select>
@@ -454,15 +532,7 @@ export default function CommissionsPage() {
               <input
                 type="number"
                 value={newCommission.amount}
-                onChange={(e) => {
-                  const property = properties.find(p => p.id === newCommission.propertyId);
-                  const amount = parseFloat(e.target.value);
-                  setNewCommission({
-                    ...newCommission,
-                    amount: e.target.value,
-                    percentage: property && amount ? ((amount / property.price) * 100).toFixed(2) : '0'
-                  });
-                }}
+                onChange={(e) => handleAmountChange(e.target.value)}
                 className="pl-7 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 placeholder="0.00"
                 step="0.01"
@@ -478,15 +548,7 @@ export default function CommissionsPage() {
               <input
                 type="number"
                 value={newCommission.percentage}
-                onChange={(e) => {
-                  const property = properties.find(p => p.id === newCommission.propertyId);
-                  const percentage = parseFloat(e.target.value);
-                  setNewCommission({
-                    ...newCommission,
-                    percentage: e.target.value,
-                    amount: property && percentage ? ((property.price * percentage) / 100).toString() : '0'
-                  });
-                }}
+                onChange={(e) => handlePercentageChange(e.target.value)}
                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 placeholder="0.00"
                 step="0.01"
@@ -527,8 +589,8 @@ export default function CommissionsPage() {
               onClick={() => {
                 setShowAddModal(false);
                 setNewCommission({
-                  propertyId: '',
                   clientId: '',
+                  propertyTitle: '',
                   amount: '',
                   percentage: '',
                   dueDate: '',
@@ -544,13 +606,138 @@ export default function CommissionsPage() {
               onClick={handleAddCommission}
               variant="primary"
               isLoading={isLoading('addCommission')}
-              disabled={!newCommission.propertyId || !newCommission.clientId || !newCommission.amount || !newCommission.percentage || !newCommission.dueDate}
+              disabled={!newCommission.clientId || !newCommission.propertyTitle || !newCommission.amount || !newCommission.percentage || !newCommission.dueDate}
             >
               Add Commission
             </Button>
           </div>
         </div>
       </Modal>
+
+      {/* Edit Modal */}
+      {showEditModal && editingCommission && (
+        <Modal
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingCommission(null);
+          }}
+          title="Edit Commission"
+        >
+          <div className="space-y-4">
+            {/* Commission Amount */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Commission Amount</label>
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <span className="text-gray-500 sm:text-sm">$</span>
+                </div>
+                <input
+                  type="number"
+                  value={editingCommission.amount}
+                  onChange={(e) => setEditingCommission({
+                    ...editingCommission,
+                    amount: parseFloat(e.target.value)
+                  })}
+                  className="pl-7 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  placeholder="0.00"
+                  step="0.01"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Commission Percentage */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Commission Percentage</label>
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <input
+                  type="number"
+                  value={editingCommission.percentage}
+                  onChange={(e) => setEditingCommission({
+                    ...editingCommission,
+                    percentage: parseFloat(e.target.value)
+                  })}
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  placeholder="0.00"
+                  step="0.01"
+                  required
+                />
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <span className="text-gray-500 sm:text-sm">%</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Status */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Status</label>
+              <select
+                value={editingCommission.status}
+                onChange={(e) => setEditingCommission({
+                  ...editingCommission,
+                  status: e.target.value as 'PENDING' | 'RECEIVED' | 'OVERDUE'
+                })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              >
+                <option value="PENDING">Pending</option>
+                <option value="RECEIVED">Received</option>
+                <option value="OVERDUE">Overdue</option>
+              </select>
+            </div>
+
+            {/* Due Date */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Due Date</label>
+              <input
+                type="date"
+                value={editingCommission.dueDate.split('T')[0]}
+                onChange={(e) => setEditingCommission({
+                  ...editingCommission,
+                  dueDate: e.target.value
+                })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                required
+              />
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Notes</label>
+              <textarea
+                value={editingCommission.notes || ''}
+                onChange={(e) => setEditingCommission({
+                  ...editingCommission,
+                  notes: e.target.value
+                })}
+                rows={3}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 mt-6">
+              <Button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingCommission(null);
+                }}
+                variant="secondary"
+                disabled={isLoading('editCommission')}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleEdit}
+                variant="primary"
+                isLoading={isLoading('editCommission')}
+              >
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 } 
