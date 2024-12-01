@@ -1,16 +1,24 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import { useToast } from '@/components/ui/toast-context';
-import { useLoadingStates } from '@/hooks/useLoadingStates';
-import Button from '@/components/Button';
-import Modal from '@/components/ui/Modal';
-import EditClientModal from '@/components/EditClientModal';
-import ProcessList from '@/components/ProcessList';
-import RequirementList from '@/components/RequirementList';
-import ChecklistList from '@/components/ChecklistList';
-import { MessageSquare, CheckSquare, Clock, Plus, ChevronDown, ChevronUp } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
+import { useToast } from "@/components/ui/toast-context";
+import { useLoadingStates } from "@/hooks/useLoadingStates";
+import Button from "@/components/Button";
+import Modal from "@/components/ui/Modal";
+import EditClientModal from "@/components/EditClientModal";
+import ProcessList from "@/components/ProcessList";
+import RequirementList from "@/components/RequirementList";
+import ChecklistList from "@/components/ChecklistList";
+import {
+  MessageSquare,
+  CheckSquare,
+  Clock,
+  Plus,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
+import DocumentList from "@/components/DocumentList";
 
 interface Process {
   id: string;
@@ -114,14 +122,16 @@ export default function ClientPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddInteractionModal, setShowAddInteractionModal] = useState(false);
   const [showAddRequestModal, setShowAddRequestModal] = useState(false);
-  const [interactionNote, setInteractionNote] = useState('');
-  const [newRequestType, setNewRequestType] = useState('RENTAL');
+  const [interactionNote, setInteractionNote] = useState("");
+  const [newRequestType, setNewRequestType] = useState("RENTAL");
   const { addToast } = useToast();
   const { setLoading, isLoading } = useLoadingStates();
-  const [collapsedRequests, setCollapsedRequests] = useState<Set<string>>(() => {
-    const collapsed = new Set<string>();
-    return collapsed;
-  });
+  const [collapsedRequests, setCollapsedRequests] = useState<Set<string>>(
+    () => {
+      const collapsed = new Set<string>();
+      return collapsed;
+    }
+  );
 
   useEffect(() => {
     loadClient();
@@ -130,8 +140,8 @@ export default function ClientPage() {
   useEffect(() => {
     if (client) {
       const collapsed = new Set<string>();
-      client.requests.forEach(request => {
-        if (request.status !== 'ACTIVE') {
+      client.requests.forEach((request) => {
+        if (request.status !== "ACTIVE") {
           collapsed.add(request.id);
         }
       });
@@ -140,86 +150,92 @@ export default function ClientPage() {
   }, [client]);
 
   const loadClient = async () => {
-    setLoading('loadClient', true);
+    setLoading("loadClient", true);
     try {
       const response = await fetch(`/api/clients/${clientId}`);
-      if (!response.ok) throw new Error('Failed to fetch client');
+      if (!response.ok) throw new Error("Failed to fetch client");
       const data = await response.json();
       setClient(data);
     } catch (error) {
-      console.error('Error:', error);
-      addToast('Failed to load client', 'error');
+      console.error("Error:", error);
+      addToast("Failed to load client", "error");
     } finally {
-      setLoading('loadClient', false);
+      setLoading("loadClient", false);
     }
   };
 
   const handleAddInteraction = async () => {
-    setLoading('addInteraction', true);
+    setLoading("addInteraction", true);
     try {
       const response = await fetch(`/api/clients/${clientId}/interactions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type: 'NOTE',
+          type: "NOTE",
           description: interactionNote,
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to add interaction');
-      
-      addToast('Interaction added successfully', 'success');
-      setInteractionNote('');
+      if (!response.ok) throw new Error("Failed to add interaction");
+
+      addToast("Interaction added successfully", "success");
+      setInteractionNote("");
       setShowAddInteractionModal(false);
       loadClient();
     } catch (error) {
-      console.error('Error:', error);
-      addToast('Failed to add interaction', 'error');
+      console.error("Error:", error);
+      addToast("Failed to add interaction", "error");
     } finally {
-      setLoading('addInteraction', false);
+      setLoading("addInteraction", false);
     }
   };
 
   const handleAddRequest = async () => {
-    setLoading('addRequest', true);
+    setLoading("addRequest", true);
     try {
       const response = await fetch(`/api/clients/${clientId}/requests`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: newRequestType,
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to add request');
-      
-      addToast('Request added successfully', 'success');
+      if (!response.ok) throw new Error("Failed to add request");
+
+      addToast("Request added successfully", "success");
       setShowAddRequestModal(false);
       loadClient();
     } catch (error) {
-      console.error('Error:', error);
-      addToast('Failed to add request', 'error');
+      console.error("Error:", error);
+      addToast("Failed to add request", "error");
     } finally {
-      setLoading('addRequest', false);
+      setLoading("addRequest", false);
     }
   };
 
-  const handleRequestStatusChange = async (requestId: string, status: string) => {
+  const handleRequestStatusChange = async (
+    requestId: string,
+    status: string
+  ) => {
     setLoading(`requestStatus-${requestId}`, true);
     try {
-      const response = await fetch(`/api/clients/${clientId}/requests/${requestId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
-      });
+      const response = await fetch(
+        `/api/clients/${clientId}/requests/${requestId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        }
+      );
 
-      if (!response.ok) throw new Error('Failed to update request status');
-      
-      addToast('Request status updated successfully', 'success');
+      if (!response.ok) throw new Error("Failed to update request status");
+
+      addToast("Request status updated successfully", "success");
       loadClient();
     } catch (error) {
-      console.error('Error:', error);
-      addToast('Failed to update request status', 'error');
+      console.error("Error:", error);
+      addToast("Failed to update request status", "error");
     } finally {
       setLoading(`requestStatus-${requestId}`, false);
     }
@@ -227,16 +243,16 @@ export default function ClientPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'ACTIVE':
-        return 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100';
-      case 'COMPLETED':
-        return 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100';
-      case 'CANCELLED':
-        return 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100';
-      case 'ON_HOLD':
-        return 'bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100';
+      case "ACTIVE":
+        return "bg-green-50 text-green-700 border-green-200 hover:bg-green-100";
+      case "COMPLETED":
+        return "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100";
+      case "CANCELLED":
+        return "bg-red-50 text-red-700 border-red-200 hover:bg-red-100";
+      case "ON_HOLD":
+        return "bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100";
       default:
-        return 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100';
+        return "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100";
     }
   };
 
@@ -268,27 +284,22 @@ export default function ClientPage() {
             <div className="mt-1 text-sm text-gray-500">
               <p>{client.email}</p>
               <p>{client.phone}</p>
-              <p className="mt-2">Status: <span className="font-medium">{client.status}</span></p>
+              <p className="mt-2">
+                Status: <span className="font-medium">{client.status}</span>
+              </p>
               <p className="mt-2">Notes: {client.notes}</p>
             </div>
           </div>
           <div className="flex gap-2">
-            <Button
-              onClick={() => setShowAddRequestModal(true)}
-            >
+            <Button onClick={() => setShowAddRequestModal(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Add Request
             </Button>
-            <Button
-              onClick={() => setShowAddInteractionModal(true)}
-            >
+            <Button onClick={() => setShowAddInteractionModal(true)}>
               <MessageSquare className="h-4 w-4 mr-2" />
               Add Interaction
             </Button>
-            <Button
-              variant="secondary"
-              onClick={() => setShowEditModal(true)}
-            >
+            <Button variant="secondary" onClick={() => setShowEditModal(true)}>
               Edit Client
             </Button>
           </div>
@@ -304,13 +315,15 @@ export default function ClientPage() {
           </div>
           {client.requests.map((request) => (
             <div key={request.id} className="bg-white rounded-lg shadow-sm">
-              <div 
+              <div
                 className="p-6 cursor-pointer"
                 onClick={() => toggleRequest(request.id)}
               >
                 <div className="flex justify-between items-center">
                   <div>
-                    <h3 className="text-xl font-semibold">{request.type} Request</h3>
+                    <h3 className="text-xl font-semibold">
+                      {request.type} Request
+                    </h3>
                     <div className="mt-2">
                       <select
                         value={request.status}
@@ -329,16 +342,28 @@ export default function ClientPage() {
                         disabled={isLoading(`requestStatus-${request.id}`)}
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <option value="ACTIVE" className="bg-white text-gray-700">
+                        <option
+                          value="ACTIVE"
+                          className="bg-white text-gray-700"
+                        >
                           🟢 Active
                         </option>
-                        <option value="COMPLETED" className="bg-white text-blue-700">
+                        <option
+                          value="COMPLETED"
+                          className="bg-white text-blue-700"
+                        >
                           ✅ Completed
                         </option>
-                        <option value="CANCELLED" className="bg-white text-red-700">
+                        <option
+                          value="CANCELLED"
+                          className="bg-white text-red-700"
+                        >
                           ❌ Cancelled
                         </option>
-                        <option value="ON_HOLD" className="bg-white text-yellow-700">
+                        <option
+                          value="ON_HOLD"
+                          className="bg-white text-yellow-700"
+                        >
                           ⏸️ On Hold
                         </option>
                       </select>
@@ -346,7 +371,8 @@ export default function ClientPage() {
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="text-sm text-gray-500">
-                      Created: {new Date(request.createdAt).toLocaleDateString()}
+                      Created:{" "}
+                      {new Date(request.createdAt).toLocaleDateString()}
                     </div>
                     {collapsedRequests.has(request.id) ? (
                       <ChevronDown className="h-5 w-5 text-gray-400" />
@@ -378,7 +404,9 @@ export default function ClientPage() {
           ))}
           {client.requests.length === 0 && (
             <div className="text-center py-8 bg-white rounded-lg shadow-sm">
-              <p className="text-gray-500">No requests yet. Create your first request to get started.</p>
+              <p className="text-gray-500">
+                No requests yet. Create your first request to get started.
+              </p>
             </div>
           )}
         </div>
@@ -387,7 +415,9 @@ export default function ClientPage() {
         <div className="space-y-6">
           {/* Client Checklist - Moved above Recent Activity */}
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Client Checklist</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Client Checklist
+            </h2>
             <div className="bg-white rounded-lg shadow-sm p-6">
               <ChecklistList
                 checklist={client.checklist}
@@ -397,13 +427,23 @@ export default function ClientPage() {
             </div>
           </div>
 
+          {/* Documents */}
+          <div className="mb-6">
+            <DocumentList clientId={client.id} onUpdate={loadClient} />
+          </div>
+
           {/* Recent Activity */}
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Recent Activity
+            </h2>
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
                 {client.interactions.map((interaction) => (
-                  <div key={interaction.id} className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
+                  <div
+                    key={interaction.id}
+                    className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg"
+                  >
                     <Clock className="h-5 w-5 text-gray-400 mt-1 flex-shrink-0" />
                     <div>
                       <p className="text-sm text-gray-600">
@@ -414,7 +454,9 @@ export default function ClientPage() {
                   </div>
                 ))}
                 {client.interactions.length === 0 && (
-                  <p className="text-center text-gray-500 py-4">No recent activity</p>
+                  <p className="text-center text-gray-500 py-4">
+                    No recent activity
+                  </p>
                 )}
               </div>
             </div>
@@ -451,7 +493,7 @@ export default function ClientPage() {
             </Button>
             <Button
               onClick={handleAddInteraction}
-              isLoading={isLoading('addInteraction')}
+              isLoading={isLoading("addInteraction")}
             >
               Add
             </Button>
@@ -488,7 +530,7 @@ export default function ClientPage() {
             </Button>
             <Button
               onClick={handleAddRequest}
-              isLoading={isLoading('addRequest')}
+              isLoading={isLoading("addRequest")}
             >
               Add Request
             </Button>
@@ -497,4 +539,4 @@ export default function ClientPage() {
       </Modal>
     </div>
   );
-} 
+}

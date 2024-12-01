@@ -30,6 +30,7 @@ model Client {
   @@index([name])
   @@index([email])
   @@index([pinned])
+  Document Document[]
 }
 
 model Process {
@@ -269,11 +270,21 @@ model FinancialGoal {
 }
 
 model Document {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  name       String
-  url        String
-  type       String
-  uploadedAt DateTime @default(now())
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  clientId    String   @db.ObjectId
+  name        String
+  url         String
+  type        String   // CONTRACT, ID, FINANCIAL, PROPERTY, OTHER
+  description String?
+  size        Int?
+  mimeType    String?
+  uploadedAt  DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([type])
 }
 
 model EmailQueue {
