@@ -315,6 +315,8 @@ export default function PropertySearch({
             setShowEmailModal(false);
             setProperties([]);
           }}
+          clientId={clientId}
+          requirementId={requirementId}
         />
       )}
     </div>

@@ -21,9 +21,11 @@ interface Props {
   onClose: () => void;
   onSubmit: () => void;
   properties: GatheredProperty[];
+  clientId: string;
+  requirementId: string;
 }
 
-export default function EmailTemplateModal({ isOpen, onClose, properties, onSubmit }: Props) {
+export default function EmailTemplateModal({ isOpen, onClose, properties, onSubmit, clientId, requirementId }: Props) {
   const [subject, setSubject] = useState('Property Recommendations');
   const [message, setMessage] = useState('');
   const { addToast } = useToast();
@@ -34,7 +36,7 @@ export default function EmailTemplateModal({ isOpen, onClose, properties, onSubm
     setLoading('sendEmail', true);
 
     try {
-      const response = await fetch('/api/email', {
+      const response = await fetch(`/api/clients/${clientId}/requirements/${requirementId}/email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

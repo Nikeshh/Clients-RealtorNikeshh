@@ -121,43 +121,6 @@ export default function RequirementList({ requirements, clientId, requestId, onU
     }
   };
 
-  const handleSendEmail = async (requirementId: string, emailData: any) => {
-    setLoading('sendEmail', true);
-    try {
-      const response = await fetch(`/api/email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...emailData,
-          template: 'PropertyEmail',
-        }),
-      });
-
-      if (!response.ok) throw new Error('Failed to send email');
-      
-      // Create interaction for email sent
-      await fetch(`/api/clients/${clientId}/interactions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'EMAIL_SENT',
-          description: `Sent property recommendations email`,
-          requestId,
-          requirementId,
-        }),
-      });
-      
-      addToast('Email sent successfully', 'success');
-      setShowEmailModal(false);
-      onUpdate();
-    } catch (error) {
-      console.error('Error:', error);
-      addToast('Failed to send email', 'error');
-    } finally {
-      setLoading('sendEmail', false);
-    }
-  };
-
   const handleAddChecklist = async (requirementId: string, text: string) => {
     setLoading('addChecklist', true);
     try {
@@ -453,6 +416,8 @@ export default function RequirementList({ requirements, clientId, requestId, onU
             onUpdate();
           }}
           properties={selectedRequirement.gatheredProperties}
+          clientId={clientId}
+          requirementId={selectedRequirement.id}
         />
       )}
 

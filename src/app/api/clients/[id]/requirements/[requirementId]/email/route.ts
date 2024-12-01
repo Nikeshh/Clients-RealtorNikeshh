@@ -1,15 +1,25 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from '@/lib/api-middleware';
-import prisma from '@/lib/prisma';
-import { Resend } from 'resend';
-import PropertyEmail from '@/emails/PropertyEmail';
+import { NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/api-middleware";
+import prisma from "@/lib/prisma";
+import PropertyEmail from "@/emails/PropertyEmail";
+import nodemailer from "nodemailer";
+import { renderAsync } from "@react-email/render";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Create reusable transporter object using SMTP transport
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: Number(process.env.SMTP_PORT),
+  secure: Boolean(process.env.SMTP_SECURE), // true for 465, false for other ports
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASSWORD,
+  },
+});
 
 export const POST = withAuth(async (request: NextRequest) => {
   try {
-    const clientId = request.url.split('/clients/')[1].split('/')[0];
-    const requirementId = request.url.split('/requirements/')[1].split('/')[0];
+    const clientId = request.url.split("/clients/")[1].split("/")[0];
+    const requirementId = request.url.split("/requirements/")[1].split("/")[0];
     const { subject, message, properties } = await request.json();
 
     // Get the client's email
@@ -19,39 +29,51 @@ export const POST = withAuth(async (request: NextRequest) => {
     });
 
     if (!client) {
-      return NextResponse.json(
-        { error: 'Client not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }
 
-    // Send email using Resend
-    const { data, error } = await resend.emails.send({
-      from: 'Real Estate CRM <properties@yourdomain.com>',
-      to: client.email,
-      subject: subject,
-      react: PropertyEmail({
-        clientName: client.name,
-        message: message,
-        properties: properties.map((property: any) => ({
-          title: property.title,
-          address: property.address,
-          price: property.price,
-          imageUrl: property.images?.[0],
-          link: property.link,
-        })),
-      }),
+    let emailComponent;
+    let template = "PropertyEmail";
+    switch (template) {
+      case "PropertyEmail":
+        emailComponent = PropertyEmail({
+          clientName: client.name,
+          message: message,
+          properties: properties.map((property: any) => ({
+            title: property.title,
+            address: property.address,
+            price: property.price,
+            imageUrl: property.images?.[0],
+            link: property.link,
+          })),
+        });
+        break;
+      default:
+        return NextResponse.json(
+          { error: "Invalid template" },
+          { status: 400 }
+        );
+    }
+
+    const to = client.email;
+
+    // Render React component to HTML
+    const html = await renderAsync(emailComponent);
+
+    // Send mail with defined transport object
+    const info = await transporter.sendMail({
+      from:
+        process.env.EMAIL_FROM || '"Real Estate CRM" <noreply@yourdomain.com>',
+      to,
+      subject,
+      html,
     });
-
-    if (error) {
-      throw new Error('Failed to send email');
-    }
 
     // Create an interaction record
     await prisma.interaction.create({
       data: {
         clientId,
-        type: 'EMAIL_SENT',
+        type: "EMAIL_SENT",
         description: `Email sent: ${subject}`,
         requirementId,
       },
@@ -63,17 +85,17 @@ export const POST = withAuth(async (request: NextRequest) => {
         to: client.email,
         subject,
         content: message,
-        status: 'SENT',
+        status: "SENT",
         sentAt: new Date(),
       },
     });
 
-    return NextResponse.json({ success: true, messageId: data?.id });
+    return NextResponse.json({ success: true, messageId: info.messageId });
   } catch (error) {
-    console.error('Error:', error);
+    console.error("Error:", error);
     return NextResponse.json(
-      { error: 'Failed to send email' },
+      { error: "Failed to send email" },
       { status: 500 }
     );
   }
-}); 
+});
