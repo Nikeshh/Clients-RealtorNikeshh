@@ -1,44 +1,70 @@
 'use client';
 
 import { useState } from 'react';
-import Modal from './ui/Modal';
+import { useToast } from '@/components/ui/toast-context';
+import { useLoadingStates } from '@/hooks/useLoadingStates';
 import Button from './Button';
+import Modal from './ui/Modal';
 
 interface Property {
-  id: string;
   title: string;
   address: string;
   price: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  area?: number;
+  link?: string;
   images?: string[];
 }
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: { subject: string; message: string; propertyIds: string[] }) => void;
   properties: Property[];
-  isLoading?: boolean;
+  onSubmit: () => void;
 }
 
-export default function EmailTemplateModal({ isOpen, onClose, onSubmit, properties, isLoading }: Props) {
-  const [subject, setSubject] = useState('Property Suggestions for Your Review');
+export default function EmailTemplateModal({ isOpen, onClose, properties, onSubmit }: Props) {
+  const [subject, setSubject] = useState('Property Recommendations');
   const [message, setMessage] = useState('');
-  const [selectedProperties, setSelectedProperties] = useState<string[]>(properties.map(p => p.id));
+  const { addToast } = useToast();
+  const { setLoading, isLoading } = useLoadingStates();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({
-      subject,
-      message,
-      propertyIds: selectedProperties,
-    });
+    setLoading('sendEmail', true);
+
+    try {
+      const response = await fetch('/api/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject,
+          message,
+          properties,
+          template: 'PropertyEmail',
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to send email');
+      
+      addToast('Email sent successfully', 'success');
+      onSubmit();
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to send email', 'error');
+    } finally {
+      setLoading('sendEmail', false);
+    }
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Send Property Email">
+    <Modal isOpen={isOpen} onClose={onClose} title="Send Properties">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700">Subject</label>
+          <label className="block text-sm font-medium text-gray-700">
+            Subject
+          </label>
           <input
             type="text"
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
@@ -49,42 +75,40 @@ export default function EmailTemplateModal({ isOpen, onClose, onSubmit, properti
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Message</label>
+          <label className="block text-sm font-medium text-gray-700">
+            Message
+          </label>
           <textarea
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             rows={4}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Add a personal message..."
-            required
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Select Properties to Include
-          </label>
-          <div className="space-y-2 max-h-60 overflow-y-auto">
-            {properties.map((property) => (
-              <label key={property.id} className="flex items-start p-2 border rounded-lg">
-                <input
-                  type="checkbox"
-                  className="mt-1"
-                  checked={selectedProperties.includes(property.id)}
-                  onChange={(e) => {
-                    setSelectedProperties(prev =>
-                      e.target.checked
-                        ? [...prev, property.id]
-                        : prev.filter(id => id !== property.id)
-                    );
-                  }}
-                />
-                <div className="ml-3">
-                  <p className="font-medium">{property.title}</p>
-                  <p className="text-sm text-gray-500">{property.address}</p>
-                  <p className="text-sm">${property.price.toLocaleString()}</p>
+          <h3 className="text-sm font-medium text-gray-700 mb-2">
+            Selected Properties ({properties.length})
+          </h3>
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {properties.map((property, index) => (
+              <div
+                key={index}
+                className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg"
+              >
+                {property.images?.[0] && (
+                  <img
+                    src={property.images[0]}
+                    alt={property.title}
+                    className="w-12 h-12 object-cover rounded"
+                  />
+                )}
+                <div>
+                  <div className="font-medium">{property.title}</div>
+                  <div className="text-sm text-gray-500">{property.address}</div>
                 </div>
-              </label>
+              </div>
             ))}
           </div>
         </div>
@@ -94,13 +118,13 @@ export default function EmailTemplateModal({ isOpen, onClose, onSubmit, properti
             type="button"
             variant="secondary"
             onClick={onClose}
-            disabled={isLoading}
+            disabled={isLoading('sendEmail')}
           >
             Cancel
           </Button>
           <Button
             type="submit"
-            isLoading={isLoading}
+            isLoading={isLoading('sendEmail')}
           >
             Send Email
           </Button>

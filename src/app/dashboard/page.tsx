@@ -2,276 +2,229 @@
 
 import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/toast-context';
-import LoadingSpinner from '@/components/LoadingSpinner';
 import { useLoadingStates } from '@/hooks/useLoadingStates';
-import { formatCurrency } from '@/lib/utils';
-import Link from 'next/link';
 import { 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
-  Building2, 
-  Users,
-  Calendar 
+  Users, DollarSign, ClipboardList, Clock, 
+  CheckCircle, AlertCircle, Building2, Calendar 
 } from 'lucide-react';
+import Link from 'next/link';
 
 interface DashboardStats {
-  totalRevenue: number;
-  totalCommissions: number;
-  pendingCommissions: number;
-  monthlyRevenue: number;
-  monthlyGrowth: number;
-  activeDeals: number;
-  recentTransactions: Array<{
-    id: string;
-    date: string;
-    type: 'INCOME' | 'EXPENSE';
-    amount: number;
-    description: string;
-    category: string;
-  }>;
-  topProperties: Array<{
-    id: string;
-    title: string;
-    commission: number;
-    status: string;
-  }>;
+  overview: {
+    activeClients: number;
+    totalRequests: number;
+    monthlyRevenue: number;
+    pendingCommissions: number;
+    transactionCount: number;
+    pendingCommissionCount: number;
+  };
+  recentActivity: {
+    interactions: Array<{
+      id: string;
+      type: string;
+      description: string;
+      date: string;
+      client: { name: string; };
+    }>;
+    upcomingMeetings: Array<{
+      id: string;
+      title: string;
+      scheduledDate: string;
+      client: { name: string; };
+    }>;
+    activeProcesses: Array<{
+      id: string;
+      title: string;
+      dueDate: string | null;
+      request: {
+        client: { name: string; };
+      };
+    }>;
+  };
+  analytics: {
+    requestsByType: Record<string, number>;
+    clientsByStatus: Record<string, number>;
+  };
 }
 
-const defaultStats: DashboardStats = {
-  totalRevenue: 0,
-  totalCommissions: 0,
-  pendingCommissions: 0,
-  monthlyRevenue: 0,
-  monthlyGrowth: 0,
-  activeDeals: 0,
-  recentTransactions: [],
-  topProperties: []
-};
-
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats>(defaultStats);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const { addToast } = useToast();
   const { setLoading, isLoading } = useLoadingStates();
-  const [error, setError] = useState<string | null>(null);
-  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   useEffect(() => {
-    loadDashboardStats();
+    loadStats();
   }, []);
 
-  const loadDashboardStats = async () => {
+  const loadStats = async () => {
     setLoading('loadStats', true);
-    setError(null);
     try {
       const response = await fetch('/api/dashboard/stats');
-      if (!response.ok) throw new Error('Failed to fetch dashboard stats');
+      if (!response.ok) throw new Error('Failed to fetch stats');
       const data = await response.json();
-      setStats({
-        totalRevenue: Number(data.totalRevenue) || 0,
-        totalCommissions: Number(data.totalCommissions) || 0,
-        pendingCommissions: Number(data.pendingCommissions) || 0,
-        monthlyRevenue: Number(data.monthlyRevenue) || 0,
-        monthlyGrowth: Number(data.monthlyGrowth) || 0,
-        activeDeals: Number(data.activeDeals) || 0,
-        recentTransactions: data.recentTransactions || [],
-        topProperties: data.topProperties || []
-      });
+      setStats(data);
     } catch (error) {
       console.error('Error:', error);
-      setError('Failed to load dashboard statistics');
       addToast('Failed to load dashboard statistics', 'error');
     } finally {
       setLoading('loadStats', false);
-      setInitialLoadComplete(true);
     }
   };
 
-  // Show loading spinner during initial load
-  if (!initialLoadComplete) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <LoadingSpinner size="large" />
-      </div>
-    );
-  }
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
 
-  // Show error state if there's an error after initial load
-  if (error) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900">Error</h2>
-          <p className="mt-2 text-gray-600">{error}</p>
-          <button
-            onClick={loadDashboardStats}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Show placeholder if no stats are available
   if (!stats) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900">No Data Available</h2>
-          <p className="mt-2 text-gray-600">Unable to load dashboard statistics</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Dashboard</h1>
+    <div className="container mx-auto py-6 px-4">
+      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        {/* Revenue Card */}
-        <div className="bg-white rounded-lg shadow p-6">
+      {/* Overview Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.totalRevenue)}</p>
+              <p className="text-sm text-gray-500">Active Clients</p>
+              <p className="text-2xl font-semibold">{stats.overview.activeClients}</p>
             </div>
-            <div className="bg-blue-100 p-3 rounded-full">
-              <DollarSign className="h-6 w-6 text-blue-600" />
-            </div>
+            <Users className="h-10 w-10 text-blue-500" />
           </div>
         </div>
 
-        {/* Monthly Revenue Card */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Monthly Revenue</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.monthlyRevenue)}</p>
-              <div className="flex items-center mt-2">
-                {stats.monthlyGrowth >= 0 ? (
-                  <>
-                    <TrendingUp className="h-4 w-4 text-green-500" />
-                    <span className="text-sm text-green-500">{stats.monthlyGrowth}% up from last month</span>
-                  </>
-                ) : (
-                  <>
-                    <TrendingDown className="h-4 w-4 text-red-500" />
-                    <span className="text-sm text-red-500">{Math.abs(stats.monthlyGrowth)}% down from last month</span>
-                  </>
-                )}
-              </div>
+              <p className="text-sm text-gray-500">Monthly Revenue</p>
+              <p className="text-2xl font-semibold">{formatCurrency(stats.overview.monthlyRevenue)}</p>
             </div>
-            <div className="bg-green-100 p-3 rounded-full">
-              <TrendingUp className="h-6 w-6 text-green-600" />
-            </div>
+            <DollarSign className="h-10 w-10 text-green-500" />
           </div>
         </div>
 
-        {/* Active Deals Card */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Active Deals</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.activeDeals}</p>
-              <p className="text-sm text-gray-500 mt-2">
-                {formatCurrency(stats.pendingCommissions)} in pending commissions
-              </p>
+              <p className="text-sm text-gray-500">Active Requests</p>
+              <p className="text-2xl font-semibold">{stats.overview.totalRequests}</p>
             </div>
-            <div className="bg-purple-100 p-3 rounded-full">
-              <Building2 className="h-6 w-6 text-purple-600" />
+            <ClipboardList className="h-10 w-10 text-purple-500" />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">Pending Commissions</p>
+              <p className="text-2xl font-semibold">{formatCurrency(stats.overview.pendingCommissions)}</p>
             </div>
+            <Clock className="h-10 w-10 text-orange-500" />
           </div>
         </div>
       </div>
 
-      {/* Recent Activity and Top Properties */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Transactions */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Recent Transactions</h2>
-              <Link 
-                href="/finances/transactions" 
-                className="text-sm text-blue-600 hover:text-blue-800"
-              >
-                View All
-              </Link>
-            </div>
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Recent Activity */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
             <div className="space-y-4">
-              {stats.recentTransactions?.map((transaction) => (
-                <div key={transaction.id} className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className={`p-2 rounded-full ${
-                      transaction.type === 'INCOME' ? 'bg-green-100' : 'bg-red-100'
-                    }`}>
-                      {transaction.type === 'INCOME' ? (
-                        <TrendingUp className={`h-4 w-4 text-green-600`} />
-                      ) : (
-                        <TrendingDown className={`h-4 w-4 text-red-600`} />
-                      )}
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-900">{transaction.description}</p>
-                      <p className="text-sm text-gray-500">{transaction.category}</p>
-                    </div>
+              {stats.recentActivity.interactions.map((interaction) => (
+                <div key={interaction.id} className="flex items-start gap-4">
+                  <div className="bg-blue-100 rounded-full p-2">
+                    <CheckCircle className="h-5 w-5 text-blue-600" />
                   </div>
-                  <div className="text-right">
-                    <p className={`text-sm font-medium ${
-                      transaction.type === 'INCOME' ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {transaction.type === 'INCOME' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                  <div>
+                    <p className="text-sm text-gray-500">
+                      {new Date(interaction.date).toLocaleDateString()}
                     </p>
-                    <p className="text-xs text-gray-500">
-                      {new Date(transaction.date).toLocaleDateString()}
-                    </p>
+                    <p className="font-medium">{interaction.client.name}</p>
+                    <p className="text-sm">{interaction.description}</p>
                   </div>
                 </div>
               ))}
-              {stats.recentTransactions?.length === 0 && (
-                <p className="text-center text-gray-500">No recent transactions</p>
-              )}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h2 className="text-lg font-semibold mb-4">Upcoming Meetings</h2>
+            <div className="space-y-4">
+              {stats.recentActivity.upcomingMeetings.map((meeting) => (
+                <div key={meeting.id} className="flex items-start gap-4">
+                  <div className="bg-purple-100 rounded-full p-2">
+                    <Calendar className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">
+                      {new Date(meeting.scheduledDate).toLocaleDateString()}
+                    </p>
+                    <p className="font-medium">{meeting.title}</p>
+                    <p className="text-sm">with {meeting.client.name}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Top Properties */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Top Properties</h2>
-              <Link 
-                href="/properties" 
-                className="text-sm text-blue-600 hover:text-blue-800"
-              >
-                View All
-              </Link>
-            </div>
-            <div className="space-y-4">
-              {stats.topProperties?.map((property) => (
-                <Link 
-                  key={property.id}
-                  href={`/properties/${property.id}`}
-                  className="block hover:bg-gray-50 -mx-6 px-6 py-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{property.title}</p>
-                      <p className="text-xs text-gray-500">{property.status}</p>
-                    </div>
-                    <p className="text-sm font-medium text-blue-600">
-                      {formatCurrency(property.commission)}
-                    </p>
-                  </div>
-                </Link>
+        {/* Analytics */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h2 className="text-lg font-semibold mb-4">Requests by Type</h2>
+            <div className="space-y-2">
+              {Object.entries(stats.analytics.requestsByType).map(([type, count]) => (
+                <div key={type} className="flex items-center justify-between">
+                  <span className="text-sm">{type}</span>
+                  <span className="font-medium">{count}</span>
+                </div>
               ))}
-              {stats.topProperties?.length === 0 && (
-                <p className="text-center text-gray-500">No properties found</p>
-              )}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h2 className="text-lg font-semibold mb-4">Clients by Status</h2>
+            <div className="space-y-2">
+              {Object.entries(stats.analytics.clientsByStatus).map(([status, count]) => (
+                <div key={status} className="flex items-center justify-between">
+                  <span className="text-sm">{status}</span>
+                  <span className="font-medium">{count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h2 className="text-lg font-semibold mb-4">Active Processes</h2>
+            <div className="space-y-4">
+              {stats.recentActivity.activeProcesses.map((process) => (
+                <div key={process.id} className="flex items-start gap-4">
+                  <div className="bg-green-100 rounded-full p-2">
+                    <Building2 className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    {process.dueDate && (
+                      <p className="text-sm text-gray-500">
+                        Due: {new Date(process.dueDate).toLocaleDateString()}
+                      </p>
+                    )}
+                    <p className="font-medium">{process.title}</p>
+                    <p className="text-sm">for {process.request.client.name}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

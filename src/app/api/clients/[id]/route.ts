@@ -18,17 +18,16 @@ export const GET = withAuth(async (request: NextRequest) => {
             },
             requirements: {
               include: {
-                gatheredProperties: {
-                  include: {
-                    property: true,
-                  },
-                },
+                gatheredProperties: true,
                 rentalPreferences: true,
                 purchasePreferences: true,
                 checklist: true,
               },
             },
             interactions: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
           },
         },
         checklist: true,
@@ -75,16 +74,16 @@ export const PATCH = withAuth(async (request: NextRequest) => {
             },
             requirements: {
               include: {
-                gatheredProperties: {
-                  include: {
-                    property: true,
-                  },
-                },
+                gatheredProperties: true,
                 rentalPreferences: true,
                 purchasePreferences: true,
+                checklist: true,
               },
             },
             interactions: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
           },
         },
         checklist: true,

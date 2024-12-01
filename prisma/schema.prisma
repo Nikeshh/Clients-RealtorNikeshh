@@ -91,69 +91,12 @@ model ClientRequirement {
 model GatheredProperty {
   id              String   @id @default(auto()) @map("_id") @db.ObjectId
   requirementId   String   @db.ObjectId
-  propertyId      String   @db.ObjectId
   notes           String?
   status          String   @default("Pending")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   requirement     ClientRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
-  property        Property          @relation(fields: [propertyId], references: [id])
-}
-
-model Property {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  title       String
-  address     String
-  price       Float
-  type        String   // House, Apartment, Condo, Land
-  listingType String   @default("SALE")  // SALE or RENTAL
-  bedrooms    Int?
-  bathrooms   Int?
-  area        Float
-  status      String   @default("Available")
-  description String?
-  features    String[]
-  images      String[]
-  source      String
-  location    String
-  yearBuilt   Int?     // For property age matching
-  link        String?  // Add this line
-  
-  // Rental specific fields
-  furnished   Boolean? // For rental properties
-  petsAllowed Boolean? // For rental properties
-  leaseTerm   String?  // Short-term, Long-term
-  
-  // Purchase specific fields
-  lotSize     Float?   // For land/houses
-  basement    Boolean? @default(false)
-  garage      Boolean? @default(false)
-  parkingSpaces Int?
-  propertyStyle String? // Modern, Traditional, Contemporary, etc.
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  sharedWith         SharedProperty[]
-  gatheredProperties GatheredProperty[]
-
-  commissions   Commission[]
-  transactions  Transaction[]
-
-  @@index([type])
-  @@index([listingType])
-  @@index([status])
-  @@index([location])
-}
-
-model SharedProperty {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  propertyId  String   @db.ObjectId
-  status      String   @default("Shared")
-  sharedDate  DateTime @default(now())
-
-  property    Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 }
 
 model Interaction {
@@ -289,8 +232,6 @@ model Transaction {
   // Relations
   clientId    String?        @db.ObjectId
   client      Client?        @relation(fields: [clientId], references: [id])
-  propertyId  String?        @db.ObjectId
-  property    Property?      @relation(fields: [propertyId], references: [id])
   commissionId String?       @db.ObjectId
   commission  Commission?    @relation(fields: [commissionId], references: [id])
 }
@@ -307,8 +248,6 @@ model Commission {
   updatedAt     DateTime        @updatedAt
 
   // Relations
-  propertyId    String          @db.ObjectId
-  property      Property        @relation(fields: [propertyId], references: [id])
   clientId      String          @db.ObjectId
   client        Client          @relation(fields: [clientId], references: [id])
   requirementId String?         @db.ObjectId

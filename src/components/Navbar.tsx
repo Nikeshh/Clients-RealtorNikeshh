@@ -23,7 +23,6 @@ export default function Navbar() {
   const navigationItems = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
     { name: 'Clients', href: '/clients', icon: Users },
-    { name: 'Properties', href: '/properties', icon: Building2 },
     { name: 'Tools', href: '/tools', icon: Wrench },
     {
       name: 'Finances',
@@ -42,7 +41,6 @@ export default function Navbar() {
     // Handle root paths
     if (href === '/dashboard' && pathname === '/dashboard') return true;
     if (href === '/clients' && pathname.startsWith('/clients')) return true;
-    if (href === '/properties' && pathname.startsWith('/properties')) return true;
     if (href === '/tools' && pathname.startsWith('/tools')) return true;
     
     // Special handling for finances section
