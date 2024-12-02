@@ -6,7 +6,7 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import { useLoadingStates } from '@/hooks/useLoadingStates';
 import Button from '@/components/Button';
 import Modal from '@/components/ui/Modal';
-import { Plus, Filter } from 'lucide-react';
+import { Plus, Filter, PencilIcon } from 'lucide-react';
 import Link from 'next/link';
 
 interface Lead {
@@ -21,6 +21,31 @@ interface Lead {
   createdAt: string;
   convertedAt?: string;
 }
+
+const LEAD_STAGES = {
+  NEW: {
+    label: 'New',
+    color: 'bg-blue-100 text-blue-800'
+  },
+  CONTACTED: {
+    label: 'Contacted',
+    color: 'bg-yellow-100 text-yellow-800'
+  },
+  QUALIFIED: {
+    label: 'Qualified',
+    color: 'bg-green-100 text-green-800'
+  },
+  CONVERTED: {
+    label: 'Converted',
+    color: 'bg-purple-100 text-purple-800'
+  },
+  LOST: {
+    label: 'Lost',
+    color: 'bg-red-100 text-red-800'
+  }
+} as const;
+
+type LeadStage = keyof typeof LEAD_STAGES;
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -43,6 +68,9 @@ export default function LeadsPage() {
     source: 'WEBSITE',
     notes: '',
   });
+
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => {
     loadLeads();
@@ -111,6 +139,31 @@ export default function LeadsPage() {
       addToast('Failed to convert lead', 'error');
     } finally {
       setLoading(`convert-${leadId}`, false);
+    }
+  };
+
+  const handleStageChange = async (leadId: string, newStatus: LeadStage) => {
+    setLoading(`updateStage-${leadId}`, true);
+    try {
+      const response = await fetch(`/api/leads/${leadId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: newStatus,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update lead status');
+
+      addToast('Lead status updated successfully', 'success');
+      loadLeads(); // Refresh the leads list
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to update lead status', 'error');
+    } finally {
+      setLoading(`updateStage-${leadId}`, false);
     }
   };
 
@@ -226,6 +279,9 @@ export default function LeadsPage() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Created
               </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Notes
+              </th>
               <th className="relative px-6 py-3">
                 <span className="sr-only">Actions</span>
               </th>
@@ -249,16 +305,43 @@ export default function LeadsPage() {
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    lead.status === 'CONVERTED' ? 'bg-green-100 text-green-800' :
-                    lead.status === 'LOST' ? 'bg-red-100 text-red-800' :
-                    'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {lead.status}
-                  </span>
+                  <select
+                    value={lead.status}
+                    onChange={(e) => handleStageChange(lead.id, e.target.value as LeadStage)}
+                    disabled={isLoading(`updateStage-${lead.id}`)}
+                    className={`px-2 py-1 text-sm font-semibold rounded-full border-0 
+                      ${LEAD_STAGES[lead.status as LeadStage].color}
+                      disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    {Object.entries(LEAD_STAGES).map(([value, { label }]) => (
+                      <option 
+                        key={value} 
+                        value={value}
+                        disabled={lead.status === 'CONVERTED' && value !== 'CONVERTED'}
+                      >
+                        {label}
+                      </option>
+                    ))}
+                  </select>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {new Date(lead.createdAt).toLocaleDateString()}
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex items-center gap-2">
+                    <div className="max-w-xs truncate text-sm text-gray-500">
+                      {lead.notes || 'No notes'}
+                    </div>
+                    <button
+                      onClick={() => {
+                        setEditingLead(lead);
+                        setShowEditModal(true);
+                      }}
+                      className="p-1 hover:bg-gray-100 rounded"
+                    >
+                      <PencilIcon className="h-4 w-4 text-gray-400" />
+                    </button>
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <Button
@@ -364,6 +447,228 @@ export default function LeadsPage() {
             >
               Add Lead
             </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Lead Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setEditingLead(null);
+        }}
+        title={`Edit Lead: ${editingLead?.firstName} ${editingLead?.lastName}`}
+      >
+        <div className="space-y-4">
+          {/* Contact Information */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">First Name</label>
+              <input
+                type="text"
+                value={editingLead?.firstName || ''}
+                onChange={(e) => setEditingLead(lead => lead ? {
+                  ...lead,
+                  firstName: e.target.value
+                } : null)}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Last Name</label>
+              <input
+                type="text"
+                value={editingLead?.lastName || ''}
+                onChange={(e) => setEditingLead(lead => lead ? {
+                  ...lead,
+                  lastName: e.target.value
+                } : null)}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Email</label>
+            <input
+              type="email"
+              value={editingLead?.email || ''}
+              onChange={(e) => setEditingLead(lead => lead ? {
+                ...lead,
+                email: e.target.value
+              } : null)}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Phone</label>
+            <input
+              type="tel"
+              value={editingLead?.phone || ''}
+              onChange={(e) => setEditingLead(lead => lead ? {
+                ...lead,
+                phone: e.target.value
+              } : null)}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Source</label>
+              <select
+                value={editingLead?.source || 'WEBSITE'}
+                onChange={(e) => setEditingLead(lead => lead ? {
+                  ...lead,
+                  source: e.target.value
+                } : null)}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              >
+                <option value="WEBSITE">Website</option>
+                <option value="REFERRAL">Referral</option>
+                <option value="SOCIAL">Social Media</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Status</label>
+              <select
+                value={editingLead?.status}
+                onChange={(e) => setEditingLead(lead => lead ? {
+                  ...lead,
+                  status: e.target.value as LeadStage
+                } : null)}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              >
+                {Object.entries(LEAD_STAGES).map(([value, { label }]) => (
+                  <option 
+                    key={value} 
+                    value={value}
+                    disabled={editingLead?.status === 'CONVERTED' && value !== 'CONVERTED'}
+                  >
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Notes</label>
+            <textarea
+              value={editingLead?.notes || ''}
+              onChange={(e) => setEditingLead(lead => lead ? {
+                ...lead,
+                notes: e.target.value
+              } : null)}
+              rows={4}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              placeholder="Add any relevant notes about this lead..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Contact History</label>
+            <div className="mt-1 space-y-2">
+              <div className="text-sm text-gray-500">
+                Created: {new Date(editingLead?.createdAt || '').toLocaleDateString()}
+              </div>
+              {editingLead?.convertedAt && (
+                <div className="text-sm text-green-600">
+                  Converted: {new Date(editingLead.convertedAt).toLocaleDateString()}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-between gap-3 mt-6">
+            <Button
+              onClick={async () => {
+                if (!editingLead?.id) return;
+                
+                if (!confirm('Are you sure you want to delete this lead? This action cannot be undone.')) {
+                  return;
+                }
+
+                setLoading('deleteLead', true);
+                try {
+                  const response = await fetch(`/api/leads/${editingLead.id}`, {
+                    method: 'DELETE',
+                  });
+
+                  if (!response.ok) throw new Error('Failed to delete lead');
+
+                  addToast('Lead deleted successfully', 'success');
+                  loadLeads();
+                  setShowEditModal(false);
+                  setEditingLead(null);
+                } catch (error) {
+                  console.error('Error:', error);
+                  addToast('Failed to delete lead', 'error');
+                } finally {
+                  setLoading('deleteLead', false);
+                }
+              }}
+              variant="danger"
+              isLoading={isLoading('deleteLead')}
+            >
+              Delete Lead
+            </Button>
+
+            <div className="flex gap-2">
+              <Button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingLead(null);
+                }}
+                variant="secondary"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (!editingLead) return;
+                  
+                  setLoading('updateLead', true);
+                  try {
+                    const response = await fetch(`/api/leads/${editingLead.id}`, {
+                      method: 'PATCH',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        firstName: editingLead.firstName,
+                        lastName: editingLead.lastName,
+                        email: editingLead.email,
+                        phone: editingLead.phone,
+                        source: editingLead.source,
+                        status: editingLead.status,
+                        notes: editingLead.notes,
+                      }),
+                    });
+
+                    if (!response.ok) throw new Error('Failed to update lead');
+
+                    addToast('Lead updated successfully', 'success');
+                    loadLeads();
+                    setShowEditModal(false);
+                    setEditingLead(null);
+                  } catch (error) {
+                    console.error('Error:', error);
+                    addToast('Failed to update lead', 'error');
+                  } finally {
+                    setLoading('updateLead', false);
+                  }
+                }}
+                variant="primary"
+                isLoading={isLoading('updateLead')}
+              >
+                Save Changes
+              </Button>
+            </div>
           </div>
         </div>
       </Modal>
