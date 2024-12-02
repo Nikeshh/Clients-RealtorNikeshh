@@ -6,7 +6,7 @@ import UserMenu from './UserMenu'
 import { 
   Home,
   Users,
-  Building2,
+  UserPlus,
   Wrench,
   Wallet,
   BarChart2,
@@ -22,7 +22,7 @@ export default function Navbar() {
 
   const navigationItems = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
-    { name: 'Leads', href: '/leads', icon: Users },
+    { name: 'Leads', href: '/leads', icon: UserPlus },
     { name: 'Clients', href: '/clients', icon: Users },
     { name: 'Tools', href: '/tools', icon: Wrench },
     {

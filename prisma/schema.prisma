@@ -109,17 +109,26 @@ model GatheredProperty {
 
 model Interaction {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  clientId      String   @db.ObjectId
   type          String
   description   String
   notes         String?
   date          DateTime @default(now())
-
-  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  requirement   ClientRequirement? @relation(fields: [requirementId], references: [id])
-  requirementId String? @db.ObjectId
+  
+  // Client relation
+  clientId      String?  @db.ObjectId
+  client        Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  // Request relation
   requestId     String?  @db.ObjectId
   request       Request? @relation(fields: [requestId], references: [id])
+  
+  // Lead relation
+  leadId        String?  @db.ObjectId
+  lead          Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  
+  // Requirement relation
+  requirementId String?  @db.ObjectId
+  requirement   ClientRequirement? @relation(fields: [requirementId], references: [id], onDelete: Cascade)
 }
 
 model Account {
@@ -359,7 +368,7 @@ model Request {
 }
 
 model Lead {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
   firstName        String
   lastName         String
   email           String?
@@ -369,7 +378,20 @@ model Lead {
   notes           String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+  lastContact     DateTime?
   convertedAt     DateTime?
   convertedClientId String?   @db.ObjectId
   convertedClient  Client?   @relation(fields: [convertedClientId], references: [id])
+  interactions    Interaction[]
+
+  leadInteractions LeadInteraction[]
+}
+
+model LeadInteraction {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  type        String   // EMAIL, CALL, NOTE
+  content     String
+  date        DateTime @default(now())
+  leadId      String   @db.ObjectId
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
 }
