@@ -31,6 +31,7 @@ model Client {
   @@index([email])
   @@index([pinned])
   Document Document[]
+  Lead Lead[]
 }
 
 model Process {
@@ -355,4 +356,20 @@ model Request {
   processes   Process[]
   requirements ClientRequirement[]
   interactions Interaction[]
+}
+
+model Lead {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  firstName        String
+  lastName         String
+  email           String?
+  phone           String?
+  source          String    // WEBSITE, REFERRAL, SOCIAL, OTHER
+  status          String    // NEW, CONTACTED, QUALIFIED, CONVERTED, LOST
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  convertedAt     DateTime?
+  convertedClientId String?   @db.ObjectId
+  convertedClient  Client?   @relation(fields: [convertedClientId], references: [id])
 }

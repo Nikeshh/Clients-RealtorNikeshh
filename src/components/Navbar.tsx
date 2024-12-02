@@ -22,6 +22,7 @@ export default function Navbar() {
 
   const navigationItems = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
+    { name: 'Leads', href: '/leads', icon: Users },
     { name: 'Clients', href: '/clients', icon: Users },
     { name: 'Tools', href: '/tools', icon: Wrench },
     {
@@ -40,6 +41,7 @@ export default function Navbar() {
   const isActive = (href: string) => {
     // Handle root paths
     if (href === '/dashboard' && pathname === '/dashboard') return true;
+    if (href === '/leads' && pathname.startsWith('/leads')) return true;
     if (href === '/clients' && pathname.startsWith('/clients')) return true;
     if (href === '/tools' && pathname.startsWith('/tools')) return true;
     
