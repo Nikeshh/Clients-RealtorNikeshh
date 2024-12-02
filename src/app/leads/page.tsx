@@ -139,6 +139,7 @@ export default function LeadsPage() {
                 <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Contact</th>
                 <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Source</th>
                 <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Status</th>
+                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Notes</th>
                 <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Created</th>
                 <th scope="col" className="relative py-3.5 pl-3 pr-4">
                   <span className="sr-only">Actions</span>
@@ -166,6 +167,11 @@ export default function LeadsPage() {
                     }`}>
                       {lead.status}
                     </span>
+                  </td>
+                  <td className="px-3 py-4 text-sm text-gray-500 max-w-xs">
+                    <div className="truncate">
+                      {lead.notes || '-'}
+                    </div>
                   </td>
                   <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                     {new Date(lead.createdAt).toLocaleDateString()}
@@ -290,8 +296,136 @@ export default function LeadsPage() {
       >
         {editingLead && (
           <div className="space-y-4">
-            {/* Same form fields as Add Lead Modal, but with editingLead values */}
-            {/* ... */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">First Name</label>
+                <input
+                  type="text"
+                  value={editingLead.firstName}
+                  onChange={(e) => setEditingLead({ ...editingLead, firstName: e.target.value })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Last Name</label>
+                <input
+                  type="text"
+                  value={editingLead.lastName}
+                  onChange={(e) => setEditingLead({ ...editingLead, lastName: e.target.value })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Email</label>
+              <input
+                type="email"
+                value={editingLead.email}
+                onChange={(e) => setEditingLead({ ...editingLead, email: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Phone</label>
+              <input
+                type="tel"
+                value={editingLead.phone}
+                onChange={(e) => setEditingLead({ ...editingLead, phone: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Source</label>
+              <select
+                value={editingLead.source}
+                onChange={(e) => setEditingLead({ ...editingLead, source: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              >
+                <option value="WEBSITE">Website</option>
+                <option value="REFERRAL">Referral</option>
+                <option value="SOCIAL">Social Media</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Status</label>
+              <select
+                value={editingLead.status}
+                onChange={(e) => setEditingLead({ ...editingLead, status: e.target.value as "NEW" | "CONTACTED" | "QUALIFIED" | "CONVERTED" | "LOST" })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                disabled={editingLead.status === 'CONVERTED'}
+              >
+                <option value="NEW">New</option>
+                <option value="CONTACTED">Contacted</option>
+                <option value="QUALIFIED">Qualified</option>
+                <option value="CONVERTED">Converted</option>
+                <option value="LOST">Lost</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Notes</label>
+              <textarea
+                value={editingLead.notes || ''}
+                onChange={(e) => setEditingLead({ ...editingLead, notes: e.target.value })}
+                rows={3}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingLead(null);
+                }}
+                variant="secondary"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={async () => {
+                  setLoading('updateLead', true);
+                  try {
+                    const response = await fetch(`/api/leads/${editingLead.id}`, {
+                      method: 'PATCH',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        firstName: editingLead.firstName,
+                        lastName: editingLead.lastName,
+                        email: editingLead.email,
+                        phone: editingLead.phone,
+                        source: editingLead.source,
+                        status: editingLead.status,
+                        notes: editingLead.notes,
+                      }),
+                    });
+
+                    if (!response.ok) throw new Error('Failed to update lead');
+
+                    addToast('Lead updated successfully', 'success');
+                    loadLeads();
+                    setShowEditModal(false);
+                    setEditingLead(null);
+                  } catch (error) {
+                    console.error('Error:', error);
+                    addToast('Failed to update lead', 'error');
+                  } finally {
+                    setLoading('updateLead', false);
+                  }
+                }}
+                isLoading={isLoading('updateLead')}
+                disabled={!editingLead.firstName || !editingLead.lastName}
+              >
+                Save Changes
+              </Button>
+            </div>
           </div>
         )}
       </Modal>
