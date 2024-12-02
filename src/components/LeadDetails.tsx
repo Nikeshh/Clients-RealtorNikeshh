@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Mail, Phone, MessageSquare, Calendar, Clock } from 'lucide-react';
+import { Mail, Phone, MessageSquare } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Lead } from './LeadActions';
 
@@ -51,81 +51,36 @@ export default function LeadDetails({ lead }: LeadDetailsProps) {
     }
   };
 
+  const formatEmailContent = (content: string) => {
+    try {
+      const emailData = JSON.parse(content);
+      return (
+        <div className="space-y-2">
+          <div className="font-medium">Subject: {emailData.subject}</div>
+          <div className="text-gray-600">
+            From: {emailData.sender}<br />
+            To: {emailData.recipient}<br />
+            Sent: {new Date(emailData.timestamp).toLocaleString()}
+          </div>
+          <div className="mt-2 text-gray-700 whitespace-pre-wrap">
+            {emailData.body}
+          </div>
+        </div>
+      );
+    } catch {
+      return <span>{content}</span>;
+    }
+  };
+
   return (
     <div className="bg-white shadow sm:rounded-lg">
       <div className="px-4 py-5 sm:px-6">
         <h3 className="text-lg font-medium leading-6 text-gray-900">
-          Lead Details
-        </h3>
-        <p className="mt-1 max-w-2xl text-sm text-gray-500">
-          Contact information and interaction history
-        </p>
-      </div>
-      
-      <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
-        <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
-          <div>
-            <dt className="text-sm font-medium text-gray-500">Full name</dt>
-            <dd className="mt-1 text-sm text-gray-900">
-              {lead.firstName} {lead.lastName}
-            </dd>
-          </div>
-          
-          <div>
-            <dt className="text-sm font-medium text-gray-500">Status</dt>
-            <dd className="mt-1">
-              <span className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                lead.status === 'CONVERTED' ? 'bg-green-100 text-green-800' :
-                lead.status === 'LOST' ? 'bg-red-100 text-red-800' :
-                'bg-blue-100 text-blue-800'
-              }`}>
-                {lead.status}
-              </span>
-            </dd>
-          </div>
-
-          {lead.email && (
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Email</dt>
-              <dd className="mt-1 text-sm text-gray-900">{lead.email}</dd>
-            </div>
-          )}
-
-          {lead.phone && (
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Phone</dt>
-              <dd className="mt-1 text-sm text-gray-900">{lead.phone}</dd>
-            </div>
-          )}
-
-          <div>
-            <dt className="text-sm font-medium text-gray-500">Source</dt>
-            <dd className="mt-1 text-sm text-gray-900">{lead.source}</dd>
-          </div>
-
-          <div>
-            <dt className="text-sm font-medium text-gray-500">Created</dt>
-            <dd className="mt-1 text-sm text-gray-900">
-              {new Date(lead.createdAt).toLocaleDateString()}
-            </dd>
-          </div>
-
-          {lead.notes && (
-            <div className="sm:col-span-2">
-              <dt className="text-sm font-medium text-gray-500">Notes</dt>
-              <dd className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">
-                {lead.notes}
-              </dd>
-            </div>
-          )}
-        </dl>
-      </div>
-
-      <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
-        <h4 className="text-base font-medium text-gray-900 mb-4">
           Interaction History
-        </h4>
-        
+        </h3>
+      </div>
+
+      <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
         {loading ? (
           <div className="text-center py-4">Loading...</div>
         ) : interactions.length > 0 ? (
@@ -147,10 +102,13 @@ export default function LeadDetails({ lead }: LeadDetailsProps) {
                         </span>
                       </div>
                       <div className="flex min-w-0 flex-1 justify-between space-x-4 pt-1.5">
-                        <div>
-                          <p className="text-sm text-gray-500">
-                            {interaction.content}
-                          </p>
+                        <div className="w-full">
+                          <div className="text-sm text-gray-500">
+                            {interaction.type === 'EMAIL' 
+                              ? formatEmailContent(interaction.content)
+                              : interaction.content
+                            }
+                          </div>
                         </div>
                         <div className="whitespace-nowrap text-right text-sm text-gray-500">
                           <time dateTime={interaction.date}>
@@ -165,9 +123,9 @@ export default function LeadDetails({ lead }: LeadDetailsProps) {
             </ul>
           </div>
         ) : (
-          <p className="text-sm text-gray-500 text-center py-4">
+          <div className="text-sm text-gray-500 text-center py-4">
             No interactions recorded yet
-          </p>
+          </div>
         )}
       </div>
     </div>

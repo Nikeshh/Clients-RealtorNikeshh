@@ -45,6 +45,8 @@ export default function LeadActions({ lead, onAction, onEdit }: LeadActionsProps
   const [emailContent, setEmailContent] = useState('');
   const [callNotes, setCallNotes] = useState('');
   const [note, setNote] = useState('');
+  const [emailSubject, setEmailSubject] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
   const { addToast } = useToast();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -94,14 +96,20 @@ export default function LeadActions({ lead, onAction, onEdit }: LeadActionsProps
   };
 
   const handleSendEmail = async () => {
+    if (!emailContent.trim() || !emailSubject.trim()) {
+      addToast('Please fill in both subject and content', 'error');
+      return;
+    }
+
+    setSendingEmail(true);
     try {
-      const response = await fetch(`/api/leads/${lead.id}/communicate`, {
+      const response = await fetch(`/api/leads/${lead.id}/email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          type: 'EMAIL',
+          subject: emailSubject,
           content: emailContent,
         }),
       });
@@ -111,10 +119,13 @@ export default function LeadActions({ lead, onAction, onEdit }: LeadActionsProps
       addToast('Email sent successfully', 'success');
       setShowEmailModal(false);
       setEmailContent('');
+      setEmailSubject('');
       onAction();
     } catch (error) {
       console.error('Error:', error);
       addToast('Failed to send email', 'error');
+    } finally {
+      setSendingEmail(false);
     }
   };
 
@@ -272,7 +283,11 @@ export default function LeadActions({ lead, onAction, onEdit }: LeadActionsProps
       {/* Email Modal */}
       <Modal
         isOpen={showEmailModal}
-        onClose={() => setShowEmailModal(false)}
+        onClose={() => {
+          setShowEmailModal(false);
+          setEmailContent('');
+          setEmailSubject('');
+        }}
         title="Send Email"
       >
         <div className="space-y-4">
@@ -286,6 +301,15 @@ export default function LeadActions({ lead, onAction, onEdit }: LeadActionsProps
             />
           </div>
           <div>
+            <label className="block text-sm font-medium text-gray-700">Subject</label>
+            <input
+              type="text"
+              value={emailSubject}
+              onChange={(e) => setEmailSubject(e.target.value)}
+              className="mt-1 block w-full rounded-md border-gray-300"
+            />
+          </div>
+          <div>
             <label className="block text-sm font-medium text-gray-700">Message</label>
             <textarea
               value={emailContent}
@@ -296,14 +320,19 @@ export default function LeadActions({ lead, onAction, onEdit }: LeadActionsProps
           </div>
           <div className="flex justify-end gap-2">
             <Button
-              onClick={() => setShowEmailModal(false)}
+              onClick={() => {
+                setShowEmailModal(false);
+                setEmailContent('');
+                setEmailSubject('');
+              }}
               variant="secondary"
             >
               Cancel
             </Button>
             <Button
               onClick={handleSendEmail}
-              disabled={!emailContent.trim()}
+              isLoading={sendingEmail}
+              disabled={!emailContent.trim() || !emailSubject.trim() || sendingEmail}
             >
               Send Email
             </Button>

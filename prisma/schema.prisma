@@ -370,8 +370,8 @@ model Lead {
   lastName         String
   email           String?
   phone           String?
-  source          String    // WEBSITE, REFERRAL, SOCIAL, OTHER
-  status          String    // NEW, CONTACTED, QUALIFIED, CONVERTED, LOST
+  source          String    
+  status          String    
   notes           String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -380,13 +380,15 @@ model Lead {
   convertedClientId String?   @db.ObjectId
   convertedClient  Client?   @relation(fields: [convertedClientId], references: [id])
   interactions    LeadInteraction[]
+  emailsSent      Int       @default(0)  // Track number of emails sent
 }
 
 model LeadInteraction {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   type        String   // EMAIL, CALL, NOTE
-  content     String
+  content     String   // JSON string for emails, regular text for others
   date        DateTime @default(now())
   leadId      String   @db.ObjectId
   lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  metadata    Json?    // Additional metadata for the interaction
 }
