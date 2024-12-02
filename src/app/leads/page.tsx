@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/toast-context';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useLoadingStates } from '@/hooks/useLoadingStates';
@@ -8,19 +8,16 @@ import Button from '@/components/Button';
 import Modal from '@/components/ui/Modal';
 import { Plus, Filter } from 'lucide-react';
 import Link from 'next/link';
-import LeadActions from '@/components/LeadActions';
+import LeadActions, { Lead } from '@/components/LeadActions';
+import LeadDetails from '@/components/LeadDetails';
 
-interface Lead {
-  id: string;
+interface NewLead {
   firstName: string;
   lastName: string;
   email: string;
   phone: string;
   source: string;
-  status: 'NEW' | 'CONTACTED' | 'QUALIFIED' | 'CONVERTED' | 'LOST';
-  notes?: string;
-  createdAt: string;
-  convertedAt?: string;
+  notes: string;
 }
 
 export default function LeadsPage() {
@@ -36,7 +33,7 @@ export default function LeadsPage() {
     dateTo: '',
   });
 
-  const [newLead, setNewLead] = useState({
+  const [newLead, setNewLead] = useState<NewLead>({
     firstName: '',
     lastName: '',
     email: '',
@@ -47,6 +44,7 @@ export default function LeadsPage() {
 
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null);
 
   useEffect(() => {
     loadLeads();
@@ -99,6 +97,33 @@ export default function LeadsPage() {
     }
   };
 
+  const handleUpdateLead = async () => {
+    if (!editingLead) return;
+
+    setLoading('updateLead', true);
+    try {
+      const response = await fetch(`/api/leads/${editingLead.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(editingLead),
+      });
+
+      if (!response.ok) throw new Error('Failed to update lead');
+
+      addToast('Lead updated successfully', 'success');
+      loadLeads();
+      setShowEditModal(false);
+      setEditingLead(null);
+    } catch (error) {
+      console.error('Error:', error);
+      addToast('Failed to update lead', 'error');
+    } finally {
+      setLoading('updateLead', false);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="sm:flex sm:items-center">
@@ -148,36 +173,43 @@ export default function LeadsPage() {
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
               {leads.map((lead) => (
-                <tr key={lead.id} className="relative">
-                  <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900">
-                    {lead.firstName} {lead.lastName}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                    <div>{lead.email}</div>
-                    <div>{lead.phone}</div>
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                    {lead.source}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-4 text-sm">
-                    <span className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                      lead.status === 'CONVERTED' ? 'bg-green-100 text-green-800' :
-                      lead.status === 'LOST' ? 'bg-red-100 text-red-800' :
-                      'bg-blue-100 text-blue-800'
-                    }`}>
-                      {lead.status}
-                    </span>
-                  </td>
-                  <td className="px-3 py-4 text-sm text-gray-500 max-w-xs">
-                    <div className="truncate">
-                      {lead.notes || '-'}
-                    </div>
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                    {new Date(lead.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium">
-                    <div className="static">
+                <React.Fragment key={lead.id}>
+                  <tr 
+                    className={`hover:bg-gray-50 cursor-pointer ${
+                      expandedLeadId === lead.id ? 'bg-gray-50' : ''
+                    }`}
+                    onClick={() => setExpandedLeadId(
+                      expandedLeadId === lead.id ? null : lead.id
+                    )}
+                  >
+                    <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900">
+                      {lead.firstName} {lead.lastName}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                      <div>{lead.email}</div>
+                      <div>{lead.phone}</div>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                      {lead.source}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-4 text-sm">
+                      <span className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
+                        lead.status === 'CONVERTED' ? 'bg-green-100 text-green-800' :
+                        lead.status === 'LOST' ? 'bg-red-100 text-red-800' :
+                        'bg-blue-100 text-blue-800'
+                      }`}>
+                        {lead.status}
+                      </span>
+                    </td>
+                    <td className="px-3 py-4 text-sm text-gray-500 max-w-xs">
+                      <div className="truncate">
+                        {lead.notes || '-'}
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                      {new Date(lead.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium">
                       <LeadActions
                         lead={lead}
                         onAction={loadLeads}
@@ -186,9 +218,18 @@ export default function LeadsPage() {
                           setShowEditModal(true);
                         }}
                       />
-                    </div>
-                  </td>
-                </tr>
+                    </td>
+                  </tr>
+                  {expandedLeadId === lead.id && (
+                    <tr>
+                      <td colSpan={7} className="p-0">
+                        <div className="border-t border-gray-200">
+                          <LeadDetails lead={lead} />
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>
@@ -321,7 +362,7 @@ export default function LeadsPage() {
               <label className="block text-sm font-medium text-gray-700">Email</label>
               <input
                 type="email"
-                value={editingLead.email}
+                value={editingLead.email || ''}
                 onChange={(e) => setEditingLead({ ...editingLead, email: e.target.value })}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
@@ -331,7 +372,7 @@ export default function LeadsPage() {
               <label className="block text-sm font-medium text-gray-700">Phone</label>
               <input
                 type="tel"
-                value={editingLead.phone}
+                value={editingLead.phone || ''}
                 onChange={(e) => setEditingLead({ ...editingLead, phone: e.target.value })}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
@@ -355,7 +396,7 @@ export default function LeadsPage() {
               <label className="block text-sm font-medium text-gray-700">Status</label>
               <select
                 value={editingLead.status}
-                onChange={(e) => setEditingLead({ ...editingLead, status: e.target.value as "NEW" | "CONTACTED" | "QUALIFIED" | "CONVERTED" | "LOST" })}
+                onChange={(e) => setEditingLead({ ...editingLead, status: e.target.value as Lead['status'] })}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 disabled={editingLead.status === 'CONVERTED'}
               >
@@ -388,38 +429,7 @@ export default function LeadsPage() {
                 Cancel
               </Button>
               <Button
-                onClick={async () => {
-                  setLoading('updateLead', true);
-                  try {
-                    const response = await fetch(`/api/leads/${editingLead.id}`, {
-                      method: 'PATCH',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({
-                        firstName: editingLead.firstName,
-                        lastName: editingLead.lastName,
-                        email: editingLead.email,
-                        phone: editingLead.phone,
-                        source: editingLead.source,
-                        status: editingLead.status,
-                        notes: editingLead.notes,
-                      }),
-                    });
-
-                    if (!response.ok) throw new Error('Failed to update lead');
-
-                    addToast('Lead updated successfully', 'success');
-                    loadLeads();
-                    setShowEditModal(false);
-                    setEditingLead(null);
-                  } catch (error) {
-                    console.error('Error:', error);
-                    addToast('Failed to update lead', 'error');
-                  } finally {
-                    setLoading('updateLead', false);
-                  }
-                }}
+                onClick={handleUpdateLead}
                 isLoading={isLoading('updateLead')}
                 disabled={!editingLead.firstName || !editingLead.lastName}
               >

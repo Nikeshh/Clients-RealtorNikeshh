@@ -14,17 +14,25 @@ import Button from '@/components/Button';
 import Modal from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/toast-context';
 
+export interface Lead {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string | null;
+  source: string;
+  status: 'NEW' | 'CONTACTED' | 'QUALIFIED' | 'CONVERTED' | 'LOST';
+  notes: string | null;
+  createdAt: string;
+  lastContact: string | null;
+  convertedAt: string | null;
+  convertedClientId: string | null;
+}
+
 interface LeadActionsProps {
-  lead: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone: string;
-    status: string;
-  };
+  lead: Lead;
   onAction: () => void;
-  onEdit: (lead: any) => void;
+  onEdit: (lead: Lead) => void;
 }
 
 export default function LeadActions({ lead, onAction, onEdit }: LeadActionsProps) {
@@ -175,34 +183,38 @@ export default function LeadActions({ lead, onAction, onEdit }: LeadActionsProps
 
       {showActionsDropdown && (
         <div 
-          className="fixed transform -translate-x-full mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
+          className="fixed z-50 min-w-[200px] rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5"
           style={{
-            top: dropdownRef.current?.getBoundingClientRect().bottom,
-            left: dropdownRef.current?.getBoundingClientRect().right,
+            top: dropdownRef.current ? dropdownRef.current.getBoundingClientRect().bottom + 5 : 0,
+            right: dropdownRef.current ? window.innerWidth - dropdownRef.current.getBoundingClientRect().right : 0,
           }}
         >
           <div className="py-1" role="menu">
-            <button
-              onClick={() => {
-                setShowEmailModal(true);
-                setShowActionsDropdown(false);
-              }}
-              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            >
-              <Mail className="h-4 w-4 mr-2" />
-              Send Email
-            </button>
+            {lead.email && (
+              <button
+                onClick={() => {
+                  setShowEmailModal(true);
+                  setShowActionsDropdown(false);
+                }}
+                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                <Mail className="h-4 w-4 mr-2" />
+                Send Email
+              </button>
+            )}
 
-            <button
-              onClick={() => {
-                setShowCallModal(true);
-                setShowActionsDropdown(false);
-              }}
-              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            >
-              <Phone className="h-4 w-4 mr-2" />
-              Log Call
-            </button>
+            {lead.phone && (
+              <button
+                onClick={() => {
+                  setShowCallModal(true);
+                  setShowActionsDropdown(false);
+                }}
+                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                <Phone className="h-4 w-4 mr-2" />
+                Log Call
+              </button>
+            )}
 
             <button
               onClick={() => {
@@ -261,29 +273,27 @@ export default function LeadActions({ lead, onAction, onEdit }: LeadActionsProps
       <Modal
         isOpen={showEmailModal}
         onClose={() => setShowEmailModal(false)}
-        title={`Email ${lead.firstName} ${lead.lastName}`}
+        title="Send Email"
       >
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">To</label>
             <input
               type="text"
-              value={lead.email}
+              value={lead.email || ''}
               disabled
               className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50"
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700">Message</label>
             <textarea
               value={emailContent}
               onChange={(e) => setEmailContent(e.target.value)}
-              rows={6}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              rows={4}
+              className="mt-1 block w-full rounded-md border-gray-300"
             />
           </div>
-
           <div className="flex justify-end gap-2">
             <Button
               onClick={() => setShowEmailModal(false)}
@@ -305,30 +315,27 @@ export default function LeadActions({ lead, onAction, onEdit }: LeadActionsProps
       <Modal
         isOpen={showCallModal}
         onClose={() => setShowCallModal(false)}
-        title={`Call ${lead.firstName} ${lead.lastName}`}
+        title="Log Call"
       >
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">Phone</label>
             <input
               type="text"
-              value={lead.phone}
+              value={lead.phone || ''}
               disabled
               className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50"
             />
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-gray-700">Call Notes</label>
+            <label className="block text-sm font-medium text-gray-700">Notes</label>
             <textarea
               value={callNotes}
               onChange={(e) => setCallNotes(e.target.value)}
               rows={4}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              placeholder="Enter notes about the call..."
+              className="mt-1 block w-full rounded-md border-gray-300"
             />
           </div>
-
           <div className="flex justify-end gap-2">
             <Button
               onClick={() => setShowCallModal(false)}
@@ -359,11 +366,9 @@ export default function LeadActions({ lead, onAction, onEdit }: LeadActionsProps
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={4}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              placeholder="Enter your note..."
+              className="mt-1 block w-full rounded-md border-gray-300"
             />
           </div>
-
           <div className="flex justify-end gap-2">
             <Button
               onClick={() => setShowNoteModal(false)}

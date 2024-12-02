@@ -13,6 +13,7 @@ model Client {
   email       String
   phone       String
   status      String   @default("Active")
+  source      String?  @default("Direct")
   notes       String?
   pinned      Boolean  @default(false)
   lastContact DateTime @default(now())
@@ -121,10 +122,6 @@ model Interaction {
   // Request relation
   requestId     String?  @db.ObjectId
   request       Request? @relation(fields: [requestId], references: [id])
-  
-  // Lead relation
-  leadId        String?  @db.ObjectId
-  lead          Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
   
   // Requirement relation
   requirementId String?  @db.ObjectId
@@ -382,9 +379,7 @@ model Lead {
   convertedAt     DateTime?
   convertedClientId String?   @db.ObjectId
   convertedClient  Client?   @relation(fields: [convertedClientId], references: [id])
-  interactions    Interaction[]
-
-  leadInteractions LeadInteraction[]
+  interactions    LeadInteraction[]
 }
 
 model LeadInteraction {
